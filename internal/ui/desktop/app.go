@@ -4,21 +4,24 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
+
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"codeberg.org/dbus/sussurro/internal/ai/factory"
 	"codeberg.org/dbus/sussurro/internal/config"
 	"codeberg.org/dbus/sussurro/internal/core"
 	"codeberg.org/dbus/sussurro/internal/history"
+	"codeberg.org/dbus/sussurro/internal/ipc"
 	"codeberg.org/dbus/sussurro/internal/osutil"
 )
 
 // App struct is the Wails application bridge.
 type App struct {
-	ctx     context.Context
-	engine  *core.Engine
-	cfg     *config.Settings
-	history *history.Manager
+	ctx      context.Context
+	engine   *core.Engine
+	cfg      *config.Settings
+	history  *history.Manager
+	cleanIPC func()
 }
 
 // NewApp creates a new desktop application controller with injected dependencies.
@@ -36,12 +39,14 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	go NewTrayManager(a).Run()
 
-	// Global hotkeys require X11. On Wayland, XGrabKey registers but
-	// keypresses don't route through X11, so it silently fails.
-	// TODO: implement via org.freedesktop.portal.GlobalShortcuts when
-	// compositors (COSMIC, GNOME 46+) add support.
-	if a.cfg.GlobalHotkey != "" && os.Getenv("WAYLAND_DISPLAY") != "" {
-		slog.Warn("global hotkeys not supported on Wayland", "hotkey", a.cfg.GlobalHotkey)
+	// IPC listener: allows `sussurro --toggle` to trigger recording
+	cleanup, err := ipc.Listen(func() {
+		wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
+	})
+	if err != nil {
+		slog.Warn("failed to start IPC listener", "error", err)
+	} else {
+		a.cleanIPC = cleanup
 	}
 }
 
@@ -54,6 +59,9 @@ type ProcessResult struct {
 
 // Shutdown is called when the app is closing.
 func (a *App) Shutdown(_ context.Context) {
+	if a.cleanIPC != nil {
+		a.cleanIPC()
+	}
 	shutdownTray()
 }
 

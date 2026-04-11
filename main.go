@@ -2,7 +2,9 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
@@ -14,6 +16,7 @@ import (
 	"codeberg.org/dbus/sussurro/internal/config"
 	"codeberg.org/dbus/sussurro/internal/core"
 	"codeberg.org/dbus/sussurro/internal/history"
+	"codeberg.org/dbus/sussurro/internal/ipc"
 	"codeberg.org/dbus/sussurro/internal/ui/desktop"
 )
 
@@ -21,6 +24,15 @@ import (
 var assets embed.FS
 
 func main() {
+	// CLI mode: send toggle signal to running instance and exit
+	if len(os.Args) > 1 && os.Args[1] == "--toggle" {
+		if err := ipc.SendToggle(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)

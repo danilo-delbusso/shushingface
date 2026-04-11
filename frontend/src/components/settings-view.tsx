@@ -151,21 +151,13 @@ export function SettingsView({
               <Keyboard className="size-4" /> Shortcuts
             </CardTitle>
             <CardDescription>
-              Global hotkey to toggle recording from any app. Requires restart.
-              Not yet supported on Wayland (COSMIC, GNOME 46+).
+              Set a global hotkey in your desktop settings to run{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+                sussurro --toggle
+              </code>{" "}
+              and it will toggle recording.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="hotkey">Global Hotkey</Label>
-              <Input
-                id="hotkey"
-                value={draft.globalHotkey}
-                placeholder="e.g. Ctrl+Shift+R"
-                onChange={(e) => update({ globalHotkey: e.target.value })}
-              />
-            </div>
-          </CardContent>
         </Card>
 
         {/* Preferences */}
