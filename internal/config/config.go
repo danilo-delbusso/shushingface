@@ -88,6 +88,19 @@ func Save(settings *Settings) error {
 	return os.WriteFile(configFile, data, 0600)
 }
 
+// GetLogPath returns the path for the application log file.
+func GetLogPath() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	appDir := filepath.Join(configDir, "sussurro")
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return "", err
+	}
+	return filepath.Join(appDir, "app.log"), nil
+}
+
 // DefaultSettings returns a sensible baseline configuration.
 func DefaultSettings() *Settings {
 	return &Settings{

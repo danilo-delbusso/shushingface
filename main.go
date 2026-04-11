@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
@@ -55,7 +56,11 @@ func main() {
 	// 5. Build Desktop Bridge Context
 	app := desktop.NewApp(engine, cfg, hist)
 
-	// 6. Run Wails Application
+	// 6. Set up File Logger
+	logPath, _ := config.GetLogPath()
+	appLogger := logger.NewFileLogger(logPath)
+
+	// 7. Run Wails Application
 	err = wails.Run(&options.App{
 		Title:  "Sussurro",
 		Width:  800,
@@ -67,6 +72,8 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
+		Logger:            appLogger,
+		LogLevel:          logger.INFO,
 		HideWindowOnClose: true, // Key component of the "Always-On" background behavior
 	})
 
