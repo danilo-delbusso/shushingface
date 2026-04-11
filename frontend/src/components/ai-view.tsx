@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { InfoTip } from "@/components/info-tip";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 
@@ -162,7 +163,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Key className="size-4" /> API Provider
+              <Key className="size-4" /> API Provider <InfoTip text="The API key used to authenticate with your speech-to-text provider." />
             </CardTitle>
             <CardDescription>
               shushing face uses Groq for speech-to-text.{" "}
@@ -216,7 +217,9 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
 
         {/* Profiles */}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Refinement Styles</h3>
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            Refinement Styles <InfoTip text="Each style defines how your speech gets rewritten. Choose a style before recording, or set one as active." />
+          </h3>
           <Button variant="outline" size="sm" onClick={addProfile}>
             <Plus className="size-3.5" /> Add
           </Button>
@@ -340,7 +343,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
         {/* Test */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Test Playground</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-1.5">Test Playground <InfoTip text="Paste sample text to preview how the active style transforms it, without recording audio." /></CardTitle>
             <CardDescription>
               Tests with the active style.
             </CardDescription>

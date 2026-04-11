@@ -1,4 +1,5 @@
 import { Sun, Moon, Monitor } from "lucide-react";
+import { InfoTip } from "@/components/info-tip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { config } from "../../wailsjs/go/models";
@@ -18,7 +19,7 @@ export function AppearanceView({ settings, onSave }: AppearanceViewProps) {
       <div className="space-y-4 p-6 max-w-2xl">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Theme</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-1.5">Theme <InfoTip text="System follows your OS dark/light preference." /></CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">

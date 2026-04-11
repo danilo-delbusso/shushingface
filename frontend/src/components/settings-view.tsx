@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Keyboard, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { InfoTip } from "@/components/info-tip";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,7 +45,7 @@ export function SettingsView({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Keyboard className="size-4" /> Shortcuts
+              <Keyboard className="size-4" /> Shortcuts <InfoTip text="Configure a system keyboard shortcut to toggle recording from any app without opening the window." />
             </CardTitle>
             <ShortcutGuide platform={platform} />
           </CardHeader>
@@ -53,7 +54,7 @@ export function SettingsView({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <SlidersHorizontal className="size-4" /> Preferences
+              <SlidersHorizontal className="size-4" /> Preferences <InfoTip text="Control clipboard behavior, history storage, and system integrations." />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
