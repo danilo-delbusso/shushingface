@@ -21,7 +21,10 @@ function App() {
     if (settings && !isConfigured(settings)) {
       setView("settings");
     }
-  }, [settings]);
+    if (settings && !settings.enableHistory && view === "history") {
+      setView("home");
+    }
+  }, [settings, view]);
 
   return (
     <TooltipProvider>
@@ -30,6 +33,7 @@ function App() {
           view={view}
           onNavigate={setView}
           configured={configured}
+          historyEnabled={settings?.enableHistory ?? false}
           hotkey={settings?.globalHotkey}
         />
         <SidebarInset className="flex flex-col h-screen overflow-hidden">
