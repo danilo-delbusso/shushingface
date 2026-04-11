@@ -1,6 +1,5 @@
 import { History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { history } from "../../wailsjs/go/models";
 
@@ -39,22 +38,23 @@ export function HistoryView({ items, onClear }: HistoryViewProps) {
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-2 pr-2">
             {items.map((item) => (
-              <Card key={item.id}>
-                <CardContent className="space-y-1 px-3 py-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{new Date(item.timestamp).toLocaleString()}</span>
-                    {item.activeApp && (
-                      <span className="font-medium text-primary">
-                        {item.activeApp}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium">{item.refinedMessage}</p>
-                  <p className="text-xs text-muted-foreground italic">
-                    &ldquo;{item.rawTranscript}&rdquo;
-                  </p>
-                </CardContent>
-              </Card>
+              <div
+                key={item.id}
+                className="space-y-0.5 rounded-lg border bg-card px-3 py-2 text-card-foreground"
+              >
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>{new Date(item.timestamp).toLocaleString()}</span>
+                  {item.activeApp && (
+                    <span className="font-medium text-primary">
+                      {item.activeApp}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm">{item.refinedMessage}</p>
+                <p className="text-xs text-muted-foreground italic">
+                  &ldquo;{item.rawTranscript}&rdquo;
+                </p>
+              </div>
             ))}
           </div>
         </div>
