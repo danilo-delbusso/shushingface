@@ -1,6 +1,21 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.11/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "files": {
+    "includes": ["**", "!dist", "!node_modules", "!wailsjs"]
+  },
+  "css": {
+    "parser": {
+      "cssModules": false,
+      "tailwindDirectives": true
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -11,5 +26,20 @@
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/components/ui/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useImportType": "off"
+          },
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
+    }
+  ]
 }
