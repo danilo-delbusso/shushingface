@@ -55,15 +55,18 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
   const [testResult, setTestResult] = useState("");
   const [testing, setTesting] = useState(false);
   const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
-
-  const profiles = settings.refinementProfiles ?? [];
-  const activeId = settings.activeProfileId;
+  const [draftProfiles, setDraftProfiles] = useState(
+    settings.refinementProfiles ?? [],
+  );
+  const [activeId, setActiveId] = useState(settings.activeProfileId);
 
   const saveAll = (
-    newProfiles?: typeof profiles,
+    profiles?: typeof draftProfiles,
     newActiveId?: string,
   ) => {
     const providerId = settings.transcriptionProviderId;
+    const p = profiles ?? draftProfiles;
+    const a = newActiveId ?? activeId;
     onSave(
       config.Settings.createFrom({
         ...settings,
@@ -72,22 +75,32 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
           [providerId]: { ...settings.providers[providerId], apiKey },
         },
         transcriptionModel: transModel,
-        refinementProfiles: newProfiles ?? profiles,
-        activeProfileId: newActiveId ?? activeId,
+        refinementProfiles: p,
+        activeProfileId: a,
       }),
     );
   };
 
-  const updateProfile = (id: string, patch: Partial<config.RefinementProfile>) => {
-    const updated = profiles.map((p) =>
-      p.id === id ? config.RefinementProfile.createFrom({ ...p, ...patch }) : p,
+  const updateDraftProfile = (
+    id: string,
+    patch: Partial<config.RefinementProfile>,
+  ) => {
+    setDraftProfiles((prev) =>
+      prev.map((p) =>
+        p.id === id ? config.RefinementProfile.createFrom({ ...p, ...patch }) : p,
+      ),
     );
-    saveAll(updated);
+  };
+
+  const saveProfile = (_id: string) => {
+    saveAll(draftProfiles);
   };
 
   const deleteProfile = (id: string) => {
-    const updated = profiles.filter((p) => p.id !== id);
+    const updated = draftProfiles.filter((p) => p.id !== id);
     const newActive = activeId === id ? updated[0]?.id ?? "" : activeId;
+    setDraftProfiles(updated);
+    setActiveId(newActive);
     saveAll(updated, newActive);
   };
 
@@ -97,14 +110,16 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
       id,
       name: "New Style",
       icon: "pen-tool",
-      model: profiles[0]?.model ?? "llama-3.3-70b-versatile",
+      model: draftProfiles[0]?.model ?? "llama-3.3-70b-versatile",
       prompt: "",
     });
-    saveAll([...profiles, newProfile]);
+    const updated = [...draftProfiles, newProfile];
+    setDraftProfiles(updated);
     setExpandedProfile(id);
   };
 
   const setActive = (id: string) => {
+    setActiveId(id);
     saveAll(undefined, id);
   };
 
@@ -113,7 +128,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
 
   const handleTest = async () => {
     const text = sampleText.trim() || placeholderText;
-    const profile = profiles.find((p) => p.id === activeId);
+    const profile = draftProfiles.find((p) => p.id === activeId);
     if (!profile?.prompt) {
       toast.error("Active profile has no prompt");
       return;
@@ -207,7 +222,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
           </Button>
         </div>
 
-        {profiles.map((profile) => {
+        {draftProfiles.map((profile) => {
           const Icon = iconMap[profile.icon] || PenTool;
           const isActive = profile.id === activeId;
           const isExpanded = expandedProfile === profile.id;
@@ -272,7 +287,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                     <Input
                       value={profile.name}
                       onChange={(e) =>
-                        updateProfile(profile.id, { name: e.target.value })
+                        updateDraftProfile(profile.id, { name: e.target.value })
                       }
                     />
                   </div>
@@ -281,7 +296,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                     <Input
                       value={profile.model}
                       onChange={(e) =>
-                        updateProfile(profile.id, { model: e.target.value })
+                        updateDraftProfile(profile.id, { model: e.target.value })
                       }
                     />
                   </div>
@@ -290,25 +305,30 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                     <textarea
                       value={profile.prompt}
                       onChange={(e) =>
-                        updateProfile(profile.id, { prompt: e.target.value })
+                        updateDraftProfile(profile.id, { prompt: e.target.value })
                       }
                       rows={6}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                     />
                   </div>
-                  {!isPreset && (
-                    <ConfirmDialog
-                      trigger={
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="size-3.5" /> Delete
-                        </Button>
-                      }
-                      title={`Delete "${profile.name}"?`}
-                      description="This style will be permanently removed."
-                      confirmLabel="Delete"
-                      onConfirm={() => deleteProfile(profile.id)}
-                    />
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => saveProfile(profile.id)}>
+                      Save
+                    </Button>
+                    {!isPreset && (
+                      <ConfirmDialog
+                        trigger={
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="size-3.5" /> Delete
+                          </Button>
+                        }
+                        title={`Delete "${profile.name}"?`}
+                        description="This style will be permanently removed."
+                        confirmLabel="Delete"
+                        onConfirm={() => deleteProfile(profile.id)}
+                      />
+                    )}
+                  </div>
                 </CardContent>
               )}
             </Card>
