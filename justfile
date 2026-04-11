@@ -2,7 +2,7 @@
 
 set shell := ["bash", "-c"]
 
-prefix := env("PREFIX", "/usr/local")
+prefix := env("PREFIX", env("HOME") / ".local")
 
 default:
     @just --list
@@ -87,7 +87,7 @@ build-darwin:
 
 # --- Install & Uninstall ---
 
-# Install sussurro system-wide (binary + desktop entry + icon + shortcut)
+# Install sussurro (binary + desktop entry + icon + shortcut). Defaults to ~/.local
 install: build
     #!/bin/bash
     set -e
