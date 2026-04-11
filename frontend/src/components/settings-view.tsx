@@ -152,6 +152,7 @@ export function SettingsView({
             </CardTitle>
             <CardDescription>
               Global hotkey to toggle recording from any app. Requires restart.
+              Not yet supported on Wayland (COSMIC, GNOME 46+).
             </CardDescription>
           </CardHeader>
           <CardContent>

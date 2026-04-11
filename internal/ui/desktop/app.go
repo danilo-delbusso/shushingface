@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"os"
 
 	"codeberg.org/dbus/sussurro/internal/ai/factory"
 	"codeberg.org/dbus/sussurro/internal/config"
@@ -37,19 +36,12 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	go NewTrayManager(a).Run()
 
-	if a.cfg.GlobalHotkey != "" {
-		osutil.InstallSafeX11ErrorHandler()
-		go func() {
-			triggerCh, err := osutil.RegisterHotkey(a.cfg.GlobalHotkey)
-			if err != nil {
-				slog.Warn("failed to register hotkey", "hotkey", a.cfg.GlobalHotkey, "error", err)
-				return
-			}
-			slog.Info("global hotkey registered", "hotkey", a.cfg.GlobalHotkey)
-			for range triggerCh {
-				wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
-			}
-		}()
+	// Global hotkeys require X11. On Wayland, XGrabKey registers but
+	// keypresses don't route through X11, so it silently fails.
+	// TODO: implement via org.freedesktop.portal.GlobalShortcuts when
+	// compositors (COSMIC, GNOME 46+) add support.
+	if a.cfg.GlobalHotkey != "" && os.Getenv("WAYLAND_DISPLAY") != "" {
+		slog.Warn("global hotkeys not supported on Wayland", "hotkey", a.cfg.GlobalHotkey)
 	}
 }
 
