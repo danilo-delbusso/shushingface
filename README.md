@@ -14,4 +14,4 @@ shushing face records your voice, transcribes it with AI, rewrites it into clean
 
 ## license
 
-MIT
+[AGPL-3.0](LICENSE)
