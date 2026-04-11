@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+	"os"
+
+	"github.com/joho/godotenv"
 
 	"codeberg.org/dbus/sussurro/internal/ai/groq"
 	"codeberg.org/dbus/sussurro/internal/audio/malgo"
@@ -11,6 +14,10 @@ import (
 )
 
 func main() {
+	// We still load .env for backward compatibility in TUI
+	// while the desktop app will strictly use the UI to manage config.json.
+	_ = godotenv.Load()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("Error loading config: ", err)
@@ -22,7 +29,17 @@ func main() {
 	}
 	defer recorder.Close()
 
-	processor, err := groq.NewProcessor(cfg.GroqAPIKey)
+	// Extract API key for the default Groq provider fallback, or use env
+	apiKey := os.Getenv("GROQ_API_KEY")
+	if provider, ok := cfg.Providers[cfg.RefinementProviderID]; ok && provider.APIKey != "" {
+		apiKey = provider.APIKey
+	}
+
+	if apiKey == "" {
+		log.Fatal("Error: Groq API key is missing. Please set GROQ_API_KEY or configure it in the desktop app.")
+	}
+
+	processor, err := groq.NewProcessor(apiKey)
 	if err != nil {
 		log.Fatal("Error initializing processor: ", err)
 	}
