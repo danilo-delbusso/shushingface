@@ -37,10 +37,10 @@ export function HistoryView({ items, onClear }: HistoryViewProps) {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
-          <div className="space-y-3 pr-2">
+          <div className="space-y-2 pr-2">
             {items.map((item) => (
               <Card key={item.id}>
-                <CardContent className="space-y-1.5 p-4">
+                <CardContent className="space-y-1 px-3 py-2">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{new Date(item.timestamp).toLocaleString()}</span>
                     {item.activeApp && (
