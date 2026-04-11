@@ -2,7 +2,6 @@ import { useState } from "react";
 import { History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -68,8 +67,8 @@ export function HistoryView({ items, onClear }: HistoryViewProps) {
           <p className="text-sm">No transcriptions yet.</p>
         </div>
       ) : (
-        <ScrollArea className="flex-1">
-          <div className="space-y-3 pr-4">
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-3 pr-2">
             {items.map((item) => (
               <Card key={item.id}>
                 <CardContent className="space-y-1.5 p-4">
@@ -87,7 +86,7 @@ export function HistoryView({ items, onClear }: HistoryViewProps) {
               </Card>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       )}
     </div>
   );

@@ -12,7 +12,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import type { config } from "../../wailsjs/go/models";
 
@@ -78,7 +77,7 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
       draftModel !== settings.refinementModel);
 
   return (
-    <ScrollArea className="flex-1">
+    <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         {/* Model */}
         <Card>
@@ -201,6 +200,6 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
           </CardContent>
         </Card>
       </div>
-    </ScrollArea>
+    </div>
   );
 }
