@@ -17,6 +17,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/ipc"
 	"codeberg.org/dbus/shushingface/internal/notify"
 	"codeberg.org/dbus/shushingface/internal/osutil"
+	"codeberg.org/dbus/shushingface/internal/paste"
 )
 
 type App struct {
@@ -104,6 +105,13 @@ func (a *App) StopAndProcess() ProcessResult {
 	if a.cfg.EnableHistory && a.history != nil && transcript != "" {
 		if _, histErr := a.history.Insert(transcript, refined, activeApp); histErr != nil {
 			slog.Error("failed to insert history", "error", histErr)
+		}
+	}
+
+	// Auto-paste refined text into focused app (no clipboard pollution)
+	if a.cfg.AutoPaste && refined != "" {
+		if err := paste.Type(refined); err != nil {
+			slog.Warn("auto-paste failed", "error", err)
 		}
 	}
 

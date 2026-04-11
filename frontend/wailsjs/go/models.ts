@@ -47,6 +47,7 @@ export namespace config {
 	    refinementModel?: string;
 	    setupComplete: boolean;
 	    theme: string;
+	    autoPaste: boolean;
 	    autoCopy: boolean;
 	    enableHistory: boolean;
 	    enableIndicator: boolean;
@@ -69,6 +70,7 @@ export namespace config {
 	        this.refinementModel = source["refinementModel"];
 	        this.setupComplete = source["setupComplete"];
 	        this.theme = source["theme"];
+	        this.autoPaste = source["autoPaste"];
 	        this.autoCopy = source["autoCopy"];
 	        this.enableHistory = source["enableHistory"];
 	        this.enableIndicator = source["enableIndicator"];

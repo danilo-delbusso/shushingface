@@ -1,4 +1,5 @@
-# Sussurro Workflow Integration
+# shushing face — speech-to-text desktop app
+# Dependencies: wtype (Wayland auto-paste) or xdotool (X11 auto-paste)
 
 set shell := ["bash", "-c"]
 

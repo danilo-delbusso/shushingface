@@ -43,6 +43,7 @@ type Settings struct {
 	Theme string `json:"theme"`
 
 	// Preferences
+	AutoPaste           bool `json:"autoPaste"`
 	AutoCopy            bool `json:"autoCopy"`
 	EnableHistory       bool `json:"enableHistory"`
 	EnableIndicator     bool `json:"enableIndicator"`
@@ -233,7 +234,8 @@ func DefaultSettings() *Settings {
 		ActiveProfileID:         "professional",
 		SetupComplete:           false,
 		Theme:                   "dark",
-		AutoCopy:                true,
+		AutoPaste:               true,
+		AutoCopy:                false,
 		EnableHistory:           true,
 		EnableIndicator:         true,
 		EnableNotifications:     false,

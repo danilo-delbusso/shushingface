@@ -52,9 +52,23 @@ export function SettingsView({
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
+                <Label htmlFor="auto-paste">Auto-paste</Label>
+                <p className="text-xs text-muted-foreground">
+                  Type refined text into the focused app after processing
+                </p>
+              </div>
+              <Switch
+                id="auto-paste"
+                checked={settings.autoPaste}
+                onCheckedChange={(v) => toggle({ autoPaste: v })}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
                 <Label htmlFor="auto-copy">Auto-copy to clipboard</Label>
                 <p className="text-xs text-muted-foreground">
-                  Copy refined text automatically after processing
+                  Copy refined text to clipboard after processing
                 </p>
               </div>
               <Switch
