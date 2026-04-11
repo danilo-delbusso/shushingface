@@ -50,15 +50,15 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
     setDraftPrompt(defaultPrompt);
   };
 
+  const placeholderText =
+    "hey um so I was thinking we should probably move the meeting to thursday because like john cant make it on wednesday and I think it would be better if we all met together you know";
+
   const handleTest = async () => {
-    if (!sampleText.trim()) {
-      toast.error("Enter some sample text to test");
-      return;
-    }
+    const text = sampleText.trim() || placeholderText;
     setTesting(true);
     setTestResult("");
     try {
-      const res = await AppBridge.TestPrompt(sampleText, draftPrompt);
+      const res = await AppBridge.TestPrompt(text, draftPrompt);
       if (res.error) {
         toast.error(res.error);
       } else {
@@ -165,13 +165,13 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
                 onChange={(e) => setSampleText(e.target.value)}
                 rows={4}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-                placeholder="hey um so I was thinking we should probably move the meeting to thursday because like john cant make it on wednesday..."
+                placeholder={placeholderText}
               />
             </div>
             <Button
               type="button"
               onClick={handleTest}
-              disabled={testing || !sampleText.trim()}
+              disabled={testing}
               className="w-full"
             >
               {testing ? (
