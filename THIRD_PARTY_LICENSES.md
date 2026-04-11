@@ -42,7 +42,6 @@
 - **@floating-ui/utils@0.2.11** — MIT
 - **get-nonce@1.0.1** — MIT
 - **lucide-react@1.8.0** — ISC
-- **next-themes@0.4.6** — MIT
 - **radix-ui@1.4.3** — MIT
 - **@radix-ui/number@1.1.1** — MIT
 - **@radix-ui/primitive@1.1.3** — MIT

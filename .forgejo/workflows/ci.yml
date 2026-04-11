@@ -90,28 +90,4 @@ jobs:
         run: cd frontend && bun install --frozen-lockfile
 
       - name: Check licenses are up to date
-        run: |
-          # Generate Go licenses
-          go install github.com/google/go-licenses@latest
-          echo "# Third-Party Licenses" > /tmp/licenses.md
-          echo "" >> /tmp/licenses.md
-          echo "## Assets" >> /tmp/licenses.md
-          echo "" >> /tmp/licenses.md
-          echo '- **OpenMoji** — [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)' >> /tmp/licenses.md
-          echo '  All emojis designed by [OpenMoji](https://openmoji.org) — the open-source emoji and icon project.' >> /tmp/licenses.md
-          echo "" >> /tmp/licenses.md
-          echo "## Go Dependencies" >> /tmp/licenses.md
-          echo "" >> /tmp/licenses.md
-          go-licenses csv ./... 2>/dev/null | grep -v "codeberg.org/dbus/shushingface" | sort | while IFS=, read -r mod url license; do
-            echo "- **$mod** — $license" >> /tmp/licenses.md
-          done
-          echo "" >> /tmp/licenses.md
-          echo "## Frontend Dependencies" >> /tmp/licenses.md
-          echo "" >> /tmp/licenses.md
-          cd frontend && bun x license-checker --production --csv --excludePackages "frontend@0.0.0" 2>/dev/null | tail -n +2 | sort | while IFS=, read -r mod license repo; do
-            mod=$(echo "$mod" | tr -d '"')
-            license=$(echo "$license" | tr -d '"')
-            echo "- **$mod** — $license" >> /tmp/licenses.md
-          done
-          cd ..
-          diff -q THIRD_PARTY_LICENSES.md /tmp/licenses.md || (echo "THIRD_PARTY_LICENSES.md is out of date. Run 'just licenses' and commit." && exit 1)
+        run: ./scripts/check-licenses.sh
