@@ -17,16 +17,22 @@ type Client interface {
 
 // processor implements the ai.Processor interface using the Groq API.
 type processor struct {
-	client Client
+	client             Client
+	transcriptionModel string
+	refinementModel    string
 }
 
 // NewProcessor creates a new Groq processor instance that satisfies the ai.Processor interface.
-func NewProcessor(apiKey string) (ai.Processor, error) {
+func NewProcessor(apiKey, transcriptionModel, refinementModel string) (ai.Processor, error) {
 	client, err := groqclient.NewClient(apiKey)
 	if err != nil {
 		return nil, err
 	}
-	return &processor{client: client}, nil
+	return &processor{
+		client:             client,
+		transcriptionModel: transcriptionModel,
+		refinementModel:    refinementModel,
+	}, nil
 }
 
 func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, error) {
@@ -48,7 +54,7 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, err
 	transReq := groqclient.AudioRequest{
 		FilePath: tmpFile.Name(),
 		Reader:   tmpFile,
-		Model:    "whisper-large-v3-turbo",
+		Model:    p.transcriptionModel,
 	}
 
 	transcription, err := p.client.Transcribe(ctx, transReq)
@@ -61,7 +67,7 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, err
 
 func (p *processor) Refine(ctx context.Context, transcript string, systemPrompt string) (string, error) {
 	chatReq := groqclient.ChatCompletionRequest{
-		Model: "llama-3.1-8b-instant",
+		Model: p.refinementModel,
 		Messages: []groqclient.ChatCompletionMessage{
 			{
 				Role:    "system",
