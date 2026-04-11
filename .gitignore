@@ -42,7 +42,10 @@ Thumbs.db
 *.swp
 *.swo
 
-# AI Assistants
+# AI Assistants & Planning
 .gemini/
+GEMINI.md
 .claude/
 claude.json
+docs/
+*.plan.md
