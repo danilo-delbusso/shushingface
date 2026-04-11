@@ -6,8 +6,33 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"runtime"
 	"time"
 )
+
+// Available reports whether the required typing tool is installed.
+func Available() bool {
+	if os.Getenv("WAYLAND_DISPLAY") != "" {
+		_, err := exec.LookPath("wtype")
+		return err == nil
+	}
+	_, err := exec.LookPath("xdotool")
+	return err == nil
+}
+
+// InstallHint returns a human-readable install command for the missing tool.
+func InstallHint() string {
+	pkg := "xdotool"
+	if os.Getenv("WAYLAND_DISPLAY") != "" {
+		pkg = "wtype"
+	}
+	switch {
+	case runtime.GOOS == "linux":
+		return "sudo apt install " + pkg
+	default:
+		return ""
+	}
+}
 
 // Type simulates typing the text into the currently focused application.
 // On Wayland, uses wtype to inject keystrokes directly (no clipboard pollution).

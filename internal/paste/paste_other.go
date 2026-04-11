@@ -2,9 +2,11 @@
 
 package paste
 
+// Available reports whether auto-paste is supported on this platform.
+func Available() bool { return false }
+
+// InstallHint returns an empty string on unsupported platforms.
+func InstallHint() string { return "" }
+
 // Type is not yet implemented on this platform.
-// TODO: macOS — NSPasteboard + CGEventCreateKeyboardEvent
-// TODO: Windows — clipboard API + SendInput
-func Type(text string) error {
-	return nil
-}
+func Type(text string) error { return nil }

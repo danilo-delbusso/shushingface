@@ -9,7 +9,7 @@ import { AiView } from "@/components/ai-view";
 import { AppearanceView } from "@/components/appearance-view";
 import { SettingsView } from "@/components/settings-view";
 import { WelcomeWizard } from "@/components/welcome-wizard";
-import { useSettings, useHistory, useRecording, useTheme, usePlatform, isConfigured } from "@/lib/hooks";
+import { useSettings, useHistory, useRecording, useTheme, usePlatform, usePasteStatus, isConfigured } from "@/lib/hooks";
 import { config } from "../wailsjs/go/models";
 
 function App() {
@@ -17,6 +17,7 @@ function App() {
   const { settings, saveSettings } = useSettings();
   const { historyList, refresh: refreshHistory, clear: clearHistory } = useHistory();
   const platform = usePlatform();
+  const pasteStatus = usePasteStatus();
   const configured = isConfigured(settings);
   useTheme(settings?.theme);
 
@@ -83,6 +84,8 @@ function App() {
             <SettingsView
               settings={settings}
               platform={platform}
+              pasteAvailable={pasteStatus?.available ?? true}
+              pasteInstallCmd={pasteStatus?.installCmd ?? ""}
               onSave={saveSettings}
               onRunSetup={() =>
                 saveSettings(

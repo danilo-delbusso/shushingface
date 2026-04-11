@@ -10,6 +10,8 @@ export function GetDefaultProfiles():Promise<Array<config.RefinementProfile>>;
 
 export function GetHistory(arg1:number,arg2:number):Promise<Array<history.Record>>;
 
+export function GetPasteStatus():Promise<desktop.PasteStatus>;
+
 export function GetPlatform():Promise<desktop.PlatformInfo>;
 
 export function GetSettings():Promise<config.Settings>;

@@ -31,6 +31,14 @@ export function usePlatform() {
   return platform;
 }
 
+export function usePasteStatus() {
+  const [status, setStatus] = useState<desktop.PasteStatus | null>(null);
+  useEffect(() => {
+    AppBridge.GetPasteStatus().then(setStatus);
+  }, []);
+  return status;
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<config.Settings | null>(null);
 

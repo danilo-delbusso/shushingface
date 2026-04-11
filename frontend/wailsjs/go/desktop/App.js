@@ -14,6 +14,10 @@ export function GetHistory(arg1, arg2) {
   return window['go']['desktop']['App']['GetHistory'](arg1, arg2);
 }
 
+export function GetPasteStatus() {
+  return window['go']['desktop']['App']['GetPasteStatus']();
+}
+
 export function GetPlatform() {
   return window['go']['desktop']['App']['GetPlatform']();
 }

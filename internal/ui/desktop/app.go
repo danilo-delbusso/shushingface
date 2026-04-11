@@ -151,6 +151,18 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	return nil
 }
 
+type PasteStatus struct {
+	Available  bool   `json:"available"`
+	InstallCmd string `json:"installCmd"`
+}
+
+func (a *App) GetPasteStatus() PasteStatus {
+	return PasteStatus{
+		Available:  paste.Available(),
+		InstallCmd: paste.InstallHint(),
+	}
+}
+
 func (a *App) TestPrompt(sampleText, systemPrompt string) ProcessResult {
 	proc := a.engine.GetProcessor()
 	refined, err := proc.Refine(a.ctx, sampleText, systemPrompt)

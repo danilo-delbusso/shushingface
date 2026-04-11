@@ -101,6 +101,20 @@ export namespace config {
 
 export namespace desktop {
 	
+	export class PasteStatus {
+	    available: boolean;
+	    installCmd: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PasteStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.installCmd = source["installCmd"];
+	    }
+	}
 	export class PlatformInfo {
 	    os: string;
 	    desktop: string;
