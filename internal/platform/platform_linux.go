@@ -5,7 +5,6 @@ package platform
 import (
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 )
 
@@ -82,19 +81,4 @@ func InstallCmd(pkg string) string {
 func HasCommand(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
-}
-
-// ReadOSRelease reads a field from /etc/os-release.
-func ReadOSRelease(key string) string {
-	data, err := os.ReadFile("/etc/os-release")
-	if err != nil {
-		return ""
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(line, key+"=") {
-			val := strings.TrimPrefix(line, key+"=")
-			return strings.Trim(val, `"`)
-		}
-	}
-	return ""
 }
