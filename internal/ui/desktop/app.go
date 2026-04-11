@@ -43,7 +43,9 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	go NewTrayManager(a).Run()
 	if a.cfg.EnableIndicator {
-		indicator.Start()
+		indicator.Start(func() {
+			wailsRuntime.WindowShow(a.ctx)
+		})
 	}
 
 	// IPC listener: handles commands from other instances and CLI
@@ -161,7 +163,9 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 
 	// Hot-toggle indicator
 	if newSettings.EnableIndicator && !a.cfg.EnableIndicator {
-		indicator.Start()
+		indicator.Start(func() {
+			wailsRuntime.WindowShow(a.ctx)
+		})
 	} else if !newSettings.EnableIndicator && a.cfg.EnableIndicator {
 		indicator.Stop()
 	}

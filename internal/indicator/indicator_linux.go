@@ -31,10 +31,11 @@ var recordingIcon []byte
 
 // sniItem implements the StatusNotifierItem D-Bus interface.
 type sniItem struct {
-	mu        sync.RWMutex
-	conn      *dbus.Conn
-	busName   string
-	recording bool
+	mu         sync.RWMutex
+	conn       *dbus.Conn
+	busName    string
+	recording  bool
+	onActivate func()
 }
 
 func (s *sniItem) icon() []byte {
@@ -122,7 +123,12 @@ func (s *sniItem) GetAll(iface string) (map[string]dbus.Variant, *dbus.Error) {
 
 func (s *sniItem) Set(string, string, dbus.Variant) *dbus.Error { return nil }
 
-func (s *sniItem) Activate(x, y int32) *dbus.Error   { return nil }
+func (s *sniItem) Activate(x, y int32) *dbus.Error {
+	if s.onActivate != nil {
+		s.onActivate()
+	}
+	return nil
+}
 func (s *sniItem) SecondaryActivate(x, y int32) *dbus.Error { return nil }
 func (s *sniItem) Scroll(delta int32, orientation string) *dbus.Error { return nil }
 
@@ -159,7 +165,8 @@ var (
 )
 
 // Start registers a StatusNotifierItem with the panel.
-func Start() {
+// onActivate is called when the user clicks the indicator.
+func Start(onActivate func()) {
 	once.Do(func() {
 		conn, err := dbus.SessionBusPrivate()
 		if err != nil {
@@ -183,7 +190,7 @@ func Start() {
 			return
 		}
 
-		item := &sniItem{conn: conn, busName: busName}
+		item := &sniItem{conn: conn, busName: busName, onActivate: onActivate}
 		instance = item
 
 		conn.ExportMethodTable(map[string]interface{}{

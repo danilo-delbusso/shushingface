@@ -3,6 +3,7 @@ import {
   History,
   Settings,
   SlidersHorizontal,
+  LogOut,
   MessageSquareText,
   ChevronRight,
 } from "lucide-react";
@@ -26,6 +27,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Quit } from "../../wailsjs/runtime/runtime";
 import { Collapsible } from "radix-ui";
 
 export type View = "home" | "history" | "settings" | "prompt";
@@ -138,7 +140,19 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => Quit()}
+              className="text-muted-foreground"
+            >
+              <LogOut className="size-4" />
+              <span>Quit</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
