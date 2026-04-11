@@ -20,7 +20,7 @@ function App() {
   const configured = isConfigured(settings);
   useTheme(settings?.theme);
 
-  const { isRecording, isProcessing, result, setResult, toggle } =
+  const { isRecording, isProcessing, results, toggle } =
     useRecording(configured, refreshHistory);
 
   useEffect(() => {
@@ -56,14 +56,13 @@ function App() {
               configured={configured}
               isRecording={isRecording}
               isProcessing={isProcessing}
-              result={result}
+              results={results}
               activeProfile={
                 settings.refinementProfiles?.find(
                   (p) => p.id === settings.activeProfileId,
                 ) ?? null
               }
               onToggle={toggle}
-              onNewRecording={() => setResult(null)}
               onGoToSettings={() => setView("ai")}
             />
           )}

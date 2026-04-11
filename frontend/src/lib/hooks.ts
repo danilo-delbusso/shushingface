@@ -82,7 +82,7 @@ export function useRecording(
 ) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<desktop.ProcessResult | null>(null);
+  const [results, setResults] = useState<desktop.ProcessResult[]>([]);
   const isRecordingRef = useRef(isRecording);
   isRecordingRef.current = isRecording;
 
@@ -95,7 +95,6 @@ export function useRecording(
       try {
         await AppBridge.StartRecording();
         setIsRecording(true);
-        setResult(null);
       } catch (err) {
         toast.error(`Recording failed: ${err}`);
       }
@@ -106,9 +105,8 @@ export function useRecording(
       setIsProcessing(false);
       if (res.error) {
         toast.error(res.error);
-        setResult(null);
       } else {
-        setResult(res);
+        setResults((prev) => [res, ...prev]);
         onResult();
       }
     }
@@ -119,5 +117,5 @@ export function useRecording(
     return cleanup;
   }, [toggle]);
 
-  return { isRecording, isProcessing, result, setResult, toggle };
+  return { isRecording, isProcessing, results, clearResults: () => setResults([]), toggle };
 }
