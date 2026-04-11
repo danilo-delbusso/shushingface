@@ -85,9 +85,11 @@ build-linux-tray:
 build-darwin:
     wails build
 
-# --- Install & Uninstall ---
+# --- Install & Uninstall (Linux) ---
+# macOS: `wails build` produces a .app bundle in build/bin/
+# Windows: `wails build -nsis` produces an installer
 
-# Install sussurro (binary + desktop entry + icon + shortcut). Defaults to ~/.local
+# Install sussurro on Linux (binary + desktop entry + icon + shortcut)
 install: build
     #!/bin/bash
     set -e
