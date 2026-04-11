@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Keyboard, SlidersHorizontal } from "lucide-react";
+import { Keyboard, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,12 +18,14 @@ interface SettingsViewProps {
   settings: config.Settings;
   platform: desktop.PlatformInfo | null;
   onSave: (settings: config.Settings) => void;
+  onRunSetup: () => void;
 }
 
 export function SettingsView({
   settings,
   platform,
   onSave,
+  onRunSetup,
 }: SettingsViewProps) {
   const [draft, setDraft] = useState(settings);
 
@@ -115,6 +118,29 @@ export function SettingsView({
         <Button type="submit" className="w-full">
           Save Changes
         </Button>
+
+        <Separator />
+
+        <Card className="border-destructive/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm text-destructive">
+              <TriangleAlert className="size-4" /> Danger Zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ConfirmDialog
+              trigger={
+                <Button variant="destructive" size="sm">
+                  Reset & Run Setup
+                </Button>
+              }
+              title="Reset and run setup?"
+              description="This will walk you through the setup wizard again. Your profiles and settings will be preserved."
+              confirmLabel="Reset"
+              onConfirm={onRunSetup}
+            />
+          </CardContent>
+        </Card>
       </form>
     </div>
   );

@@ -6,8 +6,8 @@ export function ClearHistory() {
   return window['go']['desktop']['App']['ClearHistory']();
 }
 
-export function GetDefaultPrompt() {
-  return window['go']['desktop']['App']['GetDefaultPrompt']();
+export function GetDefaultProfiles() {
+  return window['go']['desktop']['App']['GetDefaultProfiles']();
 }
 
 export function GetHistory(arg1, arg2) {

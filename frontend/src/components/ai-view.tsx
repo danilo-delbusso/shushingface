@@ -1,5 +1,21 @@
-import { useState, useEffect } from "react";
-import { Play, RotateCcw, Loader2, Key, Bot, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import {
+  Play,
+  Loader2,
+  Key,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Coffee,
+  Briefcase,
+  Zap,
+  PenTool,
+  Check,
+  Trash2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +28,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
-import type { config } from "../../wailsjs/go/models";
+import { config } from "../../wailsjs/go/models";
+
+const iconMap: Record<string, React.FC<{ className?: string }>> = {
+  coffee: Coffee,
+  briefcase: Briefcase,
+  zap: Zap,
+  "pen-tool": PenTool,
+};
 
 interface AiViewProps {
   settings: config.Settings;
@@ -23,38 +47,65 @@ interface AiViewProps {
 
 export function AiView({ settings, configured, onSave }: AiViewProps) {
   const [showKey, setShowKey] = useState(false);
-  const [defaultPrompt, setDefaultPrompt] = useState("");
-  const [draft, setDraft] = useState({
-    apiKey: settings.providers?.[settings.transcriptionProviderId]?.apiKey ?? "",
-    transcriptionModel: settings.transcriptionModel,
-    refinementModel: settings.refinementModel,
-    systemPrompt: "",
-  });
+  const [apiKey, setApiKey] = useState(
+    settings.providers?.[settings.transcriptionProviderId]?.apiKey ?? "",
+  );
+  const [transModel, setTransModel] = useState(settings.transcriptionModel);
   const [sampleText, setSampleText] = useState("");
   const [testResult, setTestResult] = useState("");
   const [testing, setTesting] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
 
-  useEffect(() => {
-    AppBridge.GetDefaultPrompt().then((p) => {
-      setDefaultPrompt(p);
-      setDraft((d) => ({ ...d, systemPrompt: settings.systemPrompt || p }));
-      setLoaded(true);
-    });
-  }, [settings.systemPrompt]);
+  const profiles = settings.refinementProfiles ?? [];
+  const activeId = settings.activeProfileId;
 
-  const handleSave = () => {
+  const saveAll = (
+    newProfiles?: typeof profiles,
+    newActiveId?: string,
+  ) => {
     const providerId = settings.transcriptionProviderId;
-    onSave({
-      ...settings,
-      providers: {
-        ...settings.providers,
-        [providerId]: { ...settings.providers[providerId], apiKey: draft.apiKey },
-      },
-      transcriptionModel: draft.transcriptionModel,
-      refinementModel: draft.refinementModel,
-      systemPrompt: draft.systemPrompt,
-    } as config.Settings);
+    onSave(
+      config.Settings.createFrom({
+        ...settings,
+        providers: {
+          ...settings.providers,
+          [providerId]: { ...settings.providers[providerId], apiKey },
+        },
+        transcriptionModel: transModel,
+        refinementProfiles: newProfiles ?? profiles,
+        activeProfileId: newActiveId ?? activeId,
+      }),
+    );
+  };
+
+  const updateProfile = (id: string, patch: Partial<config.RefinementProfile>) => {
+    const updated = profiles.map((p) =>
+      p.id === id ? config.RefinementProfile.createFrom({ ...p, ...patch }) : p,
+    );
+    saveAll(updated);
+  };
+
+  const deleteProfile = (id: string) => {
+    const updated = profiles.filter((p) => p.id !== id);
+    const newActive = activeId === id ? updated[0]?.id ?? "" : activeId;
+    saveAll(updated, newActive);
+  };
+
+  const addProfile = () => {
+    const id = `custom-${Date.now()}`;
+    const newProfile = config.RefinementProfile.createFrom({
+      id,
+      name: "New Style",
+      icon: "pen-tool",
+      model: profiles[0]?.model ?? "llama-3.3-70b-versatile",
+      prompt: "",
+    });
+    saveAll([...profiles, newProfile]);
+    setExpandedProfile(id);
+  };
+
+  const setActive = (id: string) => {
+    saveAll(undefined, id);
   };
 
   const placeholderText =
@@ -62,15 +113,17 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
 
   const handleTest = async () => {
     const text = sampleText.trim() || placeholderText;
+    const profile = profiles.find((p) => p.id === activeId);
+    if (!profile?.prompt) {
+      toast.error("Active profile has no prompt");
+      return;
+    }
     setTesting(true);
     setTestResult("");
     try {
-      const res = await AppBridge.TestPrompt(text, draft.systemPrompt);
-      if (res.error) {
-        toast.error(res.error);
-      } else {
-        setTestResult(res.refined);
-      }
+      const res = await AppBridge.TestPrompt(text, profile.prompt);
+      if (res.error) toast.error(res.error);
+      else setTestResult(res.refined);
     } catch (err) {
       toast.error(`Test failed: ${err}`);
     } finally {
@@ -78,13 +131,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     }
   };
 
-  const currentPrompt = settings.systemPrompt || defaultPrompt;
-  const hasChanges =
-    loaded &&
-    (draft.apiKey !== (settings.providers?.[settings.transcriptionProviderId]?.apiKey ?? "") ||
-      draft.transcriptionModel !== settings.transcriptionModel ||
-      draft.refinementModel !== settings.refinementModel ||
-      draft.systemPrompt !== currentPrompt);
+  const presetIds = new Set(["casual", "professional", "concise"]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -96,6 +143,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
           </div>
         )}
 
+        {/* API Key */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -116,9 +164,9 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
             <div className="flex">
               <Input
                 type={showKey ? "text" : "password"}
-                value={draft.apiKey}
+                value={apiKey}
                 placeholder="gsk_..."
-                onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
+                onChange={(e) => setApiKey(e.target.value)}
                 className="rounded-r-none"
               />
               <Button
@@ -131,72 +179,150 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                 {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Bot className="size-4" /> Models
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="trans-model">Transcription</Label>
+            <div className="mt-3 space-y-1">
+              <Label htmlFor="trans-model">Transcription Model</Label>
               <Input
                 id="trans-model"
-                value={draft.transcriptionModel}
-                onChange={(e) => setDraft({ ...draft, transcriptionModel: e.target.value })}
+                value={transModel}
+                onChange={(e) => setTransModel(e.target.value)}
               />
             </div>
-            <Separator />
-            <div className="space-y-1">
-              <Label htmlFor="refine-model">Refinement</Label>
-              <Input
-                id="refine-model"
-                value={draft.refinementModel}
-                onChange={(e) => setDraft({ ...draft, refinementModel: e.target.value })}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Refinement Prompt</CardTitle>
-            <CardDescription>
-              Instructs the AI how to rewrite your transcripts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <textarea
-              value={draft.systemPrompt}
-              onChange={(e) => setDraft({ ...draft, systemPrompt: e.target.value })}
-              rows={8}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-            />
             <Button
-              type="button"
-              variant="outline"
               size="sm"
-              onClick={() => setDraft({ ...draft, systemPrompt: defaultPrompt })}
+              className="mt-3"
+              onClick={() => saveAll()}
             >
-              <RotateCcw className="size-3.5" /> Reset to default
+              Save
             </Button>
           </CardContent>
         </Card>
 
-        <Button className="w-full" onClick={handleSave} disabled={!hasChanges}>
-          {hasChanges ? "Save" : "No changes"}
-        </Button>
+        <Separator />
+
+        {/* Profiles */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Refinement Styles</h3>
+          <Button variant="outline" size="sm" onClick={addProfile}>
+            <Plus className="size-3.5" /> Add
+          </Button>
+        </div>
+
+        {profiles.map((profile) => {
+          const Icon = iconMap[profile.icon] || PenTool;
+          const isActive = profile.id === activeId;
+          const isExpanded = expandedProfile === profile.id;
+          const isPreset = presetIds.has(profile.id);
+
+          return (
+            <Card
+              key={profile.id}
+              className={isActive ? "border-primary" : ""}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex size-8 items-center justify-center rounded-md ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    <Icon className="size-4" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-sm">{profile.name}</CardTitle>
+                    <CardDescription className="text-xs">
+                      {profile.model}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {!isActive && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActive(profile.id)}
+                      >
+                        <Check className="size-3.5" /> Use
+                      </Button>
+                    )}
+                    {isActive && (
+                      <span className="text-xs font-medium text-primary">active</span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() =>
+                        setExpandedProfile(isExpanded ? null : profile.id)
+                      }
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="size-3.5" />
+                      ) : (
+                        <ChevronDown className="size-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {isExpanded && (
+                <CardContent className="space-y-3 pt-0">
+                  <div className="space-y-1">
+                    <Label>Name</Label>
+                    <Input
+                      value={profile.name}
+                      onChange={(e) =>
+                        updateProfile(profile.id, { name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Model</Label>
+                    <Input
+                      value={profile.model}
+                      onChange={(e) =>
+                        updateProfile(profile.id, { model: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Prompt</Label>
+                    <textarea
+                      value={profile.prompt}
+                      onChange={(e) =>
+                        updateProfile(profile.id, { prompt: e.target.value })
+                      }
+                      rows={6}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                    />
+                  </div>
+                  {!isPreset && (
+                    <ConfirmDialog
+                      trigger={
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="size-3.5" /> Delete
+                        </Button>
+                      }
+                      title={`Delete "${profile.name}"?`}
+                      description="This style will be permanently removed."
+                      confirmLabel="Delete"
+                      onConfirm={() => deleteProfile(profile.id)}
+                    />
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
 
         <Separator />
 
+        {/* Test */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Test Playground</CardTitle>
             <CardDescription>
-              Try your prompt against sample text.
+              Tests with the active style.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">

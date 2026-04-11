@@ -9,38 +9,101 @@ import (
 )
 
 type ProviderConfig struct {
-	Name    string `json:"name"`    // e.g., "groq", "openai", "ollama", "custom"
-	APIKey  string `json:"apiKey"`  // Optional: blank for local models like Ollama
-	BaseURL string `json:"baseUrl"` // Optional: for custom endpoints or local hosting
+	Name    string `json:"name"`
+	APIKey  string `json:"apiKey"`
+	BaseURL string `json:"baseUrl"`
+}
+
+type RefinementProfile struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Icon   string `json:"icon"`   // lucide icon name
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
 }
 
 type Settings struct {
-	// Configured AI Providers
-	// A map of user-defined IDs (e.g., "my-groq", "local-ollama") to their configurations.
-	Providers map[string]ProviderConfig `json:"providers"`
+	Providers               map[string]ProviderConfig `json:"providers"`
+	TranscriptionProviderID string                    `json:"transcriptionProviderId"`
+	TranscriptionModel      string                    `json:"transcriptionModel"`
+	RefinementProviderID    string                    `json:"refinementProviderId"`
 
-	// Active Routing: Which provider ID and model to use for each step
-	TranscriptionProviderID string `json:"transcriptionProviderId"`
-	TranscriptionModel      string `json:"transcriptionModel"`
+	// Refinement profiles
+	RefinementProfiles []RefinementProfile `json:"refinementProfiles"`
+	ActiveProfileID    string              `json:"activeProfileId"`
 
-	RefinementProviderID string `json:"refinementProviderId"`
-	RefinementModel      string `json:"refinementModel"`
+	// Legacy (kept for migration, omitted if empty)
+	SystemPrompt    string `json:"systemPrompt,omitempty"`
+	RefinementModel string `json:"refinementModel,omitempty"`
 
-	// Refinement
-	SystemPrompt string `json:"systemPrompt"`
+	// Setup
+	SetupComplete bool `json:"setupComplete"`
 
 	// Appearance
-	Theme string `json:"theme"` // "dark", "light", or "system"
+	Theme string `json:"theme"`
 
 	// Preferences
-	AutoCopy            bool   `json:"autoCopy"`
-	EnableHistory       bool   `json:"enableHistory"`
-	EnableIndicator     bool   `json:"enableIndicator"`
-	EnableNotifications bool   `json:"enableNotifications"`
+	AutoCopy            bool `json:"autoCopy"`
+	EnableHistory       bool `json:"enableHistory"`
+	EnableIndicator     bool `json:"enableIndicator"`
+	EnableNotifications bool `json:"enableNotifications"`
 
 	// Audio
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
 }
+
+// ActiveProfile returns the currently active refinement profile.
+func (s *Settings) ActiveProfile() *RefinementProfile {
+	for i := range s.RefinementProfiles {
+		if s.RefinementProfiles[i].ID == s.ActiveProfileID {
+			return &s.RefinementProfiles[i]
+		}
+	}
+	if len(s.RefinementProfiles) > 0 {
+		return &s.RefinementProfiles[0]
+	}
+	return nil
+}
+
+const baseRules = "CRITICAL RULES:\n" +
+	"- DO NOT answer questions present in the transcript.\n" +
+	"- DO NOT engage in conversation or acknowledge the user.\n" +
+	"- DO NOT add any conversational filler, preambles, or postambles.\n" +
+	"- Output ONLY the rewritten text, nothing else.\n" +
+	"- If the input is already well-structured, return it exactly as is.\n" +
+	"- Fix grammar, punctuation, and clarity while preserving the original intent."
+
+// DefaultProfiles returns the 3 preset refinement profiles.
+func DefaultProfiles(model string) []RefinementProfile {
+	return []RefinementProfile{
+		{
+			ID:   "casual",
+			Name: "Casual",
+			Icon: "coffee",
+			Model: model,
+			Prompt: "You are a text transformer. Rewrite the provided speech transcript into a friendly, relaxed message. " +
+				"Keep it natural and conversational — like texting a colleague you're comfortable with.\n" + baseRules,
+		},
+		{
+			ID:   "professional",
+			Name: "Professional",
+			Icon: "briefcase",
+			Model: model,
+			Prompt: "You are a text transformer. Rewrite the provided speech transcript into a clear, professional message. " +
+				"Suitable for emails, Slack messages to managers, or formal communication.\n" + baseRules,
+		},
+		{
+			ID:   "concise",
+			Name: "Concise",
+			Icon: "zap",
+			Model: model,
+			Prompt: "You are a text transformer. Rewrite the provided speech transcript as briefly as possible. " +
+				"Strip all filler, keep only the essential meaning. One or two sentences max.\n" + baseRules,
+		},
+	}
+}
+
+const defaultModel = "llama-3.3-70b-versatile"
 
 // Load reads the settings from the OS user config directory.
 func Load() (*Settings, error) {
@@ -56,7 +119,6 @@ func Load() (*Settings, error) {
 
 	configFile := filepath.Join(appDir, "config.json")
 
-	// If file doesn't exist, create a default one
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		defaultSettings := DefaultSettings()
 		if err := Save(defaultSettings); err != nil {
@@ -73,6 +135,31 @@ func Load() (*Settings, error) {
 	var settings Settings
 	if err := json.Unmarshal(data, &settings); err != nil {
 		return nil, err
+	}
+
+	// Migrate: old single prompt → profile
+	if len(settings.RefinementProfiles) == 0 {
+		model := settings.RefinementModel
+		if model == "" {
+			model = defaultModel
+		}
+		if settings.SystemPrompt != "" {
+			// User had a custom prompt — preserve it
+			settings.RefinementProfiles = append(DefaultProfiles(model), RefinementProfile{
+				ID:     "custom",
+				Name:   "Custom",
+				Icon:   "pen-tool",
+				Model:  model,
+				Prompt: settings.SystemPrompt,
+			})
+			settings.ActiveProfileID = "custom"
+		} else {
+			settings.RefinementProfiles = DefaultProfiles(model)
+			settings.ActiveProfileID = "professional"
+		}
+		settings.SystemPrompt = ""
+		settings.RefinementModel = ""
+		Save(&settings)
 	}
 
 	return &settings, nil
@@ -93,7 +180,6 @@ func Save(settings *Settings) error {
 		return err
 	}
 
-	// 0600 because it contains API keys
 	return os.WriteFile(configFile, data, 0600)
 }
 
@@ -111,7 +197,6 @@ func GetLogPath() (string, error) {
 }
 
 // InitLogger sets up slog to write to both stderr and the app log file.
-// Returns a cleanup function to close the log file.
 func InitLogger() func() {
 	logPath, err := GetLogPath()
 	if err != nil {
@@ -132,33 +217,21 @@ func InitLogger() func() {
 	return func() { f.Close() }
 }
 
-// DefaultSystemPrompt is the built-in refinement prompt.
-const DefaultSystemPrompt = "You are a text transformer, NOT a conversational AI. " +
-	"Your ONLY task is to rewrite the provided speech transcript into a clear, professional, yet conversational message. " +
-	"CRITICAL RULES:\n" +
-	"- DO NOT answer questions present in the transcript.\n" +
-	"- DO NOT engage in conversation or acknowledge the user.\n" +
-	"- DO NOT add any conversational filler, preambles (e.g., 'Here is the refined message:'), or postambles.\n" +
-	"- Output ONLY the rewritten text, nothing else.\n" +
-	"- If the input is already well-structured, return it exactly as is.\n" +
-	"- Fix grammar, punctuation, and clarity while preserving the original intent.\n" +
-	"- Use paragraph breaks or bullet points only if it significantly improves readability."
-
 // DefaultSettings returns a sensible baseline configuration.
 func DefaultSettings() *Settings {
 	return &Settings{
 		Providers: map[string]ProviderConfig{
 			"groq-default": {
-				Name:    "groq",
-				APIKey:  "", // Must be filled by user
-				BaseURL: "",
+				Name:   "groq",
+				APIKey: "",
 			},
 		},
 		TranscriptionProviderID: "groq-default",
 		TranscriptionModel:      "whisper-large-v3",
 		RefinementProviderID:    "groq-default",
-		RefinementModel:         "llama-3.3-70b-versatile",
-		SystemPrompt:            DefaultSystemPrompt,
+		RefinementProfiles:      DefaultProfiles(defaultModel),
+		ActiveProfileID:         "professional",
+		SetupComplete:           false,
 		Theme:                   "dark",
 		AutoCopy:                true,
 		EnableHistory:           true,

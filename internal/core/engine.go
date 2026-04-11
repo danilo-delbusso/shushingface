@@ -9,52 +9,37 @@ import (
 	"codeberg.org/dbus/shushingface/internal/audio/wav"
 )
 
-// Engine is the central orchestrator of the Sussurro application.
 type Engine struct {
-	mu           sync.RWMutex
-	recorder     audio.Recorder
-	processor    ai.Processor
-	systemPrompt string
+	mu        sync.RWMutex
+	recorder  audio.Recorder
+	processor ai.Processor
 }
 
-// NewEngine creates a new Sussurro Engine.
-func NewEngine(recorder audio.Recorder, processor ai.Processor, systemPrompt string) *Engine {
+func NewEngine(recorder audio.Recorder, processor ai.Processor) *Engine {
 	return &Engine{
-		recorder:     recorder,
-		processor:    processor,
-		systemPrompt: systemPrompt,
+		recorder:  recorder,
+		processor: processor,
 	}
 }
 
-// SetProcessor updates the AI backend implementation at runtime.
 func (e *Engine) SetProcessor(processor ai.Processor) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.processor = processor
 }
 
-// GetProcessor returns the current AI processor (thread-safe snapshot).
 func (e *Engine) GetProcessor() ai.Processor {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.processor
 }
 
-// SetSystemPrompt updates the refinement prompt at runtime.
-func (e *Engine) SetSystemPrompt(prompt string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.systemPrompt = prompt
-}
-
-// StartRecording signals the underlying audio device to begin capturing audio.
 func (e *Engine) StartRecording() error {
 	return e.recorder.Start()
 }
 
-// StopAndProcess stops the current recording, encodes the audio to WAV,
-// transcribes it, and then refines the transcript.
-func (e *Engine) StopAndProcess(ctx context.Context) (transcript string, refined string, err error) {
+// StopAndProcess stops recording, transcribes, and refines with the given prompt.
+func (e *Engine) StopAndProcess(ctx context.Context, prompt string) (transcript string, refined string, err error) {
 	samples, err := e.recorder.Stop()
 	if err != nil {
 		return "", "", err
@@ -67,7 +52,6 @@ func (e *Engine) StopAndProcess(ctx context.Context) (transcript string, refined
 
 	e.mu.RLock()
 	proc := e.processor
-	prompt := e.systemPrompt
 	e.mu.RUnlock()
 
 	transcript, err = proc.Transcribe(ctx, wavData)

@@ -8,7 +8,9 @@ import { HistoryView } from "@/components/history-view";
 import { AiView } from "@/components/ai-view";
 import { AppearanceView } from "@/components/appearance-view";
 import { SettingsView } from "@/components/settings-view";
+import { WelcomeWizard } from "@/components/welcome-wizard";
 import { useSettings, useHistory, useRecording, useTheme, usePlatform, isConfigured } from "@/lib/hooks";
+import { config } from "../wailsjs/go/models";
 
 function App() {
   const [view, setView] = useState<View>("home");
@@ -22,13 +24,22 @@ function App() {
     useRecording(configured, refreshHistory);
 
   useEffect(() => {
-    if (settings && !isConfigured(settings)) {
-      setView("ai");
-    }
-    if (settings && !settings.enableHistory && view === "history") {
-      setView("home");
-    }
+    if (settings && !settings.setupComplete) return; // wizard handles this
+    if (settings && !isConfigured(settings)) setView("ai");
+    if (settings && !settings.enableHistory && view === "history") setView("home");
   }, [settings, view]);
+
+  // Show wizard for first-time setup
+  if (settings && !settings.setupComplete) {
+    return (
+      <>
+        <WelcomeWizard settings={settings} onComplete={saveSettings} />
+        <Toaster position="bottom-right" richColors />
+      </>
+    );
+  }
+
+  if (!settings) return null;
 
   return (
     <TooltipProvider>
@@ -37,7 +48,7 @@ function App() {
           view={view}
           onNavigate={setView}
           configured={configured}
-          historyEnabled={settings?.enableHistory ?? false}
+          historyEnabled={settings.enableHistory}
         />
         <SidebarInset className="flex flex-col h-screen overflow-hidden">
           {view === "home" && (
@@ -54,21 +65,29 @@ function App() {
           {view === "history" && (
             <HistoryView items={historyList} onClear={clearHistory} />
           )}
-          {view === "ai" && settings && (
+          {view === "ai" && (
             <AiView
               settings={settings}
               configured={configured}
               onSave={saveSettings}
             />
           )}
-          {view === "appearance" && settings && (
+          {view === "appearance" && (
             <AppearanceView settings={settings} onSave={saveSettings} />
           )}
-          {view === "general" && settings && (
+          {view === "general" && (
             <SettingsView
               settings={settings}
               platform={platform}
               onSave={saveSettings}
+              onRunSetup={() =>
+                saveSettings(
+                  config.Settings.createFrom({
+                    ...settings,
+                    setupComplete: false,
+                  }),
+                )
+              }
             />
           )}
         </SidebarInset>

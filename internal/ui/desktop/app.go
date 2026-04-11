@@ -19,7 +19,6 @@ import (
 	"codeberg.org/dbus/shushingface/internal/osutil"
 )
 
-// App struct is the Wails application bridge.
 type App struct {
 	ctx      context.Context
 	engine   *core.Engine
@@ -28,26 +27,16 @@ type App struct {
 	cleanIPC func()
 }
 
-// NewApp creates a new desktop application controller with injected dependencies.
 func NewApp(engine *core.Engine, cfg *config.Settings, hist *history.Manager) *App {
-	return &App{
-		engine:  engine,
-		cfg:     cfg,
-		history: hist,
-	}
+	return &App{engine: engine, cfg: cfg, history: hist}
 }
 
-// Startup is called when the app starts. The context is saved
-// so we can call the runtime methods (like events/dialogs).
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	if a.cfg.EnableIndicator {
-		indicator.Start(func() {
-			wailsRuntime.WindowShow(a.ctx)
-		})
+		indicator.Start(func() { wailsRuntime.WindowShow(a.ctx) })
 	}
 
-	// IPC listener: handles commands from other instances and CLI
 	cleanup, err := ipc.Listen(func(cmd string) {
 		switch cmd {
 		case "TOGGLE":
@@ -65,14 +54,12 @@ func (a *App) Startup(ctx context.Context) {
 	}
 }
 
-// ProcessResult is the data transfer object for the frontend.
 type ProcessResult struct {
 	Transcript string `json:"transcript"`
 	Refined    string `json:"refined"`
 	Error      string `json:"error,omitempty"`
 }
 
-// Shutdown is called when the app is closing.
 func (a *App) Shutdown(_ context.Context) {
 	if a.cleanIPC != nil {
 		a.cleanIPC()
@@ -80,7 +67,6 @@ func (a *App) Shutdown(_ context.Context) {
 	indicator.Stop()
 }
 
-// StartRecording triggers the engine to start capturing audio.
 func (a *App) StartRecording() error {
 	err := a.engine.StartRecording()
 	if err == nil {
@@ -92,14 +78,19 @@ func (a *App) StartRecording() error {
 	return err
 }
 
-// StopAndProcess stops recording, processes the audio, and saves the result.
 func (a *App) StopAndProcess() ProcessResult {
 	if a.cfg.EnableNotifications {
 		notify.RecordingProcessing()
 	}
 	activeApp := osutil.GetActiveWindowName()
 
-	transcript, refined, err := a.engine.StopAndProcess(a.ctx)
+	// Resolve prompt from active profile
+	prompt := ""
+	if p := a.cfg.ActiveProfile(); p != nil {
+		prompt = p.Prompt
+	}
+
+	transcript, refined, err := a.engine.StopAndProcess(a.ctx, prompt)
 	if a.cfg.EnableNotifications {
 		notify.RecordingDone()
 	}
@@ -110,41 +101,26 @@ func (a *App) StopAndProcess() ProcessResult {
 	}
 
 	if a.cfg.EnableHistory && a.history != nil && transcript != "" {
-		_, histErr := a.history.Insert(transcript, refined, activeApp)
-		if histErr != nil {
+		if _, histErr := a.history.Insert(transcript, refined, activeApp); histErr != nil {
 			slog.Error("failed to insert history", "error", histErr)
 		}
 	}
 
-	return ProcessResult{
-		Transcript: transcript,
-		Refined:    refined,
-	}
+	return ProcessResult{Transcript: transcript, Refined: refined}
 }
 
-// PlatformInfo describes the runtime environment for the frontend.
 type PlatformInfo struct {
-	OS      string `json:"os"`      // "linux", "darwin", "windows"
-	Desktop string `json:"desktop"` // "COSMIC", "GNOME", "KDE", etc. (linux only)
+	OS      string `json:"os"`
+	Desktop string `json:"desktop"`
 }
 
-// GetPlatform returns the current OS and desktop environment.
 func (a *App) GetPlatform() PlatformInfo {
-	desktop := os.Getenv("XDG_CURRENT_DESKTOP")
-	return PlatformInfo{
-		OS:      runtime.GOOS,
-		Desktop: desktop,
-	}
+	return PlatformInfo{OS: runtime.GOOS, Desktop: os.Getenv("XDG_CURRENT_DESKTOP")}
 }
 
-// GetSettings returns the current application settings.
-func (a *App) GetSettings() *config.Settings {
-	return a.cfg
-}
+func (a *App) GetSettings() *config.Settings { return a.cfg }
 
-// SaveSettings updates the application settings.
 func (a *App) SaveSettings(newSettings config.Settings) error {
-	// Hot-reload the AI processor first so we don't persist broken config
 	newProcessor, err := factory.NewFromConfig(&newSettings)
 	if err != nil {
 		return fmt.Errorf("failed to reload AI processor: %w", err)
@@ -155,15 +131,9 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	}
 
 	a.engine.SetProcessor(newProcessor)
-	if newSettings.SystemPrompt != "" {
-		a.engine.SetSystemPrompt(newSettings.SystemPrompt)
-	}
 
-	// Hot-toggle indicator
 	if newSettings.EnableIndicator && !a.cfg.EnableIndicator {
-		indicator.Start(func() {
-			wailsRuntime.WindowShow(a.ctx)
-		})
+		indicator.Start(func() { wailsRuntime.WindowShow(a.ctx) })
 	} else if !newSettings.EnableIndicator && a.cfg.EnableIndicator {
 		indicator.Stop()
 	}
@@ -172,25 +142,19 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	return nil
 }
 
-// TestPrompt runs the refinement model against sample text with a given prompt.
 func (a *App) TestPrompt(sampleText, systemPrompt string) ProcessResult {
 	proc := a.engine.GetProcessor()
 	refined, err := proc.Refine(a.ctx, sampleText, systemPrompt)
 	if err != nil {
 		return ProcessResult{Error: err.Error()}
 	}
-	return ProcessResult{
-		Transcript: sampleText,
-		Refined:    refined,
-	}
+	return ProcessResult{Transcript: sampleText, Refined: refined}
 }
 
-// GetDefaultPrompt returns the built-in default system prompt.
-func (a *App) GetDefaultPrompt() string {
-	return config.DefaultSystemPrompt
+func (a *App) GetDefaultProfiles() []config.RefinementProfile {
+	return config.DefaultProfiles(config.DefaultSettings().TranscriptionModel)
 }
 
-// GetHistory retrieves the transcription history.
 func (a *App) GetHistory(limit, offset int) ([]history.Record, error) {
 	if a.history == nil {
 		return nil, fmt.Errorf("history is disabled")
@@ -198,7 +162,6 @@ func (a *App) GetHistory(limit, offset int) ([]history.Record, error) {
 	return a.history.GetHistory(limit, offset)
 }
 
-// ClearHistory wipes all local history data.
 func (a *App) ClearHistory() error {
 	if a.history == nil {
 		return fmt.Errorf("history is disabled")

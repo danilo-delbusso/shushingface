@@ -16,13 +16,36 @@ export namespace config {
 	        this.baseUrl = source["baseUrl"];
 	    }
 	}
+	export class RefinementProfile {
+	    id: string;
+	    name: string;
+	    icon: string;
+	    model: string;
+	    prompt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RefinementProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.icon = source["icon"];
+	        this.model = source["model"];
+	        this.prompt = source["prompt"];
+	    }
+	}
 	export class Settings {
 	    providers: Record<string, ProviderConfig>;
 	    transcriptionProviderId: string;
 	    transcriptionModel: string;
 	    refinementProviderId: string;
-	    refinementModel: string;
-	    systemPrompt: string;
+	    refinementProfiles: RefinementProfile[];
+	    activeProfileId: string;
+	    systemPrompt?: string;
+	    refinementModel?: string;
+	    setupComplete: boolean;
 	    theme: string;
 	    autoCopy: boolean;
 	    enableHistory: boolean;
@@ -40,8 +63,11 @@ export namespace config {
 	        this.transcriptionProviderId = source["transcriptionProviderId"];
 	        this.transcriptionModel = source["transcriptionModel"];
 	        this.refinementProviderId = source["refinementProviderId"];
-	        this.refinementModel = source["refinementModel"];
+	        this.refinementProfiles = this.convertValues(source["refinementProfiles"], RefinementProfile);
+	        this.activeProfileId = source["activeProfileId"];
 	        this.systemPrompt = source["systemPrompt"];
+	        this.refinementModel = source["refinementModel"];
+	        this.setupComplete = source["setupComplete"];
 	        this.theme = source["theme"];
 	        this.autoCopy = source["autoCopy"];
 	        this.enableHistory = source["enableHistory"];
