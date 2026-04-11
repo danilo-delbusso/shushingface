@@ -43,9 +43,11 @@ export function HistoryView({ items, onClear }: HistoryViewProps) {
                 <CardContent className="space-y-1.5 p-4">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{new Date(item.timestamp).toLocaleString()}</span>
-                    <span className="font-medium text-primary">
-                      {item.activeApp}
-                    </span>
+                    {item.activeApp && (
+                      <span className="font-medium text-primary">
+                        {item.activeApp}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm font-medium">{item.refinedMessage}</p>
                   <p className="text-xs text-muted-foreground italic">
