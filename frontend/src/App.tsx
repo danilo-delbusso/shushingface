@@ -37,7 +37,7 @@ function App() {
           onNavigate={setView}
           configured={configured}
           historyEnabled={settings?.enableHistory ?? false}
-          hotkey={settings?.globalHotkey}
+          platform={platform}
         />
         <SidebarInset className="flex flex-col h-screen overflow-hidden">
           {view === "home" && (
@@ -46,6 +46,7 @@ function App() {
               isRecording={isRecording}
               isProcessing={isProcessing}
               result={result}
+              platform={platform}
               onToggle={toggle}
               onNewRecording={() => setResult(null)}
               onGoToSettings={() => setView("settings")}
