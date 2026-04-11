@@ -12,11 +12,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { type config, type desktop } from "../../wailsjs/go/models";
+import { type config, type platform } from "../../wailsjs/go/models";
 
 interface SettingsViewProps {
   settings: config.Settings;
-  platform: desktop.PlatformInfo | null;
+  platform: platform.Info | null;
   pasteAvailable: boolean;
   pasteInstallCmd: string;
   onSave: (settings: config.Settings) => void;
@@ -166,7 +166,7 @@ export function SettingsView({
 
 function ShortcutGuide({
   platform,
-}: { platform: desktop.PlatformInfo | null }) {
+}: { platform: platform.Info | null }) {
   if (!platform) return null;
 
   const command = (

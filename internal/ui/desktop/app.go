@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"runtime"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -18,6 +16,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/notify"
 	"codeberg.org/dbus/shushingface/internal/osutil"
 	"codeberg.org/dbus/shushingface/internal/paste"
+	"codeberg.org/dbus/shushingface/internal/platform"
 )
 
 type App struct {
@@ -118,13 +117,8 @@ func (a *App) StopAndProcess() ProcessResult {
 	return ProcessResult{Transcript: transcript, Refined: refined}
 }
 
-type PlatformInfo struct {
-	OS      string `json:"os"`
-	Desktop string `json:"desktop"`
-}
-
-func (a *App) GetPlatform() PlatformInfo {
-	return PlatformInfo{OS: runtime.GOOS, Desktop: os.Getenv("XDG_CURRENT_DESKTOP")}
+func (a *App) GetPlatform() platform.Info {
+	return platform.Detect()
 }
 
 func (a *App) GetSettings() *config.Settings { return a.cfg }

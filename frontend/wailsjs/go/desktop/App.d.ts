@@ -3,6 +3,7 @@
 import {config} from '../models';
 import {history} from '../models';
 import {desktop} from '../models';
+import {platform} from '../models';
 
 export function ClearHistory():Promise<void>;
 
@@ -12,7 +13,7 @@ export function GetHistory(arg1:number,arg2:number):Promise<Array<history.Record
 
 export function GetPasteStatus():Promise<desktop.PasteStatus>;
 
-export function GetPlatform():Promise<desktop.PlatformInfo>;
+export function GetPlatform():Promise<platform.Info>;
 
 export function GetSettings():Promise<config.Settings>;
 

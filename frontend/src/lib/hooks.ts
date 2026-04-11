@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
-import type { config, history, desktop } from "../../wailsjs/go/models";
+import type { config, history, desktop, platform } from "../../wailsjs/go/models";
 import { toast } from "sonner";
 
 export function useTheme(theme: string | undefined) {
@@ -24,7 +24,7 @@ export function isConfigured(settings: config.Settings | null): boolean {
 }
 
 export function usePlatform() {
-  const [platform, setPlatform] = useState<desktop.PlatformInfo | null>(null);
+  const [platform, setPlatform] = useState<platform.Info | null>(null);
   useEffect(() => {
     AppBridge.GetPlatform().then(setPlatform);
   }, []);

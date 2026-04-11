@@ -115,20 +115,6 @@ export namespace desktop {
 	        this.installCmd = source["installCmd"];
 	    }
 	}
-	export class PlatformInfo {
-	    os: string;
-	    desktop: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new PlatformInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.os = source["os"];
-	        this.desktop = source["desktop"];
-	    }
-	}
 	export class ProcessResult {
 	    transcript: string;
 	    refined: string;
@@ -188,6 +174,29 @@ export namespace history {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace platform {
+	
+	export class Info {
+	    os: string;
+	    displayServer: string;
+	    desktop: string;
+	    packageManager: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Info(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.os = source["os"];
+	        this.displayServer = source["displayServer"];
+	        this.desktop = source["desktop"];
+	        this.packageManager = source["packageManager"];
+	    }
 	}
 
 }
