@@ -18,20 +18,37 @@ func socketPath() string {
 	return filepath.Join(dir, "shushingface.sock")
 }
 
-// SendToggle connects to the running shushingface instance and sends a toggle signal.
-func SendToggle() error {
+// IsRunning checks if another instance is listening on the socket.
+func IsRunning() bool {
+	conn, err := net.Dial("unix", socketPath())
+	if err != nil {
+		return false
+	}
+	conn.Write([]byte("PING"))
+	conn.Close()
+	return true
+}
+
+// Send sends a command to the running instance.
+func Send(command string) error {
 	conn, err := net.Dial("unix", socketPath())
 	if err != nil {
 		return fmt.Errorf("shushingface is not running: %w", err)
 	}
 	defer conn.Close()
-	_, err = conn.Write([]byte("TOGGLE"))
+	_, err = conn.Write([]byte(command))
 	return err
 }
 
-// Listen starts a Unix socket server that calls onToggle whenever a toggle
-// signal is received. Returns a cleanup function to close the listener.
-func Listen(onToggle func()) (func(), error) {
+// SendToggle sends a toggle-recording signal.
+func SendToggle() error { return Send("TOGGLE") }
+
+// SendShow tells the running instance to show its window.
+func SendShow() error { return Send("SHOW") }
+
+// Listen starts a Unix socket server that dispatches commands.
+// Returns a cleanup function to close the listener.
+func Listen(handler func(command string)) (func(), error) {
 	path := socketPath()
 	os.Remove(path)
 
@@ -41,17 +58,16 @@ func Listen(onToggle func()) (func(), error) {
 	}
 
 	go func() {
-		buf := make([]byte, 16)
+		buf := make([]byte, 32)
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
 				return
 			}
 			n, _ := conn.Read(buf)
-			if string(buf[:n]) == "TOGGLE" {
-				slog.Info("received IPC toggle signal")
-				onToggle()
-			}
+			cmd := string(buf[:n])
+			slog.Info("received IPC command", "command", cmd)
+			handler(cmd)
 			conn.Close()
 		}
 	}()

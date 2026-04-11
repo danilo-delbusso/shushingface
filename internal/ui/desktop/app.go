@@ -46,9 +46,16 @@ func (a *App) Startup(ctx context.Context) {
 		indicator.Start()
 	}
 
-	// IPC listener: allows `shushingface --toggle` to trigger recording
-	cleanup, err := ipc.Listen(func() {
-		wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
+	// IPC listener: handles commands from other instances and CLI
+	cleanup, err := ipc.Listen(func(cmd string) {
+		switch cmd {
+		case "TOGGLE":
+			wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
+		case "SHOW":
+			wailsRuntime.WindowShow(a.ctx)
+		case "QUIT":
+			wailsRuntime.Quit(a.ctx)
+		}
 	})
 	if err != nil {
 		slog.Warn("failed to start IPC listener", "error", err)

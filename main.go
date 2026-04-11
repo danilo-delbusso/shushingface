@@ -24,12 +24,34 @@ import (
 var assets embed.FS
 
 func main() {
-	// CLI mode: send toggle signal to running instance and exit
-	if len(os.Args) > 1 && os.Args[1] == "--toggle" {
-		if err := ipc.SendToggle(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	// CLI commands — talk to running instance and exit
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--toggle":
+			if err := ipc.SendToggle(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			return
+		case "--show":
+			if err := ipc.SendShow(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			return
+		case "--quit":
+			if err := ipc.Send("QUIT"); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			return
 		}
+	}
+
+	// Single instance: if already running, bring to front and exit
+	if ipc.IsRunning() {
+		slog.Info("already running, showing existing window")
+		ipc.SendShow()
 		return
 	}
 
