@@ -3,6 +3,7 @@ import {
   Play,
   Loader2,
   Key,
+  Bot,
   Eye,
   EyeOff,
   AlertTriangle,
@@ -195,8 +196,26 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                 {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </Button>
             </div>
-            <div className="mt-3 space-y-1">
-              <Label htmlFor="trans-model">Transcription Model</Label>
+            <Button
+              size="sm"
+              className="mt-3"
+              onClick={() => saveAll()}
+            >
+              Save
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Transcription */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Bot className="size-4" /> Transcription <InfoTip text="The speech-to-text model that converts your audio into a raw transcript before refinement." />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <Label htmlFor="trans-model">Model</Label>
               <Input
                 id="trans-model"
                 value={transModel}
