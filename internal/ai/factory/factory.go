@@ -64,7 +64,13 @@ func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
 	} else {
 		switch refineProvider.Name {
 		case "groq":
-			refiner, err = groq.NewProcessor(apiKey, "", cfg.RefinementModel)
+			refinementModel := cfg.RefinementModel
+			if refinementModel == "" {
+				if p := cfg.ActiveProfile(); p != nil {
+					refinementModel = p.Model
+				}
+			}
+			refiner, err = groq.NewProcessor(apiKey, "", refinementModel)
 		default:
 			return nil, fmt.Errorf("unsupported refinement provider: %s", refineProvider.Name)
 		}
