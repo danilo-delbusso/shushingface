@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-sussurro
+/sussurro
 
 # Test binary, built with `go test -c`
 *.test
