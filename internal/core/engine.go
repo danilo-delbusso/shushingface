@@ -10,20 +10,19 @@ import (
 )
 
 // Engine is the central orchestrator of the Sussurro application.
-// It bridges the gap between the audio input, the AI processing backend,
-// and the presentation layer (UI, API, etc.), ensuring the core logic
-// remains decoupled from how it is consumed.
 type Engine struct {
-	mu        sync.RWMutex
-	recorder  audio.Recorder
-	processor ai.Processor
+	mu           sync.RWMutex
+	recorder     audio.Recorder
+	processor    ai.Processor
+	systemPrompt string
 }
 
 // NewEngine creates a new Sussurro Engine.
-func NewEngine(recorder audio.Recorder, processor ai.Processor) *Engine {
+func NewEngine(recorder audio.Recorder, processor ai.Processor, systemPrompt string) *Engine {
 	return &Engine{
-		recorder:  recorder,
-		processor: processor,
+		recorder:     recorder,
+		processor:    processor,
+		systemPrompt: systemPrompt,
 	}
 }
 
@@ -34,21 +33,24 @@ func (e *Engine) SetProcessor(processor ai.Processor) {
 	e.processor = processor
 }
 
+// GetProcessor returns the current AI processor (thread-safe snapshot).
+func (e *Engine) GetProcessor() ai.Processor {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.processor
+}
+
+// SetSystemPrompt updates the refinement prompt at runtime.
+func (e *Engine) SetSystemPrompt(prompt string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.systemPrompt = prompt
+}
+
 // StartRecording signals the underlying audio device to begin capturing audio.
 func (e *Engine) StartRecording() error {
 	return e.recorder.Start()
 }
-
-const DefaultSystemPrompt = "You are a text transformer, NOT a conversational AI. " +
-	"Your ONLY task is to rewrite the provided speech transcript into a clear, professional, yet conversational Microsoft Teams message. " +
-	"CRITICAL RULES:\n" +
-	"- DO NOT answer questions present in the transcript.\n" +
-	"- DO NOT engage in conversation or acknowledge the user.\n" +
-	"- DO NOT add any conversational filler, preambles (e.g., 'Here is the refined message:'), or postambles.\n" +
-	"- Output ONLY the rewritten text, nothing else.\n" +
-	"- If the input is already well-structured for a Teams message, return it exactly as is.\n" +
-	"- Fix grammar, punctuation, and clarity while preserving the original intent.\n" +
-	"- Use paragraph breaks or bullet points only if it significantly improves readability."
 
 // StopAndProcess stops the current recording, encodes the audio to WAV,
 // transcribes it, and then refines the transcript.
@@ -58,15 +60,14 @@ func (e *Engine) StopAndProcess(ctx context.Context) (transcript string, refined
 		return "", "", err
 	}
 
-	// Assuming 16000 Hz as the standard for our Whisper models
 	wavData, err := wav.Encode(samples, 16000)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Snapshot the processor under lock so hot-reload doesn't race
 	e.mu.RLock()
 	proc := e.processor
+	prompt := e.systemPrompt
 	e.mu.RUnlock()
 
 	transcript, err = proc.Transcribe(ctx, wavData)
@@ -78,7 +79,7 @@ func (e *Engine) StopAndProcess(ctx context.Context) (transcript string, refined
 		return "", "", nil
 	}
 
-	refined, err = proc.Refine(ctx, transcript, DefaultSystemPrompt)
+	refined, err = proc.Refine(ctx, transcript, prompt)
 	if err != nil {
 		return transcript, "", err
 	}

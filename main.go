@@ -47,7 +47,11 @@ func main() {
 		return
 	}
 
-	engine := core.NewEngine(recorder, processor)
+	prompt := cfg.SystemPrompt
+	if prompt == "" {
+		prompt = config.DefaultSystemPrompt
+	}
+	engine := core.NewEngine(recorder, processor, prompt)
 	app := desktop.NewApp(engine, cfg, hist)
 
 	logPath, _ := config.GetLogPath()

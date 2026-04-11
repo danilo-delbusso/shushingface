@@ -101,8 +101,29 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	}
 
 	a.engine.SetProcessor(newProcessor)
+	if newSettings.SystemPrompt != "" {
+		a.engine.SetSystemPrompt(newSettings.SystemPrompt)
+	}
 	*a.cfg = newSettings
 	return nil
+}
+
+// TestPrompt runs the refinement model against sample text with a given prompt.
+func (a *App) TestPrompt(sampleText, systemPrompt string) ProcessResult {
+	proc := a.engine.GetProcessor()
+	refined, err := proc.Refine(a.ctx, sampleText, systemPrompt)
+	if err != nil {
+		return ProcessResult{Error: err.Error()}
+	}
+	return ProcessResult{
+		Transcript: sampleText,
+		Refined:    refined,
+	}
+}
+
+// GetDefaultPrompt returns the built-in default system prompt.
+func (a *App) GetDefaultPrompt() string {
+	return config.DefaultSystemPrompt
 }
 
 // GetHistory retrieves the transcription history.

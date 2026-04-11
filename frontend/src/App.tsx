@@ -6,6 +6,7 @@ import { AppSidebar, type View } from "@/components/app-sidebar";
 import { RecordView } from "@/components/record-view";
 import { HistoryView } from "@/components/history-view";
 import { SettingsView } from "@/components/settings-view";
+import { PromptView } from "@/components/prompt-view";
 import { useSettings, useHistory, useRecording, isConfigured } from "@/lib/hooks";
 
 function App() {
@@ -57,6 +58,9 @@ function App() {
               configured={configured}
               onSave={saveSettings}
             />
+          )}
+          {view === "prompt" && settings && (
+            <PromptView settings={settings} onSave={saveSettings} />
           )}
         </SidebarInset>
       </SidebarProvider>

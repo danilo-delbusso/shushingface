@@ -6,6 +6,8 @@ import {desktop} from '../models';
 
 export function ClearHistory():Promise<void>;
 
+export function GetDefaultPrompt():Promise<string>;
+
 export function GetHistory(arg1:number,arg2:number):Promise<Array<history.Record>>;
 
 export function GetSettings():Promise<config.Settings>;
@@ -15,3 +17,5 @@ export function SaveSettings(arg1:config.Settings):Promise<void>;
 export function StartRecording():Promise<void>;
 
 export function StopAndProcess():Promise<desktop.ProcessResult>;
+
+export function TestPrompt(arg1:string,arg2:string):Promise<desktop.ProcessResult>;

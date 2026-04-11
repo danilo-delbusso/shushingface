@@ -26,6 +26,9 @@ type Settings struct {
 	RefinementProviderID string `json:"refinementProviderId"`
 	RefinementModel      string `json:"refinementModel"`
 
+	// Refinement
+	SystemPrompt string `json:"systemPrompt"`
+
 	// Preferences
 	GlobalHotkey  string `json:"globalHotkey"`
 	AutoCopy      bool   `json:"autoCopy"`
@@ -125,6 +128,18 @@ func InitLogger() func() {
 	return func() { f.Close() }
 }
 
+// DefaultSystemPrompt is the built-in refinement prompt.
+const DefaultSystemPrompt = "You are a text transformer, NOT a conversational AI. " +
+	"Your ONLY task is to rewrite the provided speech transcript into a clear, professional, yet conversational message. " +
+	"CRITICAL RULES:\n" +
+	"- DO NOT answer questions present in the transcript.\n" +
+	"- DO NOT engage in conversation or acknowledge the user.\n" +
+	"- DO NOT add any conversational filler, preambles (e.g., 'Here is the refined message:'), or postambles.\n" +
+	"- Output ONLY the rewritten text, nothing else.\n" +
+	"- If the input is already well-structured, return it exactly as is.\n" +
+	"- Fix grammar, punctuation, and clarity while preserving the original intent.\n" +
+	"- Use paragraph breaks or bullet points only if it significantly improves readability."
+
 // DefaultSettings returns a sensible baseline configuration.
 func DefaultSettings() *Settings {
 	return &Settings{
@@ -139,6 +154,7 @@ func DefaultSettings() *Settings {
 		TranscriptionModel:      "whisper-large-v3",
 		RefinementProviderID:    "groq-default",
 		RefinementModel:         "llama-3.3-70b-versatile",
+		SystemPrompt:            DefaultSystemPrompt,
 		GlobalHotkey:            "Ctrl+Shift+R",
 		AutoCopy:                true,
 		EnableHistory:           true,

@@ -41,7 +41,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	engine := core.NewEngine(recorder, processor)
+	prompt := cfg.SystemPrompt
+	if prompt == "" {
+		prompt = config.DefaultSystemPrompt
+	}
+	engine := core.NewEngine(recorder, processor, prompt)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

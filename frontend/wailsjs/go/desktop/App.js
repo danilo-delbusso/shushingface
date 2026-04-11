@@ -6,6 +6,10 @@ export function ClearHistory() {
   return window['go']['desktop']['App']['ClearHistory']();
 }
 
+export function GetDefaultPrompt() {
+  return window['go']['desktop']['App']['GetDefaultPrompt']();
+}
+
 export function GetHistory(arg1, arg2) {
   return window['go']['desktop']['App']['GetHistory'](arg1, arg2);
 }
@@ -24,4 +28,8 @@ export function StartRecording() {
 
 export function StopAndProcess() {
   return window['go']['desktop']['App']['StopAndProcess']();
+}
+
+export function TestPrompt(arg1, arg2) {
+  return window['go']['desktop']['App']['TestPrompt'](arg1, arg2);
 }
