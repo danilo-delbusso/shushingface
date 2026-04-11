@@ -1,4 +1,4 @@
-module codeberg.org/dbus/sussurro
+module codeberg.org/dbus/shushingface
 
 go 1.26.1
 

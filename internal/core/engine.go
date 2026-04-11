@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"codeberg.org/dbus/sussurro/internal/ai"
-	"codeberg.org/dbus/sussurro/internal/audio"
-	"codeberg.org/dbus/sussurro/internal/audio/wav"
+	"codeberg.org/dbus/shushingface/internal/ai"
+	"codeberg.org/dbus/shushingface/internal/audio"
+	"codeberg.org/dbus/shushingface/internal/audio/wav"
 )
 
 // Engine is the central orchestrator of the Sussurro application.

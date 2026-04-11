@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"codeberg.org/dbus/sussurro/internal/ai"
-	"codeberg.org/dbus/sussurro/internal/ai/groq"
-	"codeberg.org/dbus/sussurro/internal/config"
+	"codeberg.org/dbus/shushingface/internal/ai"
+	"codeberg.org/dbus/shushingface/internal/ai/groq"
+	"codeberg.org/dbus/shushingface/internal/config"
 )
 
 // Router combines multiple Processors to handle Transcription and Refinement separately.

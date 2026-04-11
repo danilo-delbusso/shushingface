@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"codeberg.org/dbus/sussurro/internal/ai"
+	"codeberg.org/dbus/shushingface/internal/ai"
 	groqclient "github.com/conneroisu/groq-go"
 )
 

@@ -5,7 +5,7 @@ package ipc
 import "fmt"
 
 // SendToggle is not yet implemented on Windows.
-// TODO: implement via named pipes (\\.\pipe\sussurro)
+// TODO: implement via named pipes (\\.\pipe\shushingface)
 func SendToggle() error {
 	return fmt.Errorf("IPC not yet supported on Windows")
 }

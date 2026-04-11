@@ -15,14 +15,14 @@ func socketPath() string {
 	if dir == "" {
 		dir = os.TempDir()
 	}
-	return filepath.Join(dir, "sussurro.sock")
+	return filepath.Join(dir, "shushingface.sock")
 }
 
-// SendToggle connects to the running sussurro instance and sends a toggle signal.
+// SendToggle connects to the running shushingface instance and sends a toggle signal.
 func SendToggle() error {
 	conn, err := net.Dial("unix", socketPath())
 	if err != nil {
-		return fmt.Errorf("sussurro is not running: %w", err)
+		return fmt.Errorf("shushingface is not running: %w", err)
 	}
 	defer conn.Close()
 	_, err = conn.Write([]byte("TOGGLE"))

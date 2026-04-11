@@ -50,7 +50,7 @@ func Load() (*Settings, error) {
 		return nil, err
 	}
 
-	appDir := filepath.Join(configDir, "sussurro")
+	appDir := filepath.Join(configDir, "shushingface")
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func Save(settings *Settings) error {
 		return err
 	}
 
-	appDir := filepath.Join(configDir, "sussurro")
+	appDir := filepath.Join(configDir, "shushingface")
 	configFile := filepath.Join(appDir, "config.json")
 
 	data, err := json.MarshalIndent(settings, "", "  ")
@@ -104,7 +104,7 @@ func GetLogPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	appDir := filepath.Join(configDir, "sussurro")
+	appDir := filepath.Join(configDir, "shushingface")
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return "", err
 	}

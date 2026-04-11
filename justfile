@@ -53,7 +53,7 @@ check: lint test
 
 # Runs the TUI interface
 run-tui:
-    go run cmd/sussurro/main.go
+    go run cmd/shushingface/main.go
 
 # Runs the Wails Desktop application in development mode
 dev:
@@ -89,16 +89,16 @@ build-darwin:
 # macOS: `wails build` produces a .app bundle in build/bin/
 # Windows: `wails build -nsis` produces an installer
 
-# Install sussurro on Linux (binary + desktop entry + icon + shortcut)
+# Install shushingface on Linux (binary + desktop entry + icon + shortcut)
 install: build
     #!/bin/bash
     set -e
-    install -Dm755 build/bin/sussurro "{{prefix}}/bin/sussurro"
-    install -Dm644 build/linux/sussurro.desktop "$HOME/.local/share/applications/sussurro.desktop"
-    install -Dm644 build/appicon.png "$HOME/.local/share/icons/hicolor/512x512/apps/sussurro.png"
+    install -Dm755 build/bin/shushingface "{{prefix}}/bin/shushingface"
+    install -Dm644 build/linux/shushingface.desktop "$HOME/.local/share/applications/shushingface.desktop"
+    install -Dm644 build/appicon.png "$HOME/.local/share/icons/hicolor/512x512/apps/shushingface.png"
     update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
     just _install-shortcut
-    echo "Installed sussurro to {{prefix}}/bin/sussurro"
+    echo "Installed shushingface to {{prefix}}/bin/shushingface"
 
 # Register Super+Ctrl+B shortcut in the current desktop environment
 _install-shortcut:
@@ -108,11 +108,11 @@ _install-shortcut:
         dir="$HOME/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1"
         file="$dir/custom"
         mkdir -p "$dir"
-        if [ -f "$file" ] && grep -q "sussurro" "$file"; then
+        if [ -f "$file" ] && grep -q "shushingface" "$file"; then
           echo "Shortcut already registered (COSMIC)"
         else
           if [ -f "$file" ] && grep -q "Spawn" "$file"; then
-            sed -i 's/}$/    (\n        modifiers: [\n            Super,\n            Ctrl,\n        ],\n        key: "b",\n        description: Some("sussurro: toggle recording"),\n    ): Spawn("sussurro --toggle"),\n}/' "$file"
+            sed -i 's/}$/    (\n        modifiers: [\n            Super,\n            Ctrl,\n        ],\n        key: "b",\n        description: Some("shushingface: toggle recording"),\n    ): Spawn("shushingface --toggle"),\n}/' "$file"
           else
             cat > "$file" << 'RON'
     {
@@ -122,8 +122,8 @@ _install-shortcut:
                 Ctrl,
             ],
             key: "b",
-            description: Some("sussurro: toggle recording"),
-        ): Spawn("sussurro --toggle"),
+            description: Some("shushingface: toggle recording"),
+        ): Spawn("shushingface --toggle"),
     }
     RON
           fi
@@ -132,13 +132,13 @@ _install-shortcut:
         fi
         ;;
       GNOME*)
-        path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/sussurro/"
+        path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/shushingface/"
         base="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$path"
-        gsettings set "$base" name "sussurro" 2>/dev/null &&
-        gsettings set "$base" command "sussurro --toggle" 2>/dev/null &&
+        gsettings set "$base" name "shushingface" 2>/dev/null &&
+        gsettings set "$base" command "shushingface --toggle" 2>/dev/null &&
         gsettings set "$base" binding "<Super><Ctrl>b" 2>/dev/null &&
         existing=$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || echo "[]")
-        if ! echo "$existing" | grep -q "sussurro"; then
+        if ! echo "$existing" | grep -q "shushingface"; then
           new=$(echo "$existing" | sed "s/]/, '$path']/" | sed "s/\[, /[/")
           gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$new"
         fi &&
@@ -146,25 +146,25 @@ _install-shortcut:
         echo "Could not register GNOME shortcut (gsettings not available)"
         ;;
       *)
-        echo "Tip: bind 'sussurro --toggle' to Super+Ctrl+B in your desktop settings"
+        echo "Tip: bind 'shushingface --toggle' to Super+Ctrl+B in your desktop settings"
         ;;
     esac
 
-# Remove sussurro
+# Remove shushingface
 uninstall:
     #!/bin/bash
-    rm -f "{{prefix}}/bin/sussurro"
-    rm -f "$HOME/.local/share/applications/sussurro.desktop"
-    rm -f "$HOME/.local/share/icons/hicolor/512x512/apps/sussurro.png"
+    rm -f "{{prefix}}/bin/shushingface"
+    rm -f "$HOME/.local/share/applications/shushingface.desktop"
+    rm -f "$HOME/.local/share/icons/hicolor/512x512/apps/shushingface.png"
     update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
     # Remove COSMIC shortcut
     file="$HOME/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1/custom"
-    if [ -f "$file" ] && grep -q "sussurro" "$file"; then
+    if [ -f "$file" ] && grep -q "shushingface" "$file"; then
       # If it's the only entry, write an empty map
       echo "{}" > "$file"
       echo "Removed COSMIC shortcut"
     fi
-    echo "Uninstalled sussurro"
+    echo "Uninstalled shushingface"
 
 # Re-generates TypeScript bindings from Go structs
 bindings:

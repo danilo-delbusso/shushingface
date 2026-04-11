@@ -1,19 +1,19 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "sussurro",
-  "outputfilename": "sussurro",
+  "name": "shushingface",
+  "outputfilename": "shushingface",
   "maindir": ".",
   "frontend:dir": "frontend",
   "frontend:build": "bun run build",
   "frontend:dev:watcher": "bun run dev",
   "frontend:dev:serverUrl": "http://localhost:5173",
   "author": {
-    "name": "sussurro",
+    "name": "shushingface",
     "email": ""
   },
   "info": {
-    "companyName": "sussurro",
-    "productName": "sussurro",
+    "companyName": "shushingface",
+    "productName": "shushingface",
     "productVersion": "1.0.0",
     "copyright": "Copyright 2026",
     "comments": "Local Speech Transpiler"

@@ -29,7 +29,7 @@ func NewManager() (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	appDir := filepath.Join(configDir, "sussurro")
+	appDir := filepath.Join(configDir, "shushingface")
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return nil, err
 	}

@@ -18,12 +18,12 @@ var lastID uint32
 
 // RecordingStarted shows a persistent notification indicating recording is active.
 func RecordingStarted() {
-	send("sussurro", "Recording...", "audio-input-microphone", 0)
+	send("shushingface", "Recording...", "audio-input-microphone", 0)
 }
 
 // RecordingProcessing updates the notification to show processing state.
 func RecordingProcessing() {
-	send("sussurro", "Processing with AI...", "audio-input-microphone", 0)
+	send("shushingface", "Processing with AI...", "audio-input-microphone", 0)
 }
 
 // RecordingDone dismisses the recording notification.
@@ -49,7 +49,7 @@ func send(summary, body, icon string, timeout int32) {
 	call := conn.Object(dest, dbus.ObjectPath(npath)).Call(
 		iface+".Notify",
 		0,
-		"sussurro",
+		"shushingface",
 		lastID,
 		icon,
 		summary,

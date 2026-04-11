@@ -9,14 +9,14 @@ import (
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"codeberg.org/dbus/sussurro/internal/ai/factory"
-	"codeberg.org/dbus/sussurro/internal/config"
-	"codeberg.org/dbus/sussurro/internal/core"
-	"codeberg.org/dbus/sussurro/internal/history"
-	"codeberg.org/dbus/sussurro/internal/indicator"
-	"codeberg.org/dbus/sussurro/internal/ipc"
-	"codeberg.org/dbus/sussurro/internal/notify"
-	"codeberg.org/dbus/sussurro/internal/osutil"
+	"codeberg.org/dbus/shushingface/internal/ai/factory"
+	"codeberg.org/dbus/shushingface/internal/config"
+	"codeberg.org/dbus/shushingface/internal/core"
+	"codeberg.org/dbus/shushingface/internal/history"
+	"codeberg.org/dbus/shushingface/internal/indicator"
+	"codeberg.org/dbus/shushingface/internal/ipc"
+	"codeberg.org/dbus/shushingface/internal/notify"
+	"codeberg.org/dbus/shushingface/internal/osutil"
 )
 
 // App struct is the Wails application bridge.
@@ -46,7 +46,7 @@ func (a *App) Startup(ctx context.Context) {
 		indicator.Start()
 	}
 
-	// IPC listener: allows `sussurro --toggle` to trigger recording
+	// IPC listener: allows `shushingface --toggle` to trigger recording
 	cleanup, err := ipc.Listen(func() {
 		wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
 	})

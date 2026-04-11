@@ -11,13 +11,13 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
-	"codeberg.org/dbus/sussurro/internal/ai/factory"
-	"codeberg.org/dbus/sussurro/internal/audio/malgo"
-	"codeberg.org/dbus/sussurro/internal/config"
-	"codeberg.org/dbus/sussurro/internal/core"
-	"codeberg.org/dbus/sussurro/internal/history"
-	"codeberg.org/dbus/sussurro/internal/ipc"
-	"codeberg.org/dbus/sussurro/internal/ui/desktop"
+	"codeberg.org/dbus/shushingface/internal/ai/factory"
+	"codeberg.org/dbus/shushingface/internal/audio/malgo"
+	"codeberg.org/dbus/shushingface/internal/config"
+	"codeberg.org/dbus/shushingface/internal/core"
+	"codeberg.org/dbus/shushingface/internal/history"
+	"codeberg.org/dbus/shushingface/internal/ipc"
+	"codeberg.org/dbus/shushingface/internal/ui/desktop"
 )
 
 //go:embed all:frontend/dist
@@ -70,7 +70,7 @@ func main() {
 	appLogger := logger.NewFileLogger(logPath)
 
 	err = wails.Run(&options.App{
-		Title:  "sussurro",
+		Title:  "shushing face",
 		Width:  800,
 		Height: 600,
 		AssetServer: &assetserver.Options{

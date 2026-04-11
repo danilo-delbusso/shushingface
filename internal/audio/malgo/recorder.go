@@ -3,7 +3,7 @@ package malgo
 import (
 	"sync"
 
-	"codeberg.org/dbus/sussurro/internal/audio"
+	"codeberg.org/dbus/shushingface/internal/audio"
 	"github.com/gen2brain/malgo"
 )
 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=shushing face
+Comment=Local Speech Transcription
+Exec=shushingface
+Icon=shushingface
+Type=Application
+Categories=Utility;Audio;
+Keywords=speech;transcription;whisper;dictation;
+Terminal=false
+StartupNotify=true

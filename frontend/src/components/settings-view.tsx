@@ -113,7 +113,7 @@ export function SettingsView({
               <Key className="size-4" /> API Provider
             </CardTitle>
             <CardDescription>
-              sussurro uses Groq for fast speech-to-text.{" "}
+              shushingface uses Groq for fast speech-to-text.{" "}
               <button
                 type="button"
                 className="text-primary underline underline-offset-2 hover:text-primary/80"
@@ -271,7 +271,7 @@ function ShortcutGuide({
 
   const command = (
     <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-      sussurro --toggle
+      shushingface --toggle
     </code>
   );
 
