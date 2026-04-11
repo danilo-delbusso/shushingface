@@ -10,7 +10,7 @@
   --color-card-foreground: oklch(0.925 0 0);
   --color-popover: oklch(0.185 0 0);
   --color-popover-foreground: oklch(0.925 0 0);
-  --color-primary: oklch(0.93 0.18 100);
+  --color-primary: oklch(0.82 0.12 100);
   --color-primary-foreground: oklch(0.16 0 0);
   --color-secondary: oklch(0.24 0 0);
   --color-secondary-foreground: oklch(0.925 0 0);
@@ -22,18 +22,18 @@
   --color-destructive-foreground: oklch(0.925 0 0);
   --color-border: oklch(0.24 0 0);
   --color-input: oklch(0.24 0 0);
-  --color-ring: oklch(0.93 0.18 100);
+  --color-ring: oklch(0.82 0.12 100);
   --color-sidebar-background: oklch(0.115 0 0);
   --color-sidebar-foreground: oklch(0.925 0 0);
-  --color-sidebar-primary: oklch(0.93 0.18 100);
+  --color-sidebar-primary: oklch(0.82 0.12 100);
   --color-sidebar-primary-foreground: oklch(0.16 0 0);
   --color-sidebar-accent: oklch(0.22 0 0);
   --color-sidebar-accent-foreground: oklch(0.925 0 0);
   --color-sidebar-border: oklch(0.22 0 0);
-  --color-sidebar-ring: oklch(0.93 0.18 100);
+  --color-sidebar-ring: oklch(0.82 0.12 100);
   --radius: 0.625rem;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  --font-sans: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code",
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @layer base {
