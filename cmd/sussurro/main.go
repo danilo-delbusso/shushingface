@@ -1,7 +1,11 @@
 package main
 
 import (
-	"log"
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/joho/godotenv"
 
@@ -13,30 +17,37 @@ import (
 )
 
 func main() {
-	// We still load .env for backward compatibility in TUI
-	// while the desktop app will strictly use the UI to manage config.json.
+	closeLog := config.InitLogger()
+	defer closeLog()
+
 	_ = godotenv.Load()
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Error loading config: ", err)
+		slog.Error("failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	recorder, err := malgo.NewRecorder(16000)
 	if err != nil {
-		log.Fatal("Error initializing recorder: ", err)
+		slog.Error("failed to initialize recorder", "error", err)
+		os.Exit(1)
 	}
 	defer recorder.Close()
 
-	// The AI Factory builds our transcriber & refiner implementations based on the JSON Config
 	processor, err := factory.NewFromConfig(cfg)
 	if err != nil {
-		log.Fatal("Error initializing AI factory: ", err)
+		slog.Error("failed to initialize AI factory", "error", err)
+		os.Exit(1)
 	}
 
 	engine := core.NewEngine(recorder, processor)
 
-	if err := tui.Start(engine); err != nil {
-		log.Fatal("Error starting TUI: ", err)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	if err := tui.Start(engine, ctx); err != nil {
+		slog.Error("TUI error", "error", err)
+		os.Exit(1)
 	}
 }

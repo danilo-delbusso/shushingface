@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"sync"
 
 	"codeberg.org/dbus/sussurro/internal/ai"
 	"codeberg.org/dbus/sussurro/internal/audio"
@@ -13,6 +14,7 @@ import (
 // and the presentation layer (UI, API, etc.), ensuring the core logic
 // remains decoupled from how it is consumed.
 type Engine struct {
+	mu        sync.RWMutex
 	recorder  audio.Recorder
 	processor ai.Processor
 }
@@ -27,6 +29,8 @@ func NewEngine(recorder audio.Recorder, processor ai.Processor) *Engine {
 
 // SetProcessor updates the AI backend implementation at runtime.
 func (e *Engine) SetProcessor(processor ai.Processor) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.processor = processor
 }
 
@@ -60,7 +64,12 @@ func (e *Engine) StopAndProcess(ctx context.Context) (transcript string, refined
 		return "", "", err
 	}
 
-	transcript, err = e.processor.Transcribe(ctx, wavData)
+	// Snapshot the processor under lock so hot-reload doesn't race
+	e.mu.RLock()
+	proc := e.processor
+	e.mu.RUnlock()
+
+	transcript, err = proc.Transcribe(ctx, wavData)
 	if err != nil {
 		return "", "", err
 	}
@@ -69,7 +78,7 @@ func (e *Engine) StopAndProcess(ctx context.Context) (transcript string, refined
 		return "", "", nil
 	}
 
-	refined, err = e.processor.Refine(ctx, transcript, DefaultSystemPrompt)
+	refined, err = proc.Refine(ctx, transcript, DefaultSystemPrompt)
 	if err != nil {
 		return transcript, "", err
 	}

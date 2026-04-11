@@ -2,7 +2,7 @@ package main
 
 import (
 	"embed"
-	"log"
+	"log/slog"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
@@ -23,44 +23,39 @@ var assets embed.FS
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Error loading config: ", err)
+		slog.Error("failed to load config", "error", err)
+		return
 	}
 
-	// 1. Initialize History (SQLite)
 	var hist *history.Manager
 	if cfg.EnableHistory {
 		hist, err = history.NewManager()
 		if err != nil {
-			log.Printf("Warning: failed to initialize history manager: %v", err)
+			slog.Warn("failed to initialize history", "error", err)
 		} else {
 			defer hist.Close()
 		}
 	}
 
-	// 2. Initialize Audio Recorder
 	recorder, err := malgo.NewRecorder(16000)
 	if err != nil {
-		log.Fatal("Error initializing recorder: ", err)
+		slog.Error("failed to initialize recorder", "error", err)
+		return
 	}
 	defer recorder.Close()
 
-	// 3. Initialize AI Processor (via Dynamic Factory)
 	processor, err := factory.NewFromConfig(cfg)
 	if err != nil {
-		log.Fatal("Error initializing AI factory: ", err)
+		slog.Error("failed to initialize AI factory", "error", err)
+		return
 	}
 
-	// 4. Instantiate Core Orchestration Engine
 	engine := core.NewEngine(recorder, processor)
-
-	// 5. Build Desktop Bridge Context
 	app := desktop.NewApp(engine, cfg, hist)
 
-	// 6. Set up File Logger
 	logPath, _ := config.GetLogPath()
 	appLogger := logger.NewFileLogger(logPath)
 
-	// 7. Run Wails Application
 	err = wails.Run(&options.App{
 		Title:  "Sussurro",
 		Width:  800,
@@ -68,16 +63,15 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		OnStartup: app.Startup,
-		Bind: []interface{}{
-			app,
-		},
+		OnStartup:        app.Startup,
+		OnShutdown:        app.Shutdown,
+		Bind:              []interface{}{app},
 		Logger:            appLogger,
 		LogLevel:          logger.INFO,
-		HideWindowOnClose: true, // Key component of the "Always-On" background behavior
+		HideWindowOnClose: true,
 	})
 
 	if err != nil {
-		log.Fatal("Error starting Wails application: ", err)
+		slog.Error("wails application error", "error", err)
 	}
 }

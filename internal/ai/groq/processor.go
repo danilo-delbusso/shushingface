@@ -1,8 +1,10 @@
 package groq
 
 import (
+	"bytes"
 	"context"
-	"os"
+	"fmt"
+	"time"
 
 	"codeberg.org/dbus/sussurro/internal/ai"
 	groqclient "github.com/conneroisu/groq-go"
@@ -36,24 +38,12 @@ func NewProcessor(apiKey, transcriptionModel, refinementModel string) (ai.Proces
 }
 
 func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, error) {
-	// Create a temporary file for the WAV
-	tmpFile, err := os.CreateTemp("", "sussurro-*.wav")
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
-
-	if _, err := tmpFile.Write(wavData); err != nil {
-		return "", err
-	}
-	if _, err := tmpFile.Seek(0, 0); err != nil {
-		return "", err
-	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
 	transReq := groqclient.AudioRequest{
-		FilePath: tmpFile.Name(),
-		Reader:   tmpFile,
+		FilePath: "audio.wav",
+		Reader:   bytes.NewReader(wavData),
 		Model:    groqclient.AudioModel(p.transcriptionModel),
 	}
 
@@ -66,6 +56,9 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, err
 }
 
 func (p *processor) Refine(ctx context.Context, transcript string, systemPrompt string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	chatReq := groqclient.ChatCompletionRequest{
 		Model: groqclient.ChatModel(p.refinementModel),
 		Messages: []groqclient.ChatCompletionMessage{
@@ -85,5 +78,8 @@ func (p *processor) Refine(ctx context.Context, transcript string, systemPrompt 
 		return "", err
 	}
 
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("groq returned empty response")
+	}
 	return result.Choices[0].Message.Content, nil
 }

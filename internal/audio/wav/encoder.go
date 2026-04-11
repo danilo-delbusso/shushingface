@@ -1,26 +1,56 @@
 package wav
 
 import (
+	"errors"
 	"io"
-	"os"
 
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
 )
 
-// Encode takes raw int16 audio samples and a sample rate, encodes them into
-// a WAV format byte slice, and returns the result. It uses a temporary file
-// to satisfy the io.WriteSeeker requirement of the underlying wav encoder.
-func Encode(samples []int16, sampleRate uint32) ([]byte, error) {
-	// We need a WriteSeeker, so we use a temp file
-	tmpFile, err := os.CreateTemp("", "sussurro-encode-*.wav")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
+// memWriteSeeker is an in-memory io.WriteSeeker backed by a byte slice.
+type memWriteSeeker struct {
+	buf []byte
+	pos int
+}
 
-	e := wav.NewEncoder(tmpFile, int(sampleRate), 16, 1, 1)
+func (m *memWriteSeeker) Write(p []byte) (int, error) {
+	minCap := m.pos + len(p)
+	if minCap > cap(m.buf) {
+		buf2 := make([]byte, len(m.buf), minCap+len(p))
+		copy(buf2, m.buf)
+		m.buf = buf2
+	}
+	if minCap > len(m.buf) {
+		m.buf = m.buf[:minCap]
+	}
+	copy(m.buf[m.pos:], p)
+	m.pos += len(p)
+	return len(p), nil
+}
+
+func (m *memWriteSeeker) Seek(offset int64, whence int) (int64, error) {
+	var newPos int
+	switch whence {
+	case io.SeekStart:
+		newPos = int(offset)
+	case io.SeekCurrent:
+		newPos = m.pos + int(offset)
+	case io.SeekEnd:
+		newPos = len(m.buf) + int(offset)
+	}
+	if newPos < 0 {
+		return 0, errors.New("negative seek position")
+	}
+	m.pos = newPos
+	return int64(newPos), nil
+}
+
+// Encode takes raw int16 audio samples and a sample rate, encodes them into
+// a WAV format byte slice, and returns the result.
+func Encode(samples []int16, sampleRate uint32) ([]byte, error) {
+	ws := &memWriteSeeker{}
+	e := wav.NewEncoder(ws, int(sampleRate), 16, 1, 1)
 
 	intSamples := make([]int, len(samples))
 	for i, v := range samples {
@@ -42,9 +72,5 @@ func Encode(samples []int16, sampleRate uint32) ([]byte, error) {
 		return nil, err
 	}
 
-	// Read back the data
-	if _, err := tmpFile.Seek(0, 0); err != nil {
-		return nil, err
-	}
-	return io.ReadAll(tmpFile)
+	return ws.buf, nil
 }

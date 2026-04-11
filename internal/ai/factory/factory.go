@@ -2,6 +2,7 @@ package factory
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -47,7 +48,7 @@ func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error initializing transcriber: %v", err)
+		return nil, fmt.Errorf("error initializing transcriber: %w", err)
 	}
 
 	// Resolve Refiner
@@ -69,7 +70,7 @@ func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error initializing refiner: %v", err)
+		return nil, fmt.Errorf("error initializing refiner: %w", err)
 	}
 
 	return &Router{
@@ -85,11 +86,11 @@ type PlaceholderProcessor struct {
 }
 
 func (p *PlaceholderProcessor) Transcribe(ctx context.Context, wavData []byte) (string, error) {
-	return "", fmt.Errorf(p.Reason)
+	return "", errors.New(p.Reason)
 }
 
 func (p *PlaceholderProcessor) Refine(ctx context.Context, transcript, systemPrompt string) (string, error) {
-	return "", fmt.Errorf(p.Reason)
+	return "", errors.New(p.Reason)
 }
 
 // resolveAPIKey falls back to environment variables for backward compatibility

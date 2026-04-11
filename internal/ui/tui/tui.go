@@ -62,10 +62,10 @@ type resultMsg struct {
 
 type errMsg struct{ err error }
 
-func NewModel(engine *core.Engine) *model {
+func NewModel(engine *core.Engine, ctx context.Context) *model {
 	return &model{
 		engine:   engine,
-		ctx:      context.Background(),
+		ctx:      ctx,
 		spinner:  spinner.New(spinner.WithSpinner(spinner.Dot), spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("205")))),
 		viewport: viewport.New(0, 0),
 	}
@@ -158,8 +158,8 @@ func (m *model) View() string {
 	return lipgloss.NewStyle().Padding(1, 2).Render(s)
 }
 
-func Start(engine *core.Engine) error {
-	p := tea.NewProgram(NewModel(engine), tea.WithAltScreen())
+func Start(engine *core.Engine, ctx context.Context) error {
+	p := tea.NewProgram(NewModel(engine, ctx), tea.WithAltScreen(), tea.WithContext(ctx))
 	_, err := p.Run()
 	return err
 }

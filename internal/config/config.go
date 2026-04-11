@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -101,6 +103,28 @@ func GetLogPath() (string, error) {
 	return filepath.Join(appDir, "app.log"), nil
 }
 
+// InitLogger sets up slog to write to both stderr and the app log file.
+// Returns a cleanup function to close the log file.
+func InitLogger() func() {
+	logPath, err := GetLogPath()
+	if err != nil {
+		slog.Warn("could not resolve log path, logging to stderr only", "error", err)
+		return func() {}
+	}
+
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		slog.Warn("could not open log file, logging to stderr only", "error", err)
+		return func() {}
+	}
+
+	w := io.MultiWriter(os.Stderr, f)
+	handler := slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo})
+	slog.SetDefault(slog.New(handler))
+
+	return func() { f.Close() }
+}
+
 // DefaultSettings returns a sensible baseline configuration.
 func DefaultSettings() *Settings {
 	return &Settings{
@@ -114,7 +138,7 @@ func DefaultSettings() *Settings {
 		TranscriptionProviderID: "groq-default",
 		TranscriptionModel:      "whisper-large-v3",
 		RefinementProviderID:    "groq-default",
-		RefinementModel:         "llama3-70b-8192",
+		RefinementModel:         "llama-3.3-70b-versatile",
 		GlobalHotkey:            "Ctrl+Shift+R",
 		AutoCopy:                true,
 		EnableHistory:           true,
