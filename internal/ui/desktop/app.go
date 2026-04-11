@@ -41,7 +41,6 @@ func NewApp(engine *core.Engine, cfg *config.Settings, hist *history.Manager) *A
 // so we can call the runtime methods (like events/dialogs).
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
-	go NewTrayManager(a).Run()
 	if a.cfg.EnableIndicator {
 		indicator.Start(func() {
 			wailsRuntime.WindowShow(a.ctx)
@@ -79,7 +78,6 @@ func (a *App) Shutdown(_ context.Context) {
 		a.cleanIPC()
 	}
 	indicator.Stop()
-	shutdownTray()
 }
 
 // StartRecording triggers the engine to start capturing audio.

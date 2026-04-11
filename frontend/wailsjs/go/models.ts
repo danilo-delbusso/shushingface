@@ -24,7 +24,6 @@ export namespace config {
 	    refinementModel: string;
 	    systemPrompt: string;
 	    theme: string;
-	    globalHotkey: string;
 	    autoCopy: boolean;
 	    enableHistory: boolean;
 	    enableIndicator: boolean;
@@ -44,7 +43,6 @@ export namespace config {
 	        this.refinementModel = source["refinementModel"];
 	        this.systemPrompt = source["systemPrompt"];
 	        this.theme = source["theme"];
-	        this.globalHotkey = source["globalHotkey"];
 	        this.autoCopy = source["autoCopy"];
 	        this.enableHistory = source["enableHistory"];
 	        this.enableIndicator = source["enableIndicator"];

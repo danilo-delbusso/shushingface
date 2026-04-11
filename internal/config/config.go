@@ -33,7 +33,6 @@ type Settings struct {
 	Theme string `json:"theme"` // "dark", "light", or "system"
 
 	// Preferences
-	GlobalHotkey        string `json:"globalHotkey"`
 	AutoCopy            bool   `json:"autoCopy"`
 	EnableHistory       bool   `json:"enableHistory"`
 	EnableIndicator     bool   `json:"enableIndicator"`
@@ -161,7 +160,6 @@ func DefaultSettings() *Settings {
 		RefinementModel:         "llama-3.3-70b-versatile",
 		SystemPrompt:            DefaultSystemPrompt,
 		Theme:                   "dark",
-		GlobalHotkey:            "Ctrl+Shift+R",
 		AutoCopy:                true,
 		EnableHistory:           true,
 		EnableIndicator:         true,

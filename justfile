@@ -51,10 +51,6 @@ check: lint test
 
 # --- Build & Run ---
 
-# Runs the TUI interface
-run-tui:
-    go run cmd/shushingface/main.go
-
 # Runs the Wails Desktop application in development mode
 dev:
     #!/bin/bash
@@ -76,10 +72,6 @@ build:
 # Build for Linux explicitly
 build-linux:
     wails build -tags webkit2_41
-
-# Build for Linux with system tray support (requires libayatana-appindicator3-dev)
-build-linux-tray:
-    wails build -tags "webkit2_41 systray"
 
 # Build for macOS explicitly
 build-darwin:
