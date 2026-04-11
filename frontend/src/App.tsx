@@ -210,7 +210,12 @@ function App() {
                 type="text"
                 value={settings.globalHotkey}
                 onChange={(e) =>
-                  setSettings({ ...settings, globalHotkey: e.target.value })
+                  setSettings(
+                    config.Settings.createFrom({
+                      ...settings,
+                      globalHotkey: e.target.value,
+                    }),
+                  )
                 }
               />
             </div>
@@ -221,7 +226,12 @@ function App() {
                 type="text"
                 value={settings.refinementModel}
                 onChange={(e) =>
-                  setSettings({ ...settings, refinementModel: e.target.value })
+                  setSettings(
+                    config.Settings.createFrom({
+                      ...settings,
+                      refinementModel: e.target.value,
+                    }),
+                  )
                 }
               />
             </div>
@@ -238,7 +248,12 @@ function App() {
                 type="checkbox"
                 checked={settings.autoCopy}
                 onChange={(e) =>
-                  setSettings({ ...settings, autoCopy: e.target.checked })
+                  setSettings(
+                    config.Settings.createFrom({
+                      ...settings,
+                      autoCopy: e.target.checked,
+                    }),
+                  )
                 }
                 style={{ width: "auto" }}
               />
@@ -257,7 +272,12 @@ function App() {
                 type="checkbox"
                 checked={settings.enableHistory}
                 onChange={(e) =>
-                  setSettings({ ...settings, enableHistory: e.target.checked })
+                  setSettings(
+                    config.Settings.createFrom({
+                      ...settings,
+                      enableHistory: e.target.checked,
+                    }),
+                  )
                 }
                 style={{ width: "auto" }}
               />
