@@ -13,6 +13,7 @@ require (
 	github.com/go-audio/wav v1.1.0
 	github.com/joho/godotenv v1.5.1
 	github.com/wailsapp/wails/v2 v2.12.0
+	golang.design/x/hotkey v0.4.1
 	modernc.org/sqlite v1.48.2
 )
 
