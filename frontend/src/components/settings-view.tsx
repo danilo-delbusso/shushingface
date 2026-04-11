@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Keyboard, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
@@ -13,7 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { config, type desktop } from "../../wailsjs/go/models";
+import { type config, type desktop } from "../../wailsjs/go/models";
 
 interface SettingsViewProps {
   settings: config.Settings;
@@ -28,20 +27,13 @@ export function SettingsView({
   onSave,
   onRunSetup,
 }: SettingsViewProps) {
-  const [draft, setDraft] = useState(settings);
-
-  const update = (patch: Partial<config.Settings>) => {
-    setDraft(config.Settings.createFrom({ ...draft, ...patch }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(draft);
+  const toggle = (patch: Partial<config.Settings>) => {
+    onSave({ ...settings, ...patch } as config.Settings);
   };
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <form onSubmit={handleSubmit} className="space-y-4 p-6 max-w-2xl">
+      <div className="space-y-4 p-6 max-w-2xl">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -67,8 +59,8 @@ export function SettingsView({
               </div>
               <Switch
                 id="auto-copy"
-                checked={draft.autoCopy}
-                onCheckedChange={(v) => update({ autoCopy: v })}
+                checked={settings.autoCopy}
+                onCheckedChange={(v) => toggle({ autoCopy: v })}
               />
             </div>
             <Separator />
@@ -81,8 +73,8 @@ export function SettingsView({
               </div>
               <Switch
                 id="history-toggle"
-                checked={draft.enableHistory}
-                onCheckedChange={(v) => update({ enableHistory: v })}
+                checked={settings.enableHistory}
+                onCheckedChange={(v) => toggle({ enableHistory: v })}
               />
             </div>
             <Separator />
@@ -95,8 +87,8 @@ export function SettingsView({
               </div>
               <Switch
                 id="indicator-toggle"
-                checked={draft.enableIndicator}
-                onCheckedChange={(v) => update({ enableIndicator: v })}
+                checked={settings.enableIndicator}
+                onCheckedChange={(v) => toggle({ enableIndicator: v })}
               />
             </div>
             <Separator />
@@ -109,16 +101,12 @@ export function SettingsView({
               </div>
               <Switch
                 id="notify-toggle"
-                checked={draft.enableNotifications}
-                onCheckedChange={(v) => update({ enableNotifications: v })}
+                checked={settings.enableNotifications}
+                onCheckedChange={(v) => toggle({ enableNotifications: v })}
               />
             </div>
           </CardContent>
         </Card>
-
-        <Button type="submit" className="w-full">
-          Save Changes
-        </Button>
 
         <Separator />
 
@@ -142,7 +130,7 @@ export function SettingsView({
             />
           </CardContent>
         </Card>
-      </form>
+      </div>
     </div>
   );
 }
