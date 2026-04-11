@@ -5,6 +5,7 @@
 *.so
 *.dylib
 /shushingface
+/sussurro
 build/bin/
 
 # Test binary, built with `go test -c`
