@@ -96,6 +96,7 @@ install: build
     install -Dm755 build/bin/shushingface "{{prefix}}/bin/shushingface"
     install -Dm644 build/linux/shushingface.desktop "$HOME/.local/share/applications/shushingface.desktop"
     install -Dm644 build/appicon.png "$HOME/.local/share/icons/hicolor/512x512/apps/shushingface.png"
+    gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor/" 2>/dev/null || true
     update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
     just _install-shortcut
     echo "Installed shushingface to {{prefix}}/bin/shushingface"
