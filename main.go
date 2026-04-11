@@ -27,14 +27,11 @@ func main() {
 		return
 	}
 
-	var hist *history.Manager
-	if cfg.EnableHistory {
-		hist, err = history.NewManager()
-		if err != nil {
-			slog.Warn("failed to initialize history", "error", err)
-		} else {
-			defer hist.Close()
-		}
+	hist, err := history.NewManager()
+	if err != nil {
+		slog.Warn("failed to initialize history", "error", err)
+	} else {
+		defer hist.Close()
 	}
 
 	recorder, err := malgo.NewRecorder(16000)
