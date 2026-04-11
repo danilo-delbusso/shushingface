@@ -11,6 +11,7 @@ import (
 	"codeberg.org/dbus/sussurro/internal/config"
 	"codeberg.org/dbus/sussurro/internal/core"
 	"codeberg.org/dbus/sussurro/internal/history"
+	"codeberg.org/dbus/sussurro/internal/indicator"
 	"codeberg.org/dbus/sussurro/internal/ipc"
 	"codeberg.org/dbus/sussurro/internal/notify"
 	"codeberg.org/dbus/sussurro/internal/osutil"
@@ -39,6 +40,7 @@ func NewApp(engine *core.Engine, cfg *config.Settings, hist *history.Manager) *A
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	go NewTrayManager(a).Run()
+	indicator.Start()
 
 	// IPC listener: allows `sussurro --toggle` to trigger recording
 	cleanup, err := ipc.Listen(func() {
@@ -63,6 +65,7 @@ func (a *App) Shutdown(_ context.Context) {
 	if a.cleanIPC != nil {
 		a.cleanIPC()
 	}
+	indicator.Stop()
 	shutdownTray()
 }
 
@@ -71,6 +74,7 @@ func (a *App) StartRecording() error {
 	err := a.engine.StartRecording()
 	if err == nil {
 		notify.RecordingStarted()
+		indicator.SetRecording(true)
 	}
 	return err
 }
@@ -82,6 +86,7 @@ func (a *App) StopAndProcess() ProcessResult {
 
 	transcript, refined, err := a.engine.StopAndProcess(a.ctx)
 	notify.RecordingDone()
+	indicator.SetRecording(false)
 	if err != nil {
 		slog.Error("StopAndProcess failed", "error", err)
 		return ProcessResult{Error: err.Error()}
