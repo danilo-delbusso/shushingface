@@ -1,3 +1,5 @@
+//go:build !windows
+
 package ipc
 
 import (
@@ -6,16 +8,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 func socketPath() string {
-	if runtime.GOOS == "windows" {
-		// Windows named pipes aren't supported via net.Listen("unix"),
-		// fall back to a temp file path (won't work — placeholder for future)
-		return `\\.\pipe\sussurro`
-	}
-	// Linux: prefer XDG_RUNTIME_DIR, macOS: use temp dir
 	dir := os.Getenv("XDG_RUNTIME_DIR")
 	if dir == "" {
 		dir = os.TempDir()
@@ -23,7 +18,7 @@ func socketPath() string {
 	return filepath.Join(dir, "sussurro.sock")
 }
 
-// SendToggle connects to the running Sussurro instance and sends a toggle signal.
+// SendToggle connects to the running sussurro instance and sends a toggle signal.
 func SendToggle() error {
 	conn, err := net.Dial("unix", socketPath())
 	if err != nil {
