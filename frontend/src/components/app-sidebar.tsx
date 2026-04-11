@@ -35,7 +35,6 @@ interface AppSidebarProps {
   onNavigate: (view: View) => void;
   configured: boolean;
   historyEnabled: boolean;
-  platform: { os: string; desktop: string } | null;
 }
 
 export function AppSidebar({
@@ -43,7 +42,6 @@ export function AppSidebar({
   onNavigate,
   configured,
   historyEnabled,
-  platform,
 }: AppSidebarProps) {
   const settingsOpen = view === "settings" || view === "prompt";
 
@@ -140,18 +138,7 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        {platform?.os === "linux" && (
-          <div className="px-2 py-3 text-center">
-            <p className="text-xs text-muted-foreground">
-              <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono">
-                Super+Ctrl+B
-              </kbd>{" "}
-              to toggle
-            </p>
-          </div>
-        )}
-      </SidebarFooter>
+      <SidebarFooter />
     </Sidebar>
   );
 }

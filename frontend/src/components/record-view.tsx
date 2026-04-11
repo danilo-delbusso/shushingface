@@ -11,7 +11,6 @@ interface RecordViewProps {
   isRecording: boolean;
   isProcessing: boolean;
   result: desktop.ProcessResult | null;
-  platform: { os: string; desktop: string } | null;
   onToggle: () => void;
   onNewRecording: () => void;
   onGoToSettings: () => void;
@@ -22,7 +21,6 @@ export function RecordView({
   isRecording,
   isProcessing,
   result,
-  platform,
   onToggle,
   onNewRecording,
   onGoToSettings,
@@ -122,13 +120,9 @@ export function RecordView({
             ? "Processing with AI..."
             : "Click to start recording"}
       </p>
-      {!isRecording && !isProcessing && platform?.os === "linux" && (
+      {!isRecording && !isProcessing && (
         <p className="text-xs text-muted-foreground/60">
-          or press{" "}
-          <kbd className="rounded border border-border bg-muted px-1 py-0.5 text-[10px] font-mono">
-            Super+Ctrl+B
-          </kbd>{" "}
-          from anywhere
+          or use your global shortcut from anywhere
         </p>
       )}
     </div>
