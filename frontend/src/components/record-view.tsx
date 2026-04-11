@@ -100,12 +100,12 @@ export function RecordView({
         type="button"
         onClick={onToggle}
         disabled={isProcessing}
-        className={`relative flex size-28 items-center justify-center rounded-full border-0 text-white transition-all duration-200 hover:scale-105 ${
+        className={`relative flex size-28 items-center justify-center rounded-full border-2 transition-all duration-200 hover:scale-105 ${
           isRecording
-            ? "bg-red-500 hover:bg-red-600"
+            ? "bg-red-500 border-red-500 text-white hover:bg-red-600"
             : isProcessing
-              ? "bg-muted cursor-wait"
-              : "bg-primary hover:bg-primary/90"
+              ? "bg-muted border-muted text-muted-foreground cursor-wait"
+              : "bg-secondary border-primary text-foreground hover:bg-accent"
         }`}
       >
         <Mic className="size-12" />

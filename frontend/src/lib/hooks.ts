@@ -4,6 +4,19 @@ import { EventsOn } from "../../wailsjs/runtime/runtime";
 import type { config, history, desktop } from "../../wailsjs/go/models";
 import { toast } from "sonner";
 
+export function useTheme(theme: string | undefined) {
+  useEffect(() => {
+    const root = document.documentElement;
+    const resolved =
+      theme === "system"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+        : theme || "dark";
+    root.classList.toggle("dark", resolved === "dark");
+  }, [theme]);
+}
+
 export function isConfigured(settings: config.Settings | null): boolean {
   if (!settings) return false;
   const provider = settings.providers?.[settings.transcriptionProviderId];

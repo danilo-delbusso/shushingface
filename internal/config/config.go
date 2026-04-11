@@ -29,6 +29,9 @@ type Settings struct {
 	// Refinement
 	SystemPrompt string `json:"systemPrompt"`
 
+	// Appearance
+	Theme string `json:"theme"` // "dark", "light", or "system"
+
 	// Preferences
 	GlobalHotkey        string `json:"globalHotkey"`
 	AutoCopy            bool   `json:"autoCopy"`
@@ -157,6 +160,7 @@ func DefaultSettings() *Settings {
 		RefinementProviderID:    "groq-default",
 		RefinementModel:         "llama-3.3-70b-versatile",
 		SystemPrompt:            DefaultSystemPrompt,
+		Theme:                   "dark",
 		GlobalHotkey:            "Ctrl+Shift+R",
 		AutoCopy:                true,
 		EnableHistory:           true,

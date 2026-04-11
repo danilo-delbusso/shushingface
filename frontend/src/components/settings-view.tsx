@@ -4,9 +4,13 @@ import {
   Bot,
   Keyboard,
   SlidersHorizontal,
+  Palette,
   Eye,
   EyeOff,
   AlertTriangle,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,6 +74,36 @@ export function SettingsView({
           </div>
         )}
 
+        {/* Theme */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Palette className="size-4" /> Appearance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              {([
+                { value: "light", icon: Sun, label: "Light" },
+                { value: "dark", icon: Moon, label: "Dark" },
+                { value: "system", icon: Monitor, label: "System" },
+              ] as const).map(({ value, icon: Icon, label }) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={draft.theme === value ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => update({ theme: value })}
+                >
+                  <Icon className="size-3.5" />
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* API Provider */}
         <Card>
           <CardHeader className="pb-3">
@@ -77,7 +111,7 @@ export function SettingsView({
               <Key className="size-4" /> API Provider
             </CardTitle>
             <CardDescription>
-              Sussurro uses Groq for fast speech-to-text.{" "}
+              sussurro uses Groq for fast speech-to-text.{" "}
               <button
                 type="button"
                 className="text-primary underline underline-offset-2 hover:text-primary/80"

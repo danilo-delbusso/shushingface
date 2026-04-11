@@ -7,13 +7,14 @@ import { RecordView } from "@/components/record-view";
 import { HistoryView } from "@/components/history-view";
 import { SettingsView } from "@/components/settings-view";
 import { PromptView } from "@/components/prompt-view";
-import { useSettings, useHistory, useRecording, isConfigured } from "@/lib/hooks";
+import { useSettings, useHistory, useRecording, useTheme, isConfigured } from "@/lib/hooks";
 
 function App() {
   const [view, setView] = useState<View>("home");
   const { settings, saveSettings } = useSettings();
   const { historyList, refresh: refreshHistory, clear: clearHistory } = useHistory();
   const configured = isConfigured(settings);
+  useTheme(settings?.theme);
 
   const { isRecording, isProcessing, result, setResult, toggle } =
     useRecording(configured, refreshHistory);

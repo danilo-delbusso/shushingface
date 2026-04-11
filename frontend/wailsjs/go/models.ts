@@ -23,6 +23,7 @@ export namespace config {
 	    refinementProviderId: string;
 	    refinementModel: string;
 	    systemPrompt: string;
+	    theme: string;
 	    globalHotkey: string;
 	    autoCopy: boolean;
 	    enableHistory: boolean;
@@ -42,6 +43,7 @@ export namespace config {
 	        this.refinementProviderId = source["refinementProviderId"];
 	        this.refinementModel = source["refinementModel"];
 	        this.systemPrompt = source["systemPrompt"];
+	        this.theme = source["theme"];
 	        this.globalHotkey = source["globalHotkey"];
 	        this.autoCopy = source["autoCopy"];
 	        this.enableHistory = source["enableHistory"];
