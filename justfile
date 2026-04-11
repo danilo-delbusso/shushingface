@@ -54,9 +54,13 @@ run-tui:
     go run cmd/sussurro/main.go
 
 # Runs the Wails Desktop application in development mode
-dev-desktop:
+dev:
     wails dev
 
 # Builds the Wails Desktop application binary
-build-desktop:
+build:
     wails build
+
+# Re-generates TypeScript bindings from Go structs
+bindings:
+    wails generate module
