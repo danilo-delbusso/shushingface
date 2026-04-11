@@ -76,7 +76,7 @@ func (m *Manager) GetHistory(limit, offset int) ([]Record, error) {
 	}
 	defer rows.Close()
 
-	var records []Record
+	records := []Record{}
 	for rows.Next() {
 		var r Record
 		if err := rows.Scan(&r.ID, &r.Timestamp, &r.RawTranscript, &r.RefinedMessage, &r.ActiveApp); err != nil {

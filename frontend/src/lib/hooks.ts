@@ -38,7 +38,7 @@ export function useHistory() {
 
   const refresh = useCallback(() => {
     AppBridge.GetHistory(50, 0)
-      .then(setHistoryList)
+      .then((items) => setHistoryList(items ?? []))
       .catch(() => setHistoryList([]));
   }, []);
 
