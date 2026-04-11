@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"codeberg.org/dbus/sussurro/internal/ai/factory"
 	"codeberg.org/dbus/sussurro/internal/config"
 	"codeberg.org/dbus/sussurro/internal/core"
@@ -35,11 +37,20 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	go NewTrayManager(a).Run()
 
-	// Global hotkey registration is disabled for now.
-	// golang.design/x/hotkey uses XGrabKey on Linux which triggers a fatal
-	// X11 BadAccess error if the key combo is already grabbed, killing the
-	// entire process. Needs a safer registration approach before re-enabling.
-	// See: https://github.com/nicxvan/systray/issues/1
+	if a.cfg.GlobalHotkey != "" {
+		osutil.InstallSafeX11ErrorHandler()
+		go func() {
+			triggerCh, err := osutil.RegisterHotkey(a.cfg.GlobalHotkey)
+			if err != nil {
+				slog.Warn("failed to register hotkey", "hotkey", a.cfg.GlobalHotkey, "error", err)
+				return
+			}
+			slog.Info("global hotkey registered", "hotkey", a.cfg.GlobalHotkey)
+			for range triggerCh {
+				wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
+			}
+		}()
+	}
 }
 
 // ProcessResult is the data transfer object for the frontend.
