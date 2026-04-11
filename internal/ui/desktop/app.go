@@ -12,6 +12,7 @@ import (
 	"codeberg.org/dbus/sussurro/internal/core"
 	"codeberg.org/dbus/sussurro/internal/history"
 	"codeberg.org/dbus/sussurro/internal/ipc"
+	"codeberg.org/dbus/sussurro/internal/notify"
 	"codeberg.org/dbus/sussurro/internal/osutil"
 )
 
@@ -67,15 +68,20 @@ func (a *App) Shutdown(_ context.Context) {
 
 // StartRecording triggers the engine to start capturing audio.
 func (a *App) StartRecording() error {
-	return a.engine.StartRecording()
+	err := a.engine.StartRecording()
+	if err == nil {
+		notify.RecordingStarted()
+	}
+	return err
 }
 
 // StopAndProcess stops recording, processes the audio, and saves the result.
 func (a *App) StopAndProcess() ProcessResult {
-	// Capture active window before processing
+	notify.RecordingProcessing()
 	activeApp := osutil.GetActiveWindowName()
 
 	transcript, refined, err := a.engine.StopAndProcess(a.ctx)
+	notify.RecordingDone()
 	if err != nil {
 		slog.Error("StopAndProcess failed", "error", err)
 		return ProcessResult{Error: err.Error()}
