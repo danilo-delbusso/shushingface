@@ -57,6 +57,11 @@ function App() {
               isRecording={isRecording}
               isProcessing={isProcessing}
               result={result}
+              activeProfile={
+                settings.refinementProfiles?.find(
+                  (p) => p.id === settings.activeProfileId,
+                ) ?? null
+              }
               onToggle={toggle}
               onNewRecording={() => setResult(null)}
               onGoToSettings={() => setView("ai")}

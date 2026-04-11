@@ -1,16 +1,24 @@
-import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp } from "lucide-react";
+import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp, Coffee, Briefcase, Zap, PenTool } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import type { desktop } from "../../wailsjs/go/models";
+import type { desktop, config } from "../../wailsjs/go/models";
+
+const profileIcons: Record<string, React.FC<{ className?: string }>> = {
+  coffee: Coffee,
+  briefcase: Briefcase,
+  zap: Zap,
+  "pen-tool": PenTool,
+};
 
 interface RecordViewProps {
   configured: boolean;
   isRecording: boolean;
   isProcessing: boolean;
   result: desktop.ProcessResult | null;
+  activeProfile: config.RefinementProfile | null;
   onToggle: () => void;
   onNewRecording: () => void;
   onGoToSettings: () => void;
@@ -21,6 +29,7 @@ export function RecordView({
   isRecording,
   isProcessing,
   result,
+  activeProfile,
   onToggle,
   onNewRecording,
   onGoToSettings,
@@ -94,8 +103,16 @@ export function RecordView({
     );
   }
 
+  const ProfileIcon = activeProfile ? profileIcons[activeProfile.icon] || PenTool : null;
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6">
+    <div className="relative flex flex-1 flex-col items-center justify-center gap-6">
+      {activeProfile && ProfileIcon && (
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
+          <ProfileIcon className="size-3.5" />
+          {activeProfile.name}
+        </div>
+      )}
       <button
         type="button"
         onClick={onToggle}

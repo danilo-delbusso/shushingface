@@ -88,6 +88,7 @@ func (a *App) StopAndProcess() ProcessResult {
 	prompt := ""
 	if p := a.cfg.ActiveProfile(); p != nil {
 		prompt = p.Prompt
+		slog.Info("using refinement profile", "id", p.ID, "name", p.Name, "model", p.Model)
 	}
 
 	transcript, refined, err := a.engine.StopAndProcess(a.ctx, prompt)
