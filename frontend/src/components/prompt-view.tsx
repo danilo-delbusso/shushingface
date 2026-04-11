@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Play, RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,20 @@ interface PromptViewProps {
 }
 
 export function PromptView({ settings, onSave }: PromptViewProps) {
-  const [draft, setDraft] = useState(settings.systemPrompt || "");
+  const [defaultPrompt, setDefaultPrompt] = useState("");
+  const [draft, setDraft] = useState("");
   const [sampleText, setSampleText] = useState("");
   const [testResult, setTestResult] = useState("");
   const [testing, setTesting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    AppBridge.GetDefaultPrompt().then((p) => {
+      setDefaultPrompt(p);
+      setDraft(settings.systemPrompt || p);
+      setLoaded(true);
+    });
+  }, [settings.systemPrompt]);
 
   const handleSave = () => {
     const updated = { ...settings, systemPrompt: draft };
@@ -32,8 +42,7 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
     onSave(updated as config.Settings);
   };
 
-  const handleReset = async () => {
-    const defaultPrompt = await AppBridge.GetDefaultPrompt();
+  const handleReset = () => {
     setDraft(defaultPrompt);
   };
 
@@ -58,7 +67,8 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
     }
   };
 
-  const hasChanges = draft !== (settings.systemPrompt || "");
+  const currentPrompt = settings.systemPrompt || defaultPrompt;
+  const hasChanges = loaded && draft !== currentPrompt;
 
   return (
     <ScrollArea className="flex-1">
