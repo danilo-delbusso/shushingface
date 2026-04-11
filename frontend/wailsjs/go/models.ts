@@ -26,6 +26,8 @@ export namespace config {
 	    globalHotkey: string;
 	    autoCopy: boolean;
 	    enableHistory: boolean;
+	    enableIndicator: boolean;
+	    enableNotifications: boolean;
 	    inputDeviceId?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -43,6 +45,8 @@ export namespace config {
 	        this.globalHotkey = source["globalHotkey"];
 	        this.autoCopy = source["autoCopy"];
 	        this.enableHistory = source["enableHistory"];
+	        this.enableIndicator = source["enableIndicator"];
+	        this.enableNotifications = source["enableNotifications"];
 	        this.inputDeviceId = source["inputDeviceId"];
 	    }
 	

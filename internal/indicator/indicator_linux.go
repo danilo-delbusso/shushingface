@@ -3,7 +3,10 @@
 package indicator
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
+	"image/png"
 	"log/slog"
 	"os"
 	"sync"
@@ -20,12 +23,27 @@ const (
 	itemPath     = "/StatusNotifierItem"
 )
 
+//go:embed icons/idle.png
+var idleIcon []byte
+
+//go:embed icons/recording.png
+var recordingIcon []byte
+
 // sniItem implements the StatusNotifierItem D-Bus interface.
 type sniItem struct {
 	mu        sync.RWMutex
 	conn      *dbus.Conn
 	busName   string
 	recording bool
+}
+
+func (s *sniItem) icon() []byte {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.recording {
+		return recordingIcon
+	}
+	return idleIcon
 }
 
 // D-Bus property getters (called by the panel)
@@ -49,15 +67,18 @@ func (s *sniItem) Get(iface, prop string) (dbus.Variant, *dbus.Error) {
 		}
 		return dbus.MakeVariant("Active"), nil
 	case "IconName":
-		return dbus.MakeVariant("audio-input-microphone"), nil
+		return dbus.MakeVariant(""), nil
+	case "IconPixmap":
+		return dbus.MakeVariant(iconPixmaps(idleIcon)), nil
 	case "AttentionIconName":
-		return dbus.MakeVariant("media-record"), nil
+		return dbus.MakeVariant(""), nil
+	case "AttentionIconPixmap":
+		return dbus.MakeVariant(iconPixmaps(recordingIcon)), nil
 	case "ToolTip":
 		title := "Sussurro — Ready"
 		if s.recording {
 			title = "Sussurro — Recording"
 		}
-		// ToolTip is (sa(iiay)ss) — icon_name, icon_data, title, description
 		return dbus.MakeVariant(struct {
 			IconName string
 			IconData []struct {
@@ -67,8 +88,7 @@ func (s *sniItem) Get(iface, prop string) (dbus.Variant, *dbus.Error) {
 			Title string
 			Desc  string
 		}{
-			IconName: "audio-input-microphone",
-			Title:    title,
+			Title: title,
 		}), nil
 	case "IconThemePath":
 		return dbus.MakeVariant(""), nil
@@ -84,7 +104,8 @@ func (s *sniItem) Get(iface, prop string) (dbus.Variant, *dbus.Error) {
 
 func (s *sniItem) GetAll(iface string) (map[string]dbus.Variant, *dbus.Error) {
 	props := []string{"Category", "Id", "Title", "Status", "IconName",
-		"AttentionIconName", "ToolTip", "IconThemePath", "Menu", "ItemIsMenu", "WindowId"}
+		"IconPixmap", "AttentionIconName", "AttentionIconPixmap",
+		"ToolTip", "IconThemePath", "Menu", "ItemIsMenu", "WindowId"}
 	result := make(map[string]dbus.Variant)
 	for _, p := range props {
 		v, _ := s.Get(iface, p)
@@ -93,29 +114,45 @@ func (s *sniItem) GetAll(iface string) (map[string]dbus.Variant, *dbus.Error) {
 	return result, nil
 }
 
-func (s *sniItem) Set(string, string, dbus.Variant) *dbus.Error {
-	return nil
+func (s *sniItem) Set(string, string, dbus.Variant) *dbus.Error { return nil }
+
+func (s *sniItem) Activate(x, y int32) *dbus.Error   { return nil }
+func (s *sniItem) SecondaryActivate(x, y int32) *dbus.Error { return nil }
+func (s *sniItem) Scroll(delta int32, orientation string) *dbus.Error { return nil }
+
+type iconPixmap struct {
+	Width, Height int32
+	Data          []byte
 }
 
-// Activate is called when the user clicks the indicator
-func (s *sniItem) Activate(x, y int32) *dbus.Error {
-	return nil
+func iconPixmaps(pngData []byte) []iconPixmap {
+	img, err := png.Decode(bytes.NewReader(pngData))
+	if err != nil {
+		return nil
+	}
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	argb := make([]byte, w*h*4)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			r, g, b, a := img.At(x+bounds.Min.X, y+bounds.Min.Y).RGBA()
+			off := (y*w + x) * 4
+			argb[off+0] = byte(a >> 8)
+			argb[off+1] = byte(r >> 8)
+			argb[off+2] = byte(g >> 8)
+			argb[off+3] = byte(b >> 8)
+		}
+	}
+	return []iconPixmap{{int32(w), int32(h), argb}}
 }
 
-func (s *sniItem) SecondaryActivate(x, y int32) *dbus.Error {
-	return nil
-}
-
-func (s *sniItem) Scroll(delta int32, orientation string) *dbus.Error {
-	return nil
-}
 
 var (
 	instance *sniItem
 	once     sync.Once
 )
 
-// Start registers a StatusNotifierItem with the panel. Call once at startup.
+// Start registers a StatusNotifierItem with the panel.
 func Start() {
 	once.Do(func() {
 		conn, err := dbus.SessionBus()
@@ -134,21 +171,18 @@ func Start() {
 		item := &sniItem{conn: conn, busName: busName}
 		instance = item
 
-		// Export the properties interface
 		conn.ExportMethodTable(map[string]interface{}{
 			"Get":    item.Get,
 			"GetAll": item.GetAll,
 			"Set":    item.Set,
 		}, itemPath, "org.freedesktop.DBus.Properties")
 
-		// Export SNI methods
 		conn.ExportMethodTable(map[string]interface{}{
 			"Activate":          item.Activate,
 			"SecondaryActivate": item.SecondaryActivate,
 			"Scroll":            item.Scroll,
 		}, itemPath, sniIface)
 
-		// Export introspection
 		node := &introspect.Node{
 			Name: itemPath,
 			Interfaces: []introspect.Interface{
@@ -175,12 +209,16 @@ func Start() {
 						{Name: "Title", Type: "s", Access: "read"},
 						{Name: "Status", Type: "s", Access: "read"},
 						{Name: "IconName", Type: "s", Access: "read"},
+						{Name: "IconPixmap", Type: "a(iiay)", Access: "read"},
 						{Name: "AttentionIconName", Type: "s", Access: "read"},
+						{Name: "AttentionIconPixmap", Type: "a(iiay)", Access: "read"},
 						{Name: "ToolTip", Type: "(sa(iiay)ss)", Access: "read"},
 						{Name: "Menu", Type: "o", Access: "read"},
 						{Name: "ItemIsMenu", Type: "b", Access: "read"},
 					},
 					Signals: []introspect.Signal{
+						{Name: "NewIcon"},
+						{Name: "NewAttentionIcon"},
 						{Name: "NewStatus", Args: []introspect.Arg{{Name: "status", Type: "s"}}},
 						{Name: "NewToolTip"},
 					},
@@ -189,7 +227,6 @@ func Start() {
 		}
 		conn.Export(introspect.NewIntrospectable(node), itemPath, "org.freedesktop.DBus.Introspectable")
 
-		// Register with the watcher
 		call := conn.Object(watcherDest, dbus.ObjectPath(watcherPath)).Call(
 			watcherIface+".RegisterStatusNotifierItem", 0, busName)
 		if call.Err != nil {
@@ -210,14 +247,14 @@ func SetRecording(recording bool) {
 	instance.recording = recording
 	instance.mu.Unlock()
 
-	// Signal the panel to re-read our status
-	instance.conn.Emit(itemPath, sniIface+".NewStatus", func() string {
-		if recording {
-			return "NeedsAttention"
-		}
-		return "Active"
-	}())
+	status := "Active"
+	if recording {
+		status = "NeedsAttention"
+	}
+	instance.conn.Emit(itemPath, sniIface+".NewStatus", status)
 	instance.conn.Emit(itemPath, sniIface+".NewToolTip")
+	instance.conn.Emit(itemPath, sniIface+".NewIcon")
+	instance.conn.Emit(itemPath, sniIface+".NewAttentionIcon")
 }
 
 // Stop cleans up the indicator.

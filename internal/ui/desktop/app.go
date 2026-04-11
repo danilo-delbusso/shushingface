@@ -40,7 +40,9 @@ func NewApp(engine *core.Engine, cfg *config.Settings, hist *history.Manager) *A
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	go NewTrayManager(a).Run()
-	indicator.Start()
+	if a.cfg.EnableIndicator {
+		indicator.Start()
+	}
 
 	// IPC listener: allows `sussurro --toggle` to trigger recording
 	cleanup, err := ipc.Listen(func() {
@@ -73,7 +75,9 @@ func (a *App) Shutdown(_ context.Context) {
 func (a *App) StartRecording() error {
 	err := a.engine.StartRecording()
 	if err == nil {
-		notify.RecordingStarted()
+		if a.cfg.EnableNotifications {
+			notify.RecordingStarted()
+		}
 		indicator.SetRecording(true)
 	}
 	return err
@@ -81,11 +85,15 @@ func (a *App) StartRecording() error {
 
 // StopAndProcess stops recording, processes the audio, and saves the result.
 func (a *App) StopAndProcess() ProcessResult {
-	notify.RecordingProcessing()
+	if a.cfg.EnableNotifications {
+		notify.RecordingProcessing()
+	}
 	activeApp := osutil.GetActiveWindowName()
 
 	transcript, refined, err := a.engine.StopAndProcess(a.ctx)
-	notify.RecordingDone()
+	if a.cfg.EnableNotifications {
+		notify.RecordingDone()
+	}
 	indicator.SetRecording(false)
 	if err != nil {
 		slog.Error("StopAndProcess failed", "error", err)

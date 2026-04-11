@@ -195,6 +195,34 @@ export function SettingsView({
                 onCheckedChange={(v) => update({ enableHistory: v })}
               />
             </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="indicator-toggle">Panel indicator</Label>
+                <p className="text-xs text-muted-foreground">
+                  Show a mic icon in the system panel bar
+                </p>
+              </div>
+              <Switch
+                id="indicator-toggle"
+                checked={draft.enableIndicator}
+                onCheckedChange={(v) => update({ enableIndicator: v })}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-toggle">Desktop notifications</Label>
+                <p className="text-xs text-muted-foreground">
+                  Show notifications when recording starts and stops
+                </p>
+              </div>
+              <Switch
+                id="notify-toggle"
+                checked={draft.enableNotifications}
+                onCheckedChange={(v) => update({ enableNotifications: v })}
+              />
+            </div>
           </CardContent>
         </Card>
 

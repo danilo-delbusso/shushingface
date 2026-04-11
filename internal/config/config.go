@@ -30,9 +30,11 @@ type Settings struct {
 	SystemPrompt string `json:"systemPrompt"`
 
 	// Preferences
-	GlobalHotkey  string `json:"globalHotkey"`
-	AutoCopy      bool   `json:"autoCopy"`
-	EnableHistory bool   `json:"enableHistory"` // Opt-in local history tracking
+	GlobalHotkey        string `json:"globalHotkey"`
+	AutoCopy            bool   `json:"autoCopy"`
+	EnableHistory       bool   `json:"enableHistory"`
+	EnableIndicator     bool   `json:"enableIndicator"`
+	EnableNotifications bool   `json:"enableNotifications"`
 
 	// Audio
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
@@ -158,5 +160,7 @@ func DefaultSettings() *Settings {
 		GlobalHotkey:            "Ctrl+Shift+R",
 		AutoCopy:                true,
 		EnableHistory:           true,
+		EnableIndicator:         true,
+		EnableNotifications:     false,
 	}
 }
