@@ -1,4 +1,5 @@
-import { History, Trash2 } from "lucide-react";
+import { History, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { history } from "../../wailsjs/go/models";
@@ -38,26 +39,39 @@ export function HistoryView({ items, onClear }: HistoryViewProps) {
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-2 pr-2">
             {items.map((item) => (
-              <div
-                key={item.id}
-                className="space-y-0.5 rounded-lg border bg-card px-3 py-2 text-card-foreground"
-              >
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>{new Date(item.timestamp).toLocaleString()}</span>
-                  {item.activeApp && (
-                    <span className="font-medium text-primary">
-                      {item.activeApp}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm">{item.refinedMessage}</p>
-                <p className="text-xs text-muted-foreground italic">
-                  &ldquo;{item.rawTranscript}&rdquo;
-                </p>
-              </div>
+              <HistoryItem key={item.id} item={item} />
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function HistoryItem({ item }: { item: history.Record }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="space-y-0.5 rounded-lg border bg-card px-3 py-2 text-card-foreground">
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>{new Date(item.timestamp).toLocaleString()}</span>
+        {item.activeApp && (
+          <span className="font-medium text-primary">{item.activeApp}</span>
+        )}
+      </div>
+      <p className="text-sm">{item.refinedMessage}</p>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {open ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+        transcript
+      </button>
+      {open && (
+        <p className="text-xs text-muted-foreground italic">
+          &ldquo;{item.rawTranscript}&rdquo;
+        </p>
       )}
     </div>
   );
