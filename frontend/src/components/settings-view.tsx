@@ -12,7 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { type config, type platform } from "../../wailsjs/go/models";
+import type { config, platform } from "../../wailsjs/go/models";
 
 interface SettingsViewProps {
   settings: config.Settings;

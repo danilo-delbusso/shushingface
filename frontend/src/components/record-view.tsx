@@ -94,8 +94,8 @@ export function RecordView({
       {hasResults && (
         <div className="flex-1 overflow-y-auto border-t">
           <div className="space-y-3 p-4 max-w-2xl mx-auto">
-            {results.map((result, i) => (
-              <ResultCard key={`${result.refined}-${i}`} result={result} />
+            {results.map((result) => (
+              <ResultCard key={`${result.refined}-${result.transcript}`} result={result} />
             ))}
           </div>
         </div>
