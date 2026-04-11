@@ -25,6 +25,11 @@ func NewEngine(recorder audio.Recorder, processor ai.Processor) *Engine {
 	}
 }
 
+// SetProcessor updates the AI backend implementation at runtime.
+func (e *Engine) SetProcessor(processor ai.Processor) {
+	e.processor = processor
+}
+
 // StartRecording signals the underlying audio device to begin capturing audio.
 func (e *Engine) StartRecording() error {
 	return e.recorder.Start()

@@ -36,11 +36,15 @@ func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
 	var transcriber ai.Processor
 	var err error
 	apiKey := resolveAPIKey(transProvider.APIKey, "GROQ_API_KEY")
-	switch transProvider.Name {
-	case "groq":
-		transcriber, err = groq.NewProcessor(apiKey, cfg.TranscriptionModel, "")
-	default:
-		return nil, fmt.Errorf("unsupported transcription provider: %s", transProvider.Name)
+	if apiKey == "" && transProvider.Name != "ollama" {
+		transcriber = &PlaceholderProcessor{Reason: "Transcription API key is missing. Please configure it in Settings."}
+	} else {
+		switch transProvider.Name {
+		case "groq":
+			transcriber, err = groq.NewProcessor(apiKey, cfg.TranscriptionModel, "")
+		default:
+			return nil, fmt.Errorf("unsupported transcription provider: %s", transProvider.Name)
+		}
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error initializing transcriber: %v", err)
@@ -54,11 +58,15 @@ func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
 
 	var refiner ai.Processor
 	apiKey = resolveAPIKey(refineProvider.APIKey, "GROQ_API_KEY")
-	switch refineProvider.Name {
-	case "groq":
-		refiner, err = groq.NewProcessor(apiKey, "", cfg.RefinementModel)
-	default:
-		return nil, fmt.Errorf("unsupported refinement provider: %s", refineProvider.Name)
+	if apiKey == "" && refineProvider.Name != "ollama" {
+		refiner = &PlaceholderProcessor{Reason: "Refinement API key is missing. Please configure it in Settings."}
+	} else {
+		switch refineProvider.Name {
+		case "groq":
+			refiner, err = groq.NewProcessor(apiKey, "", cfg.RefinementModel)
+		default:
+			return nil, fmt.Errorf("unsupported refinement provider: %s", refineProvider.Name)
+		}
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error initializing refiner: %v", err)
@@ -68,6 +76,20 @@ func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
 		transcriber: transcriber,
 		refiner:     refiner,
 	}, nil
+}
+
+// PlaceholderProcessor is used when a provider is not yet fully configured (e.g., missing API key).
+// It allows the application to start so the user can reach the Settings screen.
+type PlaceholderProcessor struct {
+	Reason string
+}
+
+func (p *PlaceholderProcessor) Transcribe(ctx context.Context, wavData []byte) (string, error) {
+	return "", fmt.Errorf(p.Reason)
+}
+
+func (p *PlaceholderProcessor) Refine(ctx context.Context, transcript, systemPrompt string) (string, error) {
+	return "", fmt.Errorf(p.Reason)
 }
 
 // resolveAPIKey falls back to environment variables for backward compatibility

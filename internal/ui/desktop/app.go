@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"codeberg.org/dbus/sussurro/internal/ai/factory"
 	"codeberg.org/dbus/sussurro/internal/config"
 	"codeberg.org/dbus/sussurro/internal/core"
 	"codeberg.org/dbus/sussurro/internal/history"
@@ -79,7 +80,13 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	if err == nil {
 		// Update the local reference
 		*a.cfg = newSettings
-		// Note: The AI Factory will need to be re-initialized if API keys change.
+
+		// Hot-reload the AI Processor based on new settings
+		newProcessor, factoryErr := factory.NewFromConfig(&newSettings)
+		if factoryErr != nil {
+			return fmt.Errorf("failed to reload AI processor: %v", factoryErr)
+		}
+		a.engine.SetProcessor(newProcessor)
 	}
 	return err
 }
