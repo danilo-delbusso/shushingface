@@ -54,7 +54,7 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, err
 	transReq := groqclient.AudioRequest{
 		FilePath: tmpFile.Name(),
 		Reader:   tmpFile,
-		Model:    p.transcriptionModel,
+		Model:    groqclient.AudioModel(p.transcriptionModel),
 	}
 
 	transcription, err := p.client.Transcribe(ctx, transReq)
@@ -67,7 +67,7 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, err
 
 func (p *processor) Refine(ctx context.Context, transcript string, systemPrompt string) (string, error) {
 	chatReq := groqclient.ChatCompletionRequest{
-		Model: p.refinementModel,
+		Model: groqclient.ChatModel(p.refinementModel),
 		Messages: []groqclient.ChatCompletionMessage{
 			{
 				Role:    "system",

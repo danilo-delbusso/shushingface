@@ -63,15 +63,7 @@ func parseHotkey(s string) ([]hotkey.Modifier, hotkey.Key, error) {
 	return modifiers, key, nil
 }
 
-var modMap = map[string]hotkey.Modifier{
-	"CTRL":  hotkey.ModCtrl,
-	"SHIFT": hotkey.ModShift,
-	"ALT":   hotkey.ModOption, // ModOption is Alt on Windows/Linux, Option on macOS
-	"CMD":   hotkey.ModCmd,    // ModCmd is Super/Windows key on Windows/Linux, Cmd on macOS
-	"WIN":   hotkey.ModCmd,
-	"SUPER": hotkey.ModCmd,
-}
-
+// keyMap provides a cross-platform mapping for common keys.
 var keyMap = map[string]hotkey.Key{
 	"A": hotkey.KeyA, "B": hotkey.KeyB, "C": hotkey.KeyC, "D": hotkey.KeyD,
 	"E": hotkey.KeyE, "F": hotkey.KeyF, "G": hotkey.KeyG, "H": hotkey.KeyH,
