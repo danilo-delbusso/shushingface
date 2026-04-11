@@ -11,7 +11,3 @@ shushing face records your voice, transcribes it with AI, rewrites it into clean
 - **history** — browse past transcriptions
 - **single instance** — `shushingface --toggle` to record from anywhere
 - **dark/light/system theme**
-
-## license
-
-[AGPL-3.0](LICENSE)
