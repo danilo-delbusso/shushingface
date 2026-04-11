@@ -60,7 +60,7 @@ func (s *sniItem) Get(iface, prop string) (dbus.Variant, *dbus.Error) {
 	case "Id":
 		return dbus.MakeVariant("sussurro"), nil
 	case "Title":
-		return dbus.MakeVariant("Sussurro"), nil
+		return dbus.MakeVariant("sussurro"), nil
 	case "Status":
 		if s.recording {
 			return dbus.MakeVariant("NeedsAttention"), nil
@@ -81,9 +81,9 @@ func (s *sniItem) Get(iface, prop string) (dbus.Variant, *dbus.Error) {
 		}
 		return dbus.MakeVariant(iconPixmaps(idleIcon)), nil
 	case "ToolTip":
-		title := "Sussurro — Ready"
+		title := "sussurro — Ready"
 		if s.recording {
-			title = "Sussurro — Recording"
+			title = "sussurro — Recording"
 		}
 		return dbus.MakeVariant(struct {
 			IconName string

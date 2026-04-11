@@ -70,7 +70,7 @@ func main() {
 	appLogger := logger.NewFileLogger(logPath)
 
 	err = wails.Run(&options.App{
-		Title:  "Sussurro",
+		Title:  "sussurro",
 		Width:  800,
 		Height: 600,
 		AssetServer: &assetserver.Options{

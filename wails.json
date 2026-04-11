@@ -8,12 +8,12 @@
   "frontend:dev:watcher": "bun run dev",
   "frontend:dev:serverUrl": "http://localhost:5173",
   "author": {
-    "name": "Sussurro Desktop",
+    "name": "sussurro",
     "email": ""
   },
   "info": {
-    "companyName": "Sussurro",
-    "productName": "Sussurro",
+    "companyName": "sussurro",
+    "productName": "sussurro",
     "productVersion": "1.0.0",
     "copyright": "Copyright 2026",
     "comments": "Local Speech Transpiler"

@@ -112,7 +112,7 @@ _install-shortcut:
           echo "Shortcut already registered (COSMIC)"
         else
           if [ -f "$file" ] && grep -q "Spawn" "$file"; then
-            sed -i 's/}$/    (\n        modifiers: [\n            Super,\n            Ctrl,\n        ],\n        key: "b",\n        description: Some("Sussurro: toggle recording"),\n    ): Spawn("sussurro --toggle"),\n}/' "$file"
+            sed -i 's/}$/    (\n        modifiers: [\n            Super,\n            Ctrl,\n        ],\n        key: "b",\n        description: Some("sussurro: toggle recording"),\n    ): Spawn("sussurro --toggle"),\n}/' "$file"
           else
             cat > "$file" << 'RON'
     {
@@ -122,7 +122,7 @@ _install-shortcut:
                 Ctrl,
             ],
             key: "b",
-            description: Some("Sussurro: toggle recording"),
+            description: Some("sussurro: toggle recording"),
         ): Spawn("sussurro --toggle"),
     }
     RON
@@ -134,7 +134,7 @@ _install-shortcut:
       GNOME*)
         path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/sussurro/"
         base="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$path"
-        gsettings set "$base" name "Sussurro" 2>/dev/null &&
+        gsettings set "$base" name "sussurro" 2>/dev/null &&
         gsettings set "$base" command "sussurro --toggle" 2>/dev/null &&
         gsettings set "$base" binding "<Super><Ctrl>b" 2>/dev/null &&
         existing=$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || echo "[]")

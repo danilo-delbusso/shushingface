@@ -29,12 +29,12 @@ func (t *TrayManager) Run() {
 
 func (t *TrayManager) onReady() {
 	systray.SetIcon(trayIcon)
-	systray.SetTitle("Sussurro")
-	systray.SetTooltip("Sussurro - Speech Transcription")
+	systray.SetTitle("sussurro")
+	systray.SetTooltip("sussurro - Speech Transcription")
 
 	mShow := systray.AddMenuItem("Show Window", "Show the main window")
 	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("Quit", "Exit Sussurro completely")
+	mQuit := systray.AddMenuItem("Quit", "Exit sussurro completely")
 
 	go func() {
 		for {
