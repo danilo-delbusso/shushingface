@@ -6,20 +6,24 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
-const socketName = "sussurro.sock"
-
 func socketPath() string {
+	if runtime.GOOS == "windows" {
+		// Windows named pipes aren't supported via net.Listen("unix"),
+		// fall back to a temp file path (won't work — placeholder for future)
+		return `\\.\pipe\sussurro`
+	}
+	// Linux: prefer XDG_RUNTIME_DIR, macOS: use temp dir
 	dir := os.Getenv("XDG_RUNTIME_DIR")
 	if dir == "" {
 		dir = os.TempDir()
 	}
-	return filepath.Join(dir, socketName)
+	return filepath.Join(dir, "sussurro.sock")
 }
 
 // SendToggle connects to the running Sussurro instance and sends a toggle signal.
-// Returns an error if the app isn't running.
 func SendToggle() error {
 	conn, err := net.Dial("unix", socketPath())
 	if err != nil {
@@ -31,11 +35,10 @@ func SendToggle() error {
 }
 
 // Listen starts a Unix socket server that calls onToggle whenever a toggle
-// signal is received. It removes any stale socket file on startup.
-// Returns a cleanup function to close the listener.
+// signal is received. Returns a cleanup function to close the listener.
 func Listen(onToggle func()) (func(), error) {
 	path := socketPath()
-	os.Remove(path) // clean up stale socket
+	os.Remove(path)
 
 	ln, err := net.Listen("unix", path)
 	if err != nil {
@@ -47,7 +50,7 @@ func Listen(onToggle func()) (func(), error) {
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
-				return // listener closed
+				return
 			}
 			n, _ := conn.Read(buf)
 			if string(buf[:n]) == "TOGGLE" {

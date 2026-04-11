@@ -1,3 +1,5 @@
+//go:build linux
+
 package notify
 
 import (
@@ -7,8 +9,8 @@ import (
 )
 
 const (
-	dest = "org.freedesktop.Notifications"
-	path = "/org/freedesktop/Notifications"
+	dest  = "org.freedesktop.Notifications"
+	npath = "/org/freedesktop/Notifications"
 	iface = "org.freedesktop.Notifications"
 )
 
@@ -33,7 +35,7 @@ func RecordingDone() {
 	if err != nil {
 		return
 	}
-	conn.Object(dest, dbus.ObjectPath(path)).Call(iface+".CloseNotification", 0, lastID)
+	conn.Object(dest, dbus.ObjectPath(npath)).Call(iface+".CloseNotification", 0, lastID)
 	lastID = 0
 }
 
@@ -44,20 +46,20 @@ func send(summary, body, icon string, timeout int32) {
 		return
 	}
 
-	call := conn.Object(dest, dbus.ObjectPath(path)).Call(
+	call := conn.Object(dest, dbus.ObjectPath(npath)).Call(
 		iface+".Notify",
 		0,
-		"Sussurro",     // app_name
-		lastID,         // replaces_id (0 = new, >0 = replace)
-		icon,           // app_icon
-		summary,        // summary
-		body,           // body
-		[]string{},     // actions
+		"Sussurro",
+		lastID,
+		icon,
+		summary,
+		body,
+		[]string{},
 		map[string]dbus.Variant{
-			"urgency":  dbus.MakeVariant(byte(0)), // low urgency
-			"resident": dbus.MakeVariant(true),     // keep after action
+			"urgency":  dbus.MakeVariant(byte(0)),
+			"resident": dbus.MakeVariant(true),
 		},
-		timeout, // expire_timeout (0 = persistent)
+		timeout,
 	)
 	if call.Err != nil {
 		slog.Debug("failed to send notification", "error", call.Err)
