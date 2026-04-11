@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, RotateCcw, Loader2 } from "lucide-react";
+import { Play, RotateCcw, Loader2, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,7 +23,8 @@ interface PromptViewProps {
 
 export function PromptView({ settings, onSave }: PromptViewProps) {
   const [defaultPrompt, setDefaultPrompt] = useState("");
-  const [draft, setDraft] = useState("");
+  const [draftPrompt, setDraftPrompt] = useState("");
+  const [draftModel, setDraftModel] = useState(settings.refinementModel);
   const [sampleText, setSampleText] = useState("");
   const [testResult, setTestResult] = useState("");
   const [testing, setTesting] = useState(false);
@@ -31,19 +33,21 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
   useEffect(() => {
     AppBridge.GetDefaultPrompt().then((p) => {
       setDefaultPrompt(p);
-      setDraft(settings.systemPrompt || p);
+      setDraftPrompt(settings.systemPrompt || p);
       setLoaded(true);
     });
   }, [settings.systemPrompt]);
 
   const handleSave = () => {
-    const updated = { ...settings, systemPrompt: draft };
-    // Use the config class to ensure proper serialization
-    onSave(updated as config.Settings);
+    onSave({
+      ...settings,
+      systemPrompt: draftPrompt,
+      refinementModel: draftModel,
+    } as config.Settings);
   };
 
   const handleReset = () => {
-    setDraft(defaultPrompt);
+    setDraftPrompt(defaultPrompt);
   };
 
   const handleTest = async () => {
@@ -54,7 +58,7 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
     setTesting(true);
     setTestResult("");
     try {
-      const res = await AppBridge.TestPrompt(sampleText, draft);
+      const res = await AppBridge.TestPrompt(sampleText, draftPrompt);
       if (res.error) {
         toast.error(res.error);
       } else {
@@ -68,11 +72,37 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
   };
 
   const currentPrompt = settings.systemPrompt || defaultPrompt;
-  const hasChanges = loaded && draft !== currentPrompt;
+  const hasChanges =
+    loaded &&
+    (draftPrompt !== currentPrompt ||
+      draftModel !== settings.refinementModel);
 
   return (
     <ScrollArea className="flex-1">
       <div className="space-y-4 p-6 max-w-2xl">
+        {/* Model */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Bot className="size-4" /> Refinement Model
+            </CardTitle>
+            <CardDescription>
+              The LLM that rewrites your raw transcript using the prompt below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="refine-model">Model</Label>
+              <Input
+                id="refine-model"
+                value={draftModel}
+                onChange={(e) => setDraftModel(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Prompt */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Refinement Prompt</CardTitle>
@@ -87,8 +117,8 @@ export function PromptView({ settings, onSave }: PromptViewProps) {
               <Label htmlFor="system-prompt">System Prompt</Label>
               <textarea
                 id="system-prompt"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                value={draftPrompt}
+                onChange={(e) => setDraftPrompt(e.target.value)}
                 rows={10}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                 placeholder="Enter your system prompt..."

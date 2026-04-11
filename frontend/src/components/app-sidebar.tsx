@@ -128,7 +128,7 @@ export function AppSidebar({
                           onClick={() => onNavigate("prompt")}
                         >
                           <MessageSquareText className="size-3.5" />
-                          <span>Prompt</span>
+                          <span>Refinement</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>

@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { config } from "../../wailsjs/go/models";
 
@@ -120,35 +120,25 @@ export function SettingsView({
           </CardContent>
         </Card>
 
-        {/* Models */}
+        {/* Transcription Model */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Bot className="size-4" /> Models
+              <Bot className="size-4" /> Transcription
             </CardTitle>
             <CardDescription>
-              Choose which models handle transcription and refinement.
+              The speech-to-text model that converts your audio to a raw
+              transcript.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="space-y-2">
-              <Label htmlFor="trans-model">Transcription Model</Label>
+              <Label htmlFor="trans-model">Model</Label>
               <Input
                 id="trans-model"
                 value={draft.transcriptionModel}
                 onChange={(e) =>
                   update({ transcriptionModel: e.target.value })
-                }
-              />
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <Label htmlFor="refine-model">Refinement Model</Label>
-              <Input
-                id="refine-model"
-                value={draft.refinementModel}
-                onChange={(e) =>
-                  update({ refinementModel: e.target.value })
                 }
               />
             </div>
