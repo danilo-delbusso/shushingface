@@ -98,7 +98,7 @@ install: build
     just _install-shortcut
     echo "Installed sussurro to {{prefix}}/bin/sussurro"
 
-# Register Ctrl+Shift+R shortcut in the current desktop environment
+# Register Super+Ctrl+R shortcut in the current desktop environment
 _install-shortcut:
     #!/bin/bash
     case "${XDG_CURRENT_DESKTOP:-}" in
@@ -109,18 +109,15 @@ _install-shortcut:
         if [ -f "$file" ] && grep -q "sussurro" "$file"; then
           echo "Shortcut already registered (COSMIC)"
         else
-          # Write a fresh custom shortcuts file with our entry
-          # If user had other custom shortcuts, we merge
           if [ -f "$file" ] && grep -q "Spawn" "$file"; then
-            # Append our entry before the closing brace
-            sed -i 's/}$/    (\n        modifiers: [\n            Ctrl,\n            Shift,\n        ],\n        key: "r",\n        description: Some("Sussurro: toggle recording"),\n    ): Spawn("sussurro --toggle"),\n}/' "$file"
+            sed -i 's/}$/    (\n        modifiers: [\n            Super,\n            Ctrl,\n        ],\n        key: "r",\n        description: Some("Sussurro: toggle recording"),\n    ): Spawn("sussurro --toggle"),\n}/' "$file"
           else
             cat > "$file" << 'RON'
     {
         (
             modifiers: [
+                Super,
                 Ctrl,
-                Shift,
             ],
             key: "r",
             description: Some("Sussurro: toggle recording"),
@@ -128,7 +125,7 @@ _install-shortcut:
     }
     RON
           fi
-          echo "Registered Ctrl+Shift+R shortcut (COSMIC)"
+          echo "Registered Super+Ctrl+R shortcut (COSMIC)"
           echo "Log out and back in, or restart cosmic-comp, for the shortcut to take effect"
         fi
         ;;
@@ -137,18 +134,17 @@ _install-shortcut:
         base="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$path"
         gsettings set "$base" name "Sussurro" 2>/dev/null &&
         gsettings set "$base" command "sussurro --toggle" 2>/dev/null &&
-        gsettings set "$base" binding "<Ctrl><Shift>r" 2>/dev/null &&
-        # Add to the list of custom keybindings
+        gsettings set "$base" binding "<Super><Ctrl>r" 2>/dev/null &&
         existing=$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || echo "[]")
         if ! echo "$existing" | grep -q "sussurro"; then
           new=$(echo "$existing" | sed "s/]/, '$path']/" | sed "s/\[, /[/")
           gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$new"
         fi &&
-        echo "Registered Ctrl+Shift+R shortcut (GNOME)" ||
+        echo "Registered Super+Ctrl+R shortcut (GNOME)" ||
         echo "Could not register GNOME shortcut (gsettings not available)"
         ;;
       *)
-        echo "Tip: bind 'sussurro --toggle' to Ctrl+Shift+R in your desktop settings"
+        echo "Tip: bind 'sussurro --toggle' to Super+Ctrl+R in your desktop settings"
         ;;
     esac
 
