@@ -5,8 +5,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar, type View } from "@/components/app-sidebar";
 import { RecordView } from "@/components/record-view";
 import { HistoryView } from "@/components/history-view";
+import { AiView } from "@/components/ai-view";
+import { AppearanceView } from "@/components/appearance-view";
 import { SettingsView } from "@/components/settings-view";
-import { PromptView } from "@/components/prompt-view";
 import { useSettings, useHistory, useRecording, useTheme, usePlatform, isConfigured } from "@/lib/hooks";
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
 
   useEffect(() => {
     if (settings && !isConfigured(settings)) {
-      setView("settings");
+      setView("ai");
     }
     if (settings && !settings.enableHistory && view === "history") {
       setView("home");
@@ -47,22 +48,28 @@ function App() {
               result={result}
               onToggle={toggle}
               onNewRecording={() => setResult(null)}
-              onGoToSettings={() => setView("settings")}
+              onGoToSettings={() => setView("ai")}
             />
           )}
           {view === "history" && (
             <HistoryView items={historyList} onClear={clearHistory} />
           )}
-          {view === "settings" && settings && (
-            <SettingsView
+          {view === "ai" && settings && (
+            <AiView
               settings={settings}
               configured={configured}
-              platform={platform}
               onSave={saveSettings}
             />
           )}
-          {view === "prompt" && settings && (
-            <PromptView settings={settings} onSave={saveSettings} />
+          {view === "appearance" && settings && (
+            <AppearanceView settings={settings} onSave={saveSettings} />
+          )}
+          {view === "general" && settings && (
+            <SettingsView
+              settings={settings}
+              platform={platform}
+              onSave={saveSettings}
+            />
           )}
         </SidebarInset>
       </SidebarProvider>

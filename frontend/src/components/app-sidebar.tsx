@@ -4,7 +4,8 @@ import {
   Settings,
   SlidersHorizontal,
   LogOut,
-  MessageSquareText,
+  Bot,
+  Palette,
   ChevronRight,
 } from "lucide-react";
 import {
@@ -31,7 +32,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Quit } from "../../wailsjs/runtime/runtime";
 import { Collapsible } from "radix-ui";
 
-export type View = "home" | "history" | "settings" | "prompt";
+export type View = "home" | "history" | "ai" | "appearance" | "general";
 
 interface AppSidebarProps {
   view: View;
@@ -46,7 +47,7 @@ export function AppSidebar({
   configured,
   historyEnabled,
 }: AppSidebarProps) {
-  const settingsOpen = view === "settings" || view === "prompt";
+  const settingsOpen = view === "ai" || view === "appearance" || view === "general";
 
   return (
     <Sidebar collapsible="none" variant="sidebar">
@@ -97,7 +98,7 @@ export function AppSidebar({
                 <SidebarMenuItem>
                   <Collapsible.Trigger asChild>
                     <SidebarMenuButton
-                      onClick={() => onNavigate("settings")}
+                      onClick={() => onNavigate("ai")}
                       isActive={settingsOpen}
                     >
                       <Settings className="size-4" />
@@ -117,20 +118,29 @@ export function AppSidebar({
                     <SidebarMenuSub>
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton
-                          isActive={view === "settings"}
-                          onClick={() => onNavigate("settings")}
+                          isActive={view === "ai"}
+                          onClick={() => onNavigate("ai")}
                         >
-                          <SlidersHorizontal className="size-3.5" />
-                          <span>General</span>
+                          <Bot className="size-3.5" />
+                          <span>AI</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton
-                          isActive={view === "prompt"}
-                          onClick={() => onNavigate("prompt")}
+                          isActive={view === "appearance"}
+                          onClick={() => onNavigate("appearance")}
                         >
-                          <MessageSquareText className="size-3.5" />
-                          <span>Refinement</span>
+                          <Palette className="size-3.5" />
+                          <span>Appearance</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          isActive={view === "general"}
+                          onClick={() => onNavigate("general")}
+                        >
+                          <SlidersHorizontal className="size-3.5" />
+                          <span>General</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>
