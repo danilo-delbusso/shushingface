@@ -2,6 +2,8 @@
 
 set shell := ["bash", "-c"]
 
+prefix := env("PREFIX", "/usr/local")
+
 default:
     @just --list
 
@@ -83,15 +85,27 @@ build-linux-tray:
 build-darwin:
     wails build
 
-# Install .desktop file and icon on Linux
-install-desktop:
+# --- Install & Uninstall ---
+
+# Install sussurro system-wide (binary + desktop entry + icon)
+install: build
     #!/bin/bash
-    mkdir -p ~/.local/share/applications
-    mkdir -p ~/.local/share/icons/hicolor/512x512/apps
-    cp build/linux/sussurro.desktop ~/.local/share/applications/
-    cp build/appicon.png ~/.local/share/icons/hicolor/512x512/apps/sussurro.png
-    update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
-    echo "Installed sussurro.desktop and icon"
+    set -e
+    install -Dm755 build/bin/sussurro "{{prefix}}/bin/sussurro"
+    install -Dm644 build/linux/sussurro.desktop "$HOME/.local/share/applications/sussurro.desktop"
+    install -Dm644 build/appicon.png "$HOME/.local/share/icons/hicolor/512x512/apps/sussurro.png"
+    update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+    echo "Installed sussurro to {{prefix}}/bin/sussurro"
+    echo "Tip: bind 'sussurro --toggle' to a keyboard shortcut in your desktop settings"
+
+# Remove sussurro
+uninstall:
+    #!/bin/bash
+    rm -f "{{prefix}}/bin/sussurro"
+    rm -f "$HOME/.local/share/applications/sussurro.desktop"
+    rm -f "$HOME/.local/share/icons/hicolor/512x512/apps/sussurro.png"
+    update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+    echo "Uninstalled sussurro"
 
 # Re-generates TypeScript bindings from Go structs
 bindings:
