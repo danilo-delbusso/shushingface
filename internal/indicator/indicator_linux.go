@@ -69,11 +69,17 @@ func (s *sniItem) Get(iface, prop string) (dbus.Variant, *dbus.Error) {
 	case "IconName":
 		return dbus.MakeVariant(""), nil
 	case "IconPixmap":
+		if s.recording {
+			return dbus.MakeVariant(iconPixmaps(recordingIcon)), nil
+		}
 		return dbus.MakeVariant(iconPixmaps(idleIcon)), nil
 	case "AttentionIconName":
 		return dbus.MakeVariant(""), nil
 	case "AttentionIconPixmap":
-		return dbus.MakeVariant(iconPixmaps(recordingIcon)), nil
+		if s.recording {
+			return dbus.MakeVariant(iconPixmaps(recordingIcon)), nil
+		}
+		return dbus.MakeVariant(iconPixmaps(idleIcon)), nil
 	case "ToolTip":
 		title := "Sussurro — Ready"
 		if s.recording {
@@ -257,10 +263,14 @@ func SetRecording(recording bool) {
 	instance.conn.Emit(itemPath, sniIface+".NewAttentionIcon")
 }
 
-// Stop cleans up the indicator.
+// Stop removes the indicator from the panel.
 func Stop() {
 	if instance == nil {
 		return
 	}
+	// Set status to Passive to hide from panel
+	instance.conn.Emit(itemPath, sniIface+".NewStatus", "Passive")
 	instance.conn.ReleaseName(instance.busName)
+	instance = nil
+	once = sync.Once{} // allow re-registration via Start()
 }

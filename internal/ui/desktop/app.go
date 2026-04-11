@@ -134,6 +134,14 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	if newSettings.SystemPrompt != "" {
 		a.engine.SetSystemPrompt(newSettings.SystemPrompt)
 	}
+
+	// Hot-toggle indicator
+	if newSettings.EnableIndicator && !a.cfg.EnableIndicator {
+		indicator.Start()
+	} else if !newSettings.EnableIndicator && a.cfg.EnableIndicator {
+		indicator.Stop()
+	}
+
 	*a.cfg = newSettings
 	return nil
 }
