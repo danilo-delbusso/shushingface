@@ -163,3 +163,18 @@ uninstall:
 # Re-generates TypeScript bindings from Go structs
 bindings:
     wails generate module
+
+# Generate THIRD_PARTY_LICENSES.md from go.mod (requires go-licenses)
+licenses:
+    #!/bin/bash
+    if ! command -v go-licenses &>/dev/null; then
+      echo "Installing go-licenses..."
+      go install github.com/google/go-licenses@latest
+    fi
+    echo "# Third-Party Licenses" > THIRD_PARTY_LICENSES.md
+    echo "" >> THIRD_PARTY_LICENSES.md
+    go-licenses csv ./... 2>/dev/null | grep -v "codeberg.org/dbus/shushingface" | sort | while IFS=, read -r mod url license; do
+      echo "- **$mod** — $license" >> THIRD_PARTY_LICENSES.md
+    done
+    echo "" >> THIRD_PARTY_LICENSES.md
+    echo "Generated $(grep -c '^\-' THIRD_PARTY_LICENSES.md) entries"

@@ -1,6 +1,10 @@
-# 🤫 shushing face
+<p align="center">
+  <img src="build/icon.svg" width="80" height="80" alt="shushing face">
+</p>
 
-speak naturally, get polished text.
+<h1 align="center">shushing face</h1>
+
+<p align="center">speak naturally, get polished text.</p>
 
 shushing face records your voice, transcribes it with AI, rewrites it into clean text, and types it right where your cursor is. no clipboard pollution.
 
