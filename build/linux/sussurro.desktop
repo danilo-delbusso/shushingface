@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Sussurro
+Comment=Local Speech Transcription
+Exec=sussurro
+Icon=sussurro
+Type=Application
+Categories=Utility;Audio;
+Keywords=speech;transcription;whisper;dictation;
+Terminal=false
+StartupNotify=true

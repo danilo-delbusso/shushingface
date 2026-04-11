@@ -55,11 +55,43 @@ run-tui:
 
 # Runs the Wails Desktop application in development mode
 dev:
-    wails dev -tags webkit2_41
+    #!/bin/bash
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        wails dev -tags webkit2_41
+    else
+        wails dev
+    fi
 
-# Builds the Wails Desktop application binary
+# Platform-aware build (auto-detects OS)
 build:
+    #!/bin/bash
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        wails build -tags webkit2_41
+    else
+        wails build
+    fi
+
+# Build for Linux explicitly
+build-linux:
     wails build -tags webkit2_41
+
+# Build for Linux with system tray support (requires libayatana-appindicator3-dev)
+build-linux-tray:
+    wails build -tags "webkit2_41 systray"
+
+# Build for macOS explicitly
+build-darwin:
+    wails build
+
+# Install .desktop file and icon on Linux
+install-desktop:
+    #!/bin/bash
+    mkdir -p ~/.local/share/applications
+    mkdir -p ~/.local/share/icons/hicolor/512x512/apps
+    cp build/linux/sussurro.desktop ~/.local/share/applications/
+    cp build/appicon.png ~/.local/share/icons/hicolor/512x512/apps/sussurro.png
+    update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
+    echo "Installed sussurro.desktop and icon"
 
 # Re-generates TypeScript bindings from Go structs
 bindings:
