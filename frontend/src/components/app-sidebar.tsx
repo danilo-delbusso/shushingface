@@ -27,17 +27,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Quit } from "../../wailsjs/runtime/runtime";
 import { Collapsible } from "radix-ui";
 
@@ -154,31 +144,18 @@ export function AppSidebar({
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Dialog>
-              <DialogTrigger asChild>
+            <ConfirmDialog
+              trigger={
                 <SidebarMenuButton className="text-muted-foreground">
                   <LogOut className="size-4" />
                   <span>Quit</span>
                 </SidebarMenuButton>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Quit shushing face?</DialogTitle>
-                  <DialogDescription>
-                    The app will close completely and stop running in the
-                    background.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button variant="destructive" onClick={() => Quit()}>
-                    Quit
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              }
+              title="Quit shushing face?"
+              description="The app will close completely and stop running in the background."
+              confirmLabel="Quit"
+              onConfirm={() => Quit()}
+            />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

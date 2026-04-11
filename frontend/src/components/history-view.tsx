@@ -1,17 +1,7 @@
-import { useState } from "react";
 import { History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { history } from "../../wailsjs/go/models";
 
 interface HistoryViewProps {
@@ -20,44 +10,23 @@ interface HistoryViewProps {
 }
 
 export function HistoryView({ items, onClear }: HistoryViewProps) {
-  const [open, setOpen] = useState(false);
-
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">History</h2>
         {items.length > 0 && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
+          <ConfirmDialog
+            trigger={
               <Button variant="destructive" size="sm">
                 <Trash2 className="size-3.5" />
                 Clear All
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Clear all history?</DialogTitle>
-                <DialogDescription>
-                  This will permanently delete all transcription records. This
-                  action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    onClear();
-                    setOpen(false);
-                  }}
-                >
-                  Delete All
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            }
+            title="Clear all history?"
+            description="This will permanently delete all transcription records. This action cannot be undone."
+            confirmLabel="Delete All"
+            onConfirm={onClear}
+          />
         )}
       </div>
 
