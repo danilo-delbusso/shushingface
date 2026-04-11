@@ -23,6 +23,14 @@ export function isConfigured(settings: config.Settings | null): boolean {
   return Boolean(provider?.apiKey);
 }
 
+export function usePlatform() {
+  const [platform, setPlatform] = useState<desktop.PlatformInfo | null>(null);
+  useEffect(() => {
+    AppBridge.GetPlatform().then(setPlatform);
+  }, []);
+  return platform;
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<config.Settings | null>(null);
 

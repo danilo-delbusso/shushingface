@@ -14,6 +14,10 @@ export function GetHistory(arg1, arg2) {
   return window['go']['desktop']['App']['GetHistory'](arg1, arg2);
 }
 
+export function GetPlatform() {
+  return window['go']['desktop']['App']['GetPlatform']();
+}
+
 export function GetSettings() {
   return window['go']['desktop']['App']['GetSettings']();
 }

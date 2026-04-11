@@ -75,6 +75,20 @@ export namespace config {
 
 export namespace desktop {
 	
+	export class PlatformInfo {
+	    os: string;
+	    desktop: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlatformInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.os = source["os"];
+	        this.desktop = source["desktop"];
+	    }
+	}
 	export class ProcessResult {
 	    transcript: string;
 	    refined: string;

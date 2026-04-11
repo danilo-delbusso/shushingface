@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"runtime"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -110,6 +112,21 @@ func (a *App) StopAndProcess() ProcessResult {
 	return ProcessResult{
 		Transcript: transcript,
 		Refined:    refined,
+	}
+}
+
+// PlatformInfo describes the runtime environment for the frontend.
+type PlatformInfo struct {
+	OS      string `json:"os"`      // "linux", "darwin", "windows"
+	Desktop string `json:"desktop"` // "COSMIC", "GNOME", "KDE", etc. (linux only)
+}
+
+// GetPlatform returns the current OS and desktop environment.
+func (a *App) GetPlatform() PlatformInfo {
+	desktop := os.Getenv("XDG_CURRENT_DESKTOP")
+	return PlatformInfo{
+		OS:      runtime.GOOS,
+		Desktop: desktop,
 	}
 }
 

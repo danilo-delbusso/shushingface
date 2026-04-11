@@ -24,17 +24,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { config } from "../../wailsjs/go/models";
+import { config, type desktop } from "../../wailsjs/go/models";
 
 interface SettingsViewProps {
   settings: config.Settings;
   configured: boolean;
+  platform: desktop.PlatformInfo | null;
   onSave: (settings: config.Settings) => void;
 }
 
 export function SettingsView({
   settings,
   configured,
+  platform,
   onSave,
 }: SettingsViewProps) {
   const [draft, setDraft] = useState(settings);
@@ -184,13 +186,7 @@ export function SettingsView({
             <CardTitle className="flex items-center gap-2 text-sm">
               <Keyboard className="size-4" /> Shortcuts
             </CardTitle>
-            <CardDescription>
-              Set a global hotkey in your desktop settings to run{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
-                sussurro --toggle
-              </code>{" "}
-              and it will toggle recording.
-            </CardDescription>
+            <ShortcutGuide platform={platform} />
           </CardHeader>
         </Card>
 
@@ -265,5 +261,85 @@ export function SettingsView({
         </Button>
       </form>
     </div>
+  );
+}
+
+function ShortcutGuide({
+  platform,
+}: { platform: desktop.PlatformInfo | null }) {
+  if (!platform) return null;
+
+  // macOS / Windows: will show a native picker in the future
+  if (platform.os === "darwin") {
+    return (
+      <CardDescription>
+        Global shortcut support for macOS is coming soon.
+      </CardDescription>
+    );
+  }
+  if (platform.os === "windows") {
+    return (
+      <CardDescription>
+        Global shortcut support for Windows is coming soon.
+      </CardDescription>
+    );
+  }
+
+  // Linux — instructions vary by desktop
+  const command = (
+    <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+      sussurro --toggle
+    </code>
+  );
+
+  const desktop = platform.desktop?.toUpperCase() || "";
+
+  if (desktop.includes("COSMIC")) {
+    return (
+      <CardDescription className="space-y-2">
+        <p>
+          Open <strong>Settings → Keyboard → Custom Shortcuts</strong> and add a
+          new shortcut that runs {command}
+        </p>
+        <p className="text-xs opacity-70">
+          If you ran{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+            just install
+          </code>
+          , <strong>Super+Ctrl+B</strong> is already registered.
+        </p>
+      </CardDescription>
+    );
+  }
+
+  if (desktop.includes("GNOME")) {
+    return (
+      <CardDescription className="space-y-2">
+        <p>
+          Open <strong>Settings → Keyboard → Custom Shortcuts</strong> and add a
+          new shortcut that runs {command}
+        </p>
+      </CardDescription>
+    );
+  }
+
+  if (desktop.includes("KDE") || desktop.includes("PLASMA")) {
+    return (
+      <CardDescription className="space-y-2">
+        <p>
+          Open <strong>System Settings → Shortcuts → Custom Shortcuts</strong>{" "}
+          and add a new command that runs {command}
+        </p>
+      </CardDescription>
+    );
+  }
+
+  // Sway, Hyprland, i3, or unknown
+  return (
+    <CardDescription className="space-y-2">
+      <p>
+        Add a keybinding in your compositor config that runs {command}
+      </p>
+    </CardDescription>
   );
 }
