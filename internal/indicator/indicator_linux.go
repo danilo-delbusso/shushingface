@@ -161,12 +161,21 @@ var (
 // Start registers a StatusNotifierItem with the panel.
 func Start() {
 	once.Do(func() {
-		conn, err := dbus.SessionBus()
+		conn, err := dbus.SessionBusPrivate()
 		if err != nil {
 			slog.Debug("indicator: no session bus", "error", err)
 			return
 		}
-
+		if err = conn.Auth(nil); err != nil {
+			conn.Close()
+			slog.Debug("indicator: auth failed", "error", err)
+			return
+		}
+		if err = conn.Hello(); err != nil {
+			conn.Close()
+			slog.Debug("indicator: hello failed", "error", err)
+			return
+		}
 		busName := fmt.Sprintf("org.kde.StatusNotifierItem-%d-1", os.Getpid())
 		reply, err := conn.RequestName(busName, dbus.NameFlagDoNotQueue)
 		if err != nil || reply != dbus.RequestNameReplyPrimaryOwner {
@@ -263,14 +272,13 @@ func SetRecording(recording bool) {
 	instance.conn.Emit(itemPath, sniIface+".NewAttentionIcon")
 }
 
-// Stop removes the indicator from the panel.
+// Stop removes the indicator from the panel by closing the private D-Bus connection.
+// The watcher detects the name vanishing and removes the icon.
 func Stop() {
 	if instance == nil {
 		return
 	}
-	// Set status to Passive to hide from panel
-	instance.conn.Emit(itemPath, sniIface+".NewStatus", "Passive")
-	instance.conn.ReleaseName(instance.busName)
+	instance.conn.Close()
 	instance = nil
-	once = sync.Once{} // allow re-registration via Start()
+	once = sync.Once{}
 }
