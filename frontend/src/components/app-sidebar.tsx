@@ -49,8 +49,9 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="none" variant="sidebar">
-      <SidebarHeader className="flex items-center justify-center py-4">
-        <span className="text-xl font-bold text-primary">Sussurro</span>
+      <SidebarHeader className="flex items-center justify-center gap-2 py-4">
+        <img src="/appicon.png" alt="Sussurro" className="size-8 rounded-md" />
+        <span className="text-lg font-bold text-primary">Sussurro</span>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
