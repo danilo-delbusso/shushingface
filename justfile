@@ -55,11 +55,11 @@ run-tui:
 
 # Runs the Wails Desktop application in development mode
 dev:
-    wails dev
+    wails dev -tags webkit2_41
 
 # Builds the Wails Desktop application binary
 build:
-    wails build
+    wails build -tags webkit2_41
 
 # Re-generates TypeScript bindings from Go structs
 bindings:
