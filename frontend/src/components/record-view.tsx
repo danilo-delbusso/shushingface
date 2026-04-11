@@ -30,7 +30,7 @@ export function RecordView({
   if (!configured) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <AlertTriangle className="size-12 text-yellow-500" />
+        <AlertTriangle className="size-12 text-amber-500" />
         <h2 className="text-xl font-semibold">Setup Required</h2>
         <p className="max-w-sm text-muted-foreground">
           Configure your API key before you can start transcribing.

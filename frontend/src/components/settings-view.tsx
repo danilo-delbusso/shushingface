@@ -64,7 +64,7 @@ export function SettingsView({
     <div className="flex-1 overflow-y-auto">
       <form onSubmit={handleSubmit} className="space-y-4 p-6 max-w-2xl">
         {!configured && (
-          <div className="flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-500">
+          <div className="flex items-center gap-3 rounded-lg border border-amber-600/30 bg-amber-600/10 p-3 text-sm text-amber-500">
             <AlertTriangle className="size-4 shrink-0" />
             Add your API key to get started.
           </div>
