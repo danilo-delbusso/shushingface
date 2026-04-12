@@ -117,7 +117,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
             </div>
 
             {/* API key */}
-            <div className="space-y-2">
+            <div className="w-full space-y-2">
               {preset && (
                 <button
                   type="button"
@@ -127,7 +127,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                   {preset.keyUrlLabel}
                 </button>
               )}
-              <div className="flex">
+              <div className="flex w-full">
                 <Input
                   type={showKey ? "text" : "password"}
                   value={apiKey}
