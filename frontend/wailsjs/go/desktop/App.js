@@ -6,6 +6,10 @@ export function ClearHistory() {
   return window['go']['desktop']['App']['ClearHistory']();
 }
 
+export function GetDefaultBuiltInRules() {
+  return window['go']['desktop']['App']['GetDefaultBuiltInRules']();
+}
+
 export function GetDefaultProfiles() {
   return window['go']['desktop']['App']['GetDefaultProfiles']();
 }
@@ -28,6 +32,14 @@ export function GetPlatform() {
 
 export function GetSettings() {
   return window['go']['desktop']['App']['GetSettings']();
+}
+
+export function ListModels() {
+  return window['go']['desktop']['App']['ListModels']();
+}
+
+export function ListProviders() {
+  return window['go']['desktop']['App']['ListProviders']();
 }
 
 export function SaveSettings(arg1) {

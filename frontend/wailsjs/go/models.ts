@@ -1,33 +1,52 @@
+export namespace ai {
+
+	export class ModelInfo {
+	    id: string;
+	    name: string;
+	    category: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ModelInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.category = source["category"];
+	    }
+	}
+	export class ProviderInfo {
+	    id: string;
+	    displayName: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ProviderInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.displayName = source["displayName"];
+	    }
+	}
+
+}
+
 export namespace config {
-	
+
 	export class FewShotExample {
 	    input: string;
 	    output: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new FewShotExample(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.input = source["input"];
 	        this.output = source["output"];
-	    }
-	}
-	export class ProviderConfig {
-	    name: string;
-	    apiKey: string;
-	    baseUrl: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ProviderConfig(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.apiKey = source["apiKey"];
-	        this.baseUrl = source["baseUrl"];
 	    }
 	}
 	export class RefinementProfile {
@@ -39,11 +58,11 @@ export namespace config {
 	    examples?: FewShotExample[];
 	    temperature?: number;
 	    topP?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RefinementProfile(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -55,7 +74,7 @@ export namespace config {
 	        this.temperature = source["temperature"];
 	        this.topP = source["topP"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -75,15 +94,15 @@ export namespace config {
 		}
 	}
 	export class Settings {
-	    providers: Record<string, ProviderConfig>;
-	    transcriptionProviderId: string;
+	    providerId: string;
+	    providerApiKey: string;
+	    providerBaseUrl?: string;
 	    transcriptionModel: string;
-	    refinementProviderId: string;
+	    refinementModel: string;
 	    refinementProfiles: RefinementProfile[];
 	    activeProfileId: string;
 	    globalRules?: string;
-	    systemPrompt?: string;
-	    refinementModel?: string;
+	    builtInRules?: string;
 	    setupComplete: boolean;
 	    theme: string;
 	    autoPaste: boolean;
@@ -92,22 +111,22 @@ export namespace config {
 	    enableIndicator: boolean;
 	    enableNotifications: boolean;
 	    inputDeviceId?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.providers = this.convertValues(source["providers"], ProviderConfig, true);
-	        this.transcriptionProviderId = source["transcriptionProviderId"];
+	        this.providerId = source["providerId"];
+	        this.providerApiKey = source["providerApiKey"];
+	        this.providerBaseUrl = source["providerBaseUrl"];
 	        this.transcriptionModel = source["transcriptionModel"];
-	        this.refinementProviderId = source["refinementProviderId"];
+	        this.refinementModel = source["refinementModel"];
 	        this.refinementProfiles = this.convertValues(source["refinementProfiles"], RefinementProfile);
 	        this.activeProfileId = source["activeProfileId"];
 	        this.globalRules = source["globalRules"];
-	        this.systemPrompt = source["systemPrompt"];
-	        this.refinementModel = source["refinementModel"];
+	        this.builtInRules = source["builtInRules"];
 	        this.setupComplete = source["setupComplete"];
 	        this.theme = source["theme"];
 	        this.autoPaste = source["autoPaste"];
@@ -117,7 +136,7 @@ export namespace config {
 	        this.enableNotifications = source["enableNotifications"];
 	        this.inputDeviceId = source["inputDeviceId"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -140,15 +159,15 @@ export namespace config {
 }
 
 export namespace desktop {
-	
+
 	export class PasteStatus {
 	    available: boolean;
 	    installCmd: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PasteStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.available = source["available"];
@@ -159,11 +178,11 @@ export namespace desktop {
 	    transcript: string;
 	    refined: string;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ProcessResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.transcript = source["transcript"];
@@ -175,7 +194,7 @@ export namespace desktop {
 }
 
 export namespace history {
-	
+
 	export class Record {
 	    id: number;
 	    // Go type: time
@@ -183,11 +202,11 @@ export namespace history {
 	    rawTranscript: string;
 	    refinedMessage: string;
 	    activeApp: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Record(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -196,7 +215,7 @@ export namespace history {
 	        this.refinedMessage = source["refinedMessage"];
 	        this.activeApp = source["activeApp"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -219,17 +238,17 @@ export namespace history {
 }
 
 export namespace platform {
-	
+
 	export class Info {
 	    os: string;
 	    displayServer: string;
 	    desktop: string;
 	    packageManager: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Info(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.os = source["os"];
@@ -240,4 +259,3 @@ export namespace platform {
 	}
 
 }
-

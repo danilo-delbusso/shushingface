@@ -17,21 +17,15 @@ interface WelcomeWizardProps {
 
 export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   const [step, setStep] = useState(0);
-  const [apiKey, setApiKey] = useState(
-    settings.providers?.[settings.transcriptionProviderId]?.apiKey ?? "",
-  );
+  const [apiKey, setApiKey] = useState(settings.providerApiKey ?? "");
   const [showKey, setShowKey] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState("professional");
 
   const finish = () => {
-    const providerId = settings.transcriptionProviderId;
     onComplete(
       config.Settings.createFrom({
         ...settings,
-        providers: {
-          ...settings.providers,
-          [providerId]: { ...settings.providers[providerId], apiKey },
-        },
+        providerApiKey: apiKey,
         activeProfileId: selectedProfile,
         setupComplete: true,
       }),

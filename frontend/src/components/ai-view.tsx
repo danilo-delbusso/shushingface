@@ -2,10 +2,7 @@ import { useState } from "react";
 import {
   Play,
   Loader2,
-  Key,
   Bot,
-  Eye,
-  EyeOff,
   AlertTriangle,
   Coffee,
   Briefcase,
@@ -31,21 +28,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
-import { config } from "../../wailsjs/go/models";
-
-const refinementModels = [
-  { id: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout 17B", description: "Fast, best default" },
-  { id: "qwen/qwen3-32b", label: "Qwen 3 32B", description: "Strong instruction following" },
-  { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B", description: "Natural text output" },
-  { id: "moonshotai/kimi-k2-instruct", label: "Kimi K2", description: "Most capable" },
-  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", description: "Legacy, slower" },
-  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B", description: "Fastest, least capable" },
-];
+import type { config, ai } from "../../wailsjs/go/models";
 
 const iconMap: Record<string, React.FC<{ className?: string }>> = {
   coffee: Coffee,
@@ -54,47 +51,140 @@ const iconMap: Record<string, React.FC<{ className?: string }>> = {
   "pen-tool": PenTool,
 };
 
+// ──────────────────────────────────────────────────
+// Model selector shared by transcription, refinement, and per-profile
+// ──────────────────────────────────────────────────
+
+function ModelSelect({
+  value,
+  onChange,
+  models,
+  allowDefault,
+  defaultLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  models: ai.ModelInfo[];
+  allowDefault?: boolean;
+  defaultLabel?: string;
+}) {
+  const [custom, setCustom] = useState(false);
+  const knownIds = new Set(models.map((m) => m.id));
+  const isCustomValue = value && !knownIds.has(value) && value !== "";
+
+  if (custom || (isCustomValue && value !== "")) {
+    return (
+      <div className="flex gap-1.5">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="model-id..."
+          className="text-xs"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 text-xs"
+          onClick={() => setCustom(false)}
+        >
+          List
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-1.5">
+      <Select value={value || "__default__"} onValueChange={(v) => onChange(v === "__default__" ? "" : v)}>
+        <SelectTrigger className="text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {allowDefault && (
+            <>
+              <SelectItem value="__default__" className="text-xs">
+                {defaultLabel ?? "Use global default"}
+              </SelectItem>
+              <SelectSeparator />
+            </>
+          )}
+          {models.length > 0 ? (
+            <SelectGroup>
+              <SelectLabel>Available</SelectLabel>
+              {models.map((m) => (
+                <SelectItem key={m.id} value={m.id} className="text-xs">
+                  {m.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ) : (
+            <SelectGroup>
+              <SelectLabel>No models loaded</SelectLabel>
+            </SelectGroup>
+          )}
+        </SelectContent>
+      </Select>
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 text-xs"
+        onClick={() => setCustom(true)}
+      >
+        Custom
+      </Button>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────
+// Main component
+// ──────────────────────────────────────────────────
+
 interface AiViewProps {
   settings: config.Settings;
   configured: boolean;
   onSave: (settings: config.Settings) => void;
+  transcriptionModels: ai.ModelInfo[];
+  chatModels: ai.ModelInfo[];
 }
 
-export function AiView({ settings, configured, onSave }: AiViewProps) {
-  const [showKey, setShowKey] = useState(false);
-  const [apiKey, setApiKey] = useState(
-    settings.providers?.[settings.transcriptionProviderId]?.apiKey ?? "",
-  );
+export function AiView({
+  settings,
+  configured,
+  onSave,
+  transcriptionModels,
+  chatModels,
+}: AiViewProps) {
   const [transModel, setTransModel] = useState(settings.transcriptionModel);
+  const [refModel, setRefModel] = useState(settings.refinementModel);
   const [sampleText, setSampleText] = useState("");
   const [testResult, setTestResult] = useState("");
   const [testing, setTesting] = useState(false);
   const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState<string | null>(null);
+  const [globalAdvancedOpen, setGlobalAdvancedOpen] = useState(false);
   const [draftProfiles, setDraftProfiles] = useState(
     settings.refinementProfiles ?? [],
   );
   const [activeId, setActiveId] = useState(settings.activeProfileId);
   const [globalRules, setGlobalRules] = useState(settings.globalRules ?? "");
+  const [builtInRules, setBuiltInRules] = useState(settings.builtInRules ?? "");
 
   const saveAll = (
     profiles?: typeof draftProfiles,
     newActiveId?: string,
   ) => {
-    const providerId = settings.transcriptionProviderId;
     const p = profiles ?? draftProfiles;
     const a = newActiveId ?? activeId;
     onSave(
       config.Settings.createFrom({
         ...settings,
-        providers: {
-          ...settings.providers,
-          [providerId]: { ...settings.providers[providerId], apiKey },
-        },
         transcriptionModel: transModel,
+        refinementModel: refModel,
         refinementProfiles: p,
         activeProfileId: a,
         globalRules,
+        builtInRules: builtInRules || undefined,
       }),
     );
   };
@@ -105,7 +195,9 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
   ) => {
     setDraftProfiles((prev) =>
       prev.map((p) =>
-        p.id === id ? config.RefinementProfile.createFrom({ ...p, ...patch }) : p,
+        p.id === id
+          ? config.RefinementProfile.createFrom({ ...p, ...patch })
+          : p,
       ),
     );
   };
@@ -128,7 +220,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
       id,
       name: "New Style",
       icon: "pen-tool",
-      model: draftProfiles[0]?.model ?? "llama-3.3-70b-versatile",
+      model: "",
       prompt: "",
     });
     const updated = [...draftProfiles, newProfile];
@@ -144,12 +236,12 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
   const restoreDefaultProfiles = async () => {
     const defaults = await AppBridge.GetDefaultProfiles();
     const defaultIds = new Set(defaults.map((d) => d.id));
-    // Keep custom profiles, replace built-in ones with fresh defaults.
     const custom = draftProfiles.filter((p) => !defaultIds.has(p.id));
     const updated = [...defaults, ...custom];
     setDraftProfiles(updated);
-    // If active profile was a built-in, keep it active; otherwise leave as is.
-    const newActive = defaultIds.has(activeId) ? activeId : updated[0]?.id ?? "";
+    const newActive = defaultIds.has(activeId)
+      ? activeId
+      : updated[0]?.id ?? "";
     setActiveId(newActive);
     saveAll(updated, newActive);
     toast.success("Default styles restored");
@@ -163,6 +255,12 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     setDraftProfiles(updated);
     saveAll(updated);
     toast.success(`"${def.name}" restored to default`);
+  };
+
+  const restoreBuiltInRules = async () => {
+    const rules = await AppBridge.GetDefaultBuiltInRules();
+    setBuiltInRules(rules);
+    toast.success("Built-in rules restored to default");
   };
 
   const placeholderText =
@@ -190,83 +288,67 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
 
   const presetIds = new Set(["casual", "professional", "concise"]);
 
+  // Check for broken model references
+  const allModelIds = new Set([
+    ...transcriptionModels.map((m) => m.id),
+    ...chatModels.map((m) => m.id),
+  ]);
+  const hasModels = allModelIds.size > 0;
+
+  const isModelBroken = (modelId: string) => {
+    if (!hasModels || !modelId) return false;
+    return !allModelIds.has(modelId);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         {!configured && (
           <div className="flex items-center gap-3 rounded-lg border border-amber-600/30 bg-amber-600/10 p-3 text-sm text-amber-500">
             <AlertTriangle className="size-4 shrink-0" />
-            Add your API key to get started.
+            Set up your AI connection first.
           </div>
         )}
 
-        {/* API Key */}
+        {/* Models */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Key className="size-4" /> API Provider <InfoTip text="The API key used to authenticate with your speech-to-text provider." />
+              <Bot className="size-4" /> Models{" "}
+              <InfoTip text="Select which models to use for transcription and refinement. Models are fetched from your configured AI provider." />
             </CardTitle>
             <CardDescription>
-              shushing face uses Groq for speech-to-text.{" "}
-              <button
-                type="button"
-                className="text-primary underline underline-offset-2 hover:text-primary/80"
-                onClick={() => window.open("https://console.groq.com/keys", "_blank")}
-              >
-                Get a free key
-              </button>
+              Global defaults — profiles can override the refinement model.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex">
-              <Input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                placeholder="gsk_..."
-                onChange={(e) => setApiKey(e.target.value)}
-                className="rounded-r-none"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowKey(!showKey)}
-                className="rounded-l-none border-l-0"
-              >
-                {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </Button>
-            </div>
-            <Button
-              size="sm"
-              className="mt-3"
-              onClick={() => saveAll()}
-            >
-              Save
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Transcription */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Bot className="size-4" /> Transcription <InfoTip text="The speech-to-text model that converts your audio into a raw transcript before refinement." />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="trans-model">Model</Label>
-              <Input
-                id="trans-model"
+              <Label>Transcription model</Label>
+              <ModelSelect
                 value={transModel}
-                onChange={(e) => setTransModel(e.target.value)}
+                onChange={setTransModel}
+                models={transcriptionModels}
               />
+              {isModelBroken(transModel) && (
+                <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
+                  <AlertTriangle className="size-3" /> Model not found in provider
+                </p>
+              )}
             </div>
-            <Button
-              size="sm"
-              className="mt-3"
-              onClick={() => saveAll()}
-            >
+            <div className="space-y-1">
+              <Label>Refinement model</Label>
+              <ModelSelect
+                value={refModel}
+                onChange={setRefModel}
+                models={chatModels}
+              />
+              {isModelBroken(refModel) && (
+                <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
+                  <AlertTriangle className="size-3" /> Model not found in provider
+                </p>
+              )}
+            </div>
+            <Button size="sm" onClick={() => saveAll()}>
               Save
             </Button>
           </CardContent>
@@ -278,10 +360,11 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              Global Rules <InfoTip text="Rules applied to every refinement style. Use this for preferences like 'don't use em dashes' or 'use British English' so you don't have to repeat them in each profile." />
+              Global Rules{" "}
+              <InfoTip text="Rules applied to every refinement style. Use this for preferences like 'don't use em dashes' or 'use British English' so you don't have to repeat them in each profile." />
             </CardTitle>
             <CardDescription>
-              Applied to all styles, appended after the style-specific prompt.
+              Applied to all styles, appended after the style prompt.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -290,18 +373,65 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               onChange={(e) => setGlobalRules(e.target.value)}
               rows={3}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-              placeholder={"- Don't use em dashes\n- Use British English spelling\n- Keep sentences under 20 words"}
+              placeholder={
+                "- Don't use em dashes\n- Use British English spelling\n- Keep sentences under 20 words"
+              }
             />
+
+            {/* Built-in rules (advanced) */}
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setGlobalAdvancedOpen(!globalAdvancedOpen)}
+            >
+              <Settings2 className="size-3" />
+              Built-in rules
+              {globalAdvancedOpen ? (
+                <ChevronUp className="size-3" />
+              ) : (
+                <ChevronDown className="size-3" />
+              )}
+            </button>
+            {globalAdvancedOpen && (
+              <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  These core rules are always applied. Edit with care — they
+                  prevent the model from adding content or dropping meaning.
+                </p>
+                <textarea
+                  value={builtInRules}
+                  onChange={(e) => setBuiltInRules(e.target.value)}
+                  rows={6}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                  placeholder="Built-in rules (leave empty for defaults)"
+                />
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="outline" size="sm" className="text-xs">
+                      <RotateCcw className="size-3" /> Restore Default Rules
+                    </Button>
+                  }
+                  title="Restore built-in rules?"
+                  description="This will reset the built-in rules to their factory defaults."
+                  confirmLabel="Restore"
+                  onConfirm={restoreBuiltInRules}
+                />
+              </div>
+            )}
+
             <Button size="sm" onClick={() => saveAll()}>
               Save
             </Button>
           </CardContent>
         </Card>
 
+        <Separator />
+
         {/* Profiles */}
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold flex items-center gap-1.5">
-            Refinement Styles <InfoTip text="Each style defines how your speech gets rewritten. Choose a style before recording, or set one as active." />
+            Refinement Styles{" "}
+            <InfoTip text="Each style defines how your speech gets rewritten. Choose a style before recording, or set one as active." />
           </h3>
           <div className="flex items-center gap-1.5">
             <ConfirmDialog
@@ -326,6 +456,8 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
           const isActive = profile.id === activeId;
           const isExpanded = expandedProfile === profile.id;
           const isPreset = presetIds.has(profile.id);
+          const profileModelBroken = isModelBroken(profile.model);
+          const displayModel = profile.model || settings.refinementModel || "default";
 
           return (
             <Card
@@ -344,9 +476,14 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                     <Icon className="size-4" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle className="text-sm">{profile.name}</CardTitle>
+                    <CardTitle className="text-sm flex items-center gap-1.5">
+                      {profile.name}
+                      {profileModelBroken && (
+                        <AlertTriangle className="size-3 text-amber-500" />
+                      )}
+                    </CardTitle>
                     <CardDescription className="text-xs">
-                      {profile.model}
+                      {displayModel}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-1">
@@ -360,7 +497,9 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                       </Button>
                     )}
                     {isActive && (
-                      <span className="text-xs font-medium text-primary">active</span>
+                      <span className="text-xs font-medium text-primary">
+                        active
+                      </span>
                     )}
                     <Button
                       variant="ghost"
@@ -386,48 +525,41 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                     <Input
                       value={profile.name}
                       onChange={(e) =>
-                        updateDraftProfile(profile.id, { name: e.target.value })
+                        updateDraftProfile(profile.id, {
+                          name: e.target.value,
+                        })
                       }
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label>Model</Label>
-                    <Select
+                    <Label>
+                      Model override{" "}
+                      <InfoTip text="Override the global refinement model for this style. Leave on 'Use global default' to inherit." />
+                    </Label>
+                    <ModelSelect
                       value={profile.model}
-                      onValueChange={(v) => updateDraftProfile(profile.id, { model: v })}
-                    >
-                      <SelectTrigger className="text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Recommended</SelectLabel>
-                          {refinementModels.map((m) => (
-                            <SelectItem key={m.id} value={m.id} className="text-xs">
-                              {m.label} <span className="text-muted-foreground ml-1">— {m.description}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                        {!refinementModels.some((m) => m.id === profile.model) && (
-                          <>
-                            <SelectSeparator />
-                            <SelectGroup>
-                              <SelectLabel>Current</SelectLabel>
-                              <SelectItem value={profile.model} className="text-xs">
-                                {profile.model}
-                              </SelectItem>
-                            </SelectGroup>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
+                      onChange={(v) =>
+                        updateDraftProfile(profile.id, { model: v })
+                      }
+                      models={chatModels}
+                      allowDefault
+                      defaultLabel={`Use global default (${settings.refinementModel})`}
+                    />
+                    {profileModelBroken && (
+                      <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
+                        <AlertTriangle className="size-3" /> Model not found in
+                        provider
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <Label>Prompt</Label>
                     <textarea
                       value={profile.prompt}
                       onChange={(e) =>
-                        updateDraftProfile(profile.id, { prompt: e.target.value })
+                        updateDraftProfile(profile.id, {
+                          prompt: e.target.value,
+                        })
                       }
                       rows={6}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
@@ -438,11 +570,19 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                   <button
                     type="button"
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setAdvancedOpen(advancedOpen === profile.id ? null : profile.id)}
+                    onClick={() =>
+                      setAdvancedOpen(
+                        advancedOpen === profile.id ? null : profile.id,
+                      )
+                    }
                   >
                     <Settings2 className="size-3" />
                     Advanced
-                    {advancedOpen === profile.id ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                    {advancedOpen === profile.id ? (
+                      <ChevronUp className="size-3" />
+                    ) : (
+                      <ChevronDown className="size-3" />
+                    )}
                   </button>
 
                   {advancedOpen === profile.id && (
@@ -451,7 +591,8 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-xs flex items-center gap-1">
-                            Temperature <InfoTip text="Controls randomness. Lower values produce more consistent output; higher values add variety." />
+                            Temperature{" "}
+                            <InfoTip text="Controls randomness. Lower values produce more consistent output; higher values add variety." />
                           </Label>
                           <Input
                             type="number"
@@ -461,7 +602,10 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                             value={profile.temperature ?? 0.3}
                             onChange={(e) => {
                               const v = parseFloat(e.target.value);
-                              if (!isNaN(v) && v >= 0 && v <= 1) updateDraftProfile(profile.id, { temperature: v });
+                              if (!isNaN(v) && v >= 0 && v <= 1)
+                                updateDraftProfile(profile.id, {
+                                  temperature: v,
+                                });
                             }}
                             className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
                           />
@@ -471,7 +615,9 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                           max={1}
                           step={0.05}
                           value={[profile.temperature ?? 0.3]}
-                          onValueChange={([v]) => updateDraftProfile(profile.id, { temperature: v })}
+                          onValueChange={([v]) =>
+                            updateDraftProfile(profile.id, { temperature: v })
+                          }
                         />
                         <div className="flex justify-between text-[10px] text-muted-foreground">
                           <span>Consistent</span>
@@ -483,7 +629,8 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-xs flex items-center gap-1">
-                            Top P <InfoTip text="Nucleus sampling. Limits token selection to the most probable tokens whose cumulative probability reaches this threshold." />
+                            Top P{" "}
+                            <InfoTip text="Nucleus sampling. Limits token selection to the most probable tokens whose cumulative probability reaches this threshold." />
                           </Label>
                           <Input
                             type="number"
@@ -493,7 +640,8 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                             value={profile.topP ?? 0.9}
                             onChange={(e) => {
                               const v = parseFloat(e.target.value);
-                              if (!isNaN(v) && v >= 0.1 && v <= 1) updateDraftProfile(profile.id, { topP: v });
+                              if (!isNaN(v) && v >= 0.1 && v <= 1)
+                                updateDraftProfile(profile.id, { topP: v });
                             }}
                             className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
                           />
@@ -503,7 +651,9 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                           max={1}
                           step={0.05}
                           value={[profile.topP ?? 0.9]}
-                          onValueChange={([v]) => updateDraftProfile(profile.id, { topP: v })}
+                          onValueChange={([v]) =>
+                            updateDraftProfile(profile.id, { topP: v })
+                          }
                         />
                         <div className="flex justify-between text-[10px] text-muted-foreground">
                           <span>Focused</span>
@@ -514,20 +664,30 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                       {/* Few-shot Examples */}
                       <div className="space-y-2">
                         <Label className="text-xs flex items-center gap-1">
-                          Examples <InfoTip text="Before/after pairs that teach the model your preferred style. These are sent as conversation history before your transcript." />
+                          Examples{" "}
+                          <InfoTip text="Before/after pairs that teach the model your preferred style. These are sent as conversation history before your transcript." />
                         </Label>
                         {(profile.examples ?? []).map((ex, i) => (
-                          <div key={i} className="space-y-1 rounded border border-border bg-background p-2">
+                          <div
+                            key={i}
+                            className="space-y-1 rounded border border-border bg-background p-2"
+                          >
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-medium text-muted-foreground">Example {i + 1}</span>
+                              <span className="text-[10px] font-medium text-muted-foreground">
+                                Example {i + 1}
+                              </span>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="size-5"
                                 onClick={() => {
-                                  const updated = [...(profile.examples ?? [])];
+                                  const updated = [
+                                    ...(profile.examples ?? []),
+                                  ];
                                   updated.splice(i, 1);
-                                  updateDraftProfile(profile.id, { examples: updated });
+                                  updateDraftProfile(profile.id, {
+                                    examples: updated,
+                                  });
                                 }}
                               >
                                 <Trash2 className="size-2.5" />
@@ -536,9 +696,16 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                             <textarea
                               value={ex.input}
                               onChange={(e) => {
-                                const updated = [...(profile.examples ?? [])];
-                                updated[i] = { ...updated[i], input: e.target.value };
-                                updateDraftProfile(profile.id, { examples: updated });
+                                const updated = [
+                                  ...(profile.examples ?? []),
+                                ];
+                                updated[i] = {
+                                  ...updated[i],
+                                  input: e.target.value,
+                                };
+                                updateDraftProfile(profile.id, {
+                                  examples: updated,
+                                });
                               }}
                               rows={2}
                               placeholder="Speech transcript (before)..."
@@ -547,9 +714,16 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                             <textarea
                               value={ex.output}
                               onChange={(e) => {
-                                const updated = [...(profile.examples ?? [])];
-                                updated[i] = { ...updated[i], output: e.target.value };
-                                updateDraftProfile(profile.id, { examples: updated });
+                                const updated = [
+                                  ...(profile.examples ?? []),
+                                ];
+                                updated[i] = {
+                                  ...updated[i],
+                                  output: e.target.value,
+                                };
+                                updateDraftProfile(profile.id, {
+                                  examples: updated,
+                                });
                               }}
                               rows={2}
                               placeholder="Desired output (after)..."
@@ -562,8 +736,13 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                           size="sm"
                           className="w-full text-xs"
                           onClick={() => {
-                            const updated = [...(profile.examples ?? []), { input: "", output: "" }];
-                            updateDraftProfile(profile.id, { examples: updated });
+                            const updated = [
+                              ...(profile.examples ?? []),
+                              { input: "", output: "" },
+                            ];
+                            updateDraftProfile(profile.id, {
+                              examples: updated,
+                            });
                           }}
                         >
                           <Plus className="size-3" /> Add Example
@@ -573,7 +752,10 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                   )}
 
                   <div className="flex items-center gap-2">
-                    <Button size="sm" onClick={() => saveProfile(profile.id)}>
+                    <Button
+                      size="sm"
+                      onClick={() => saveProfile(profile.id)}
+                    >
                       Save
                     </Button>
                     {isPreset && (
@@ -614,10 +796,11 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
         {/* Test */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-1.5">Test Playground <InfoTip text="Paste sample text to preview how the active style transforms it, without recording audio." /></CardTitle>
-            <CardDescription>
-              Tests with the active style.
-            </CardDescription>
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              Test Playground{" "}
+              <InfoTip text="Paste sample text to preview how the active style transforms it, without recording audio." />
+            </CardTitle>
+            <CardDescription>Tests with the active style.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <textarea
@@ -627,17 +810,27 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
               placeholder={placeholderText}
             />
-            <Button onClick={handleTest} disabled={testing} className="w-full">
+            <Button
+              onClick={handleTest}
+              disabled={testing}
+              className="w-full"
+            >
               {testing ? (
-                <><Loader2 className="size-4 animate-spin" /> Running...</>
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Running...
+                </>
               ) : (
-                <><Play className="size-4" /> Run Test</>
+                <>
+                  <Play className="size-4" /> Run Test
+                </>
               )}
             </Button>
             {testResult && (
               <div className="rounded-lg bg-muted/50 p-3">
                 <p className="text-xs text-muted-foreground mb-1">Result</p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{testResult}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {testResult}
+                </p>
               </div>
             )}
           </CardContent>

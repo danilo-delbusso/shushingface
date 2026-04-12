@@ -4,8 +4,11 @@ import {config} from '../models';
 import {history} from '../models';
 import {desktop} from '../models';
 import {platform} from '../models';
+import {ai} from '../models';
 
 export function ClearHistory():Promise<void>;
+
+export function GetDefaultBuiltInRules():Promise<string>;
 
 export function GetDefaultProfiles():Promise<Array<config.RefinementProfile>>;
 
@@ -18,6 +21,10 @@ export function GetPasteStatus():Promise<desktop.PasteStatus>;
 export function GetPlatform():Promise<platform.Info>;
 
 export function GetSettings():Promise<config.Settings>;
+
+export function ListModels():Promise<Array<ai.ModelInfo>>;
+
+export function ListProviders():Promise<Array<ai.ProviderInfo>>;
 
 export function SaveSettings(arg1:config.Settings):Promise<void>;
 

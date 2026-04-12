@@ -6,7 +6,9 @@ import {
   LogOut,
   Bot,
   Palette,
+  Plug,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,13 +34,14 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Quit } from "../../wailsjs/runtime/runtime";
 import { Collapsible } from "radix-ui";
 
-export type View = "home" | "history" | "ai" | "appearance" | "general";
+export type View = "home" | "history" | "connections" | "ai" | "appearance" | "general";
 
 interface AppSidebarProps {
   view: View;
   onNavigate: (view: View) => void;
   configured: boolean;
   historyEnabled: boolean;
+  hasWarnings?: boolean;
 }
 
 export function AppSidebar({
@@ -46,8 +49,9 @@ export function AppSidebar({
   onNavigate,
   configured,
   historyEnabled,
+  hasWarnings,
 }: AppSidebarProps) {
-  const settingsOpen = view === "ai" || view === "appearance" || view === "general";
+  const settingsOpen = view === "connections" || view === "ai" || view === "appearance" || view === "general";
 
   return (
     <Sidebar collapsible="none" variant="sidebar">
@@ -98,12 +102,12 @@ export function AppSidebar({
                 <SidebarMenuItem>
                   <Collapsible.Trigger asChild>
                     <SidebarMenuButton
-                      onClick={() => onNavigate("ai")}
+                      onClick={() => onNavigate("connections")}
                       isActive={settingsOpen}
                     >
                       <Settings className="size-4" />
                       <span>Settings</span>
-                      {!configured && (
+                      {(!configured || hasWarnings) && (
                         <Badge
                           variant="destructive"
                           className="ml-auto size-5 justify-center rounded-full p-0 text-[10px]"
@@ -118,11 +122,26 @@ export function AppSidebar({
                     <SidebarMenuSub>
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton
+                          isActive={view === "connections"}
+                          onClick={() => onNavigate("connections")}
+                        >
+                          <Plug className="size-3.5" />
+                          <span>Connections</span>
+                          {!configured && (
+                            <AlertTriangle className="size-3 text-amber-500 ml-auto" />
+                          )}
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
                           isActive={view === "ai"}
                           onClick={() => onNavigate("ai")}
                         >
                           <Bot className="size-3.5" />
                           <span>AI</span>
+                          {hasWarnings && (
+                            <AlertTriangle className="size-3 text-amber-500 ml-auto" />
+                          )}
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                       <SidebarMenuSubItem>

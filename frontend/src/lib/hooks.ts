@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
-import type { config, history, desktop, platform } from "../../wailsjs/go/models";
+import type { config, history, desktop, platform, ai } from "../../wailsjs/go/models";
 import { toast } from "sonner";
 
 export function useTheme(theme: string | undefined) {
@@ -19,8 +19,7 @@ export function useTheme(theme: string | undefined) {
 
 export function isConfigured(settings: config.Settings | null): boolean {
   if (!settings) return false;
-  const provider = settings.providers?.[settings.transcriptionProviderId];
-  return Boolean(provider?.apiKey);
+  return Boolean(settings.providerApiKey);
 }
 
 export function usePlatform() {
@@ -60,6 +59,36 @@ export function useSettings() {
   );
 
   return { settings, setSettings, saveSettings };
+}
+
+export function useModels(settings: config.Settings | null) {
+  const [models, setModels] = useState<ai.ModelInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!settings || !isConfigured(settings)) {
+      setModels([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await AppBridge.ListModels();
+      setModels(result ?? []);
+    } catch {
+      setModels([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [settings?.providerId, settings?.providerApiKey]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const transcriptionModels = models.filter((m) => m.category === "transcription");
+  const chatModels = models.filter((m) => m.category === "chat");
+
+  return { models, transcriptionModels, chatModels, loading, refresh };
 }
 
 export function useHistory() {
