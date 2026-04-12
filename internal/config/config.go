@@ -39,6 +39,7 @@ type Settings struct {
 	// Refinement profiles
 	RefinementProfiles []RefinementProfile `json:"refinementProfiles"`
 	ActiveProfileID    string              `json:"activeProfileId"`
+	GlobalRules        string              `json:"globalRules,omitempty"`
 
 	// Legacy (kept for migration, omitted if empty)
 	SystemPrompt    string `json:"systemPrompt,omitempty"`

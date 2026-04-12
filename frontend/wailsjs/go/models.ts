@@ -1,5 +1,19 @@
 export namespace config {
 	
+	export class FewShotExample {
+	    input: string;
+	    output: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FewShotExample(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.input = source["input"];
+	        this.output = source["output"];
+	    }
+	}
 	export class ProviderConfig {
 	    name: string;
 	    apiKey: string;
@@ -16,20 +30,6 @@ export namespace config {
 	        this.baseUrl = source["baseUrl"];
 	    }
 	}
-	export class FewShotExample {
-	    input: string;
-	    output: string;
-
-	    static createFrom(source: any = {}) {
-	        return new FewShotExample(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.input = source["input"];
-	        this.output = source["output"];
-	    }
-	}
 	export class RefinementProfile {
 	    id: string;
 	    name: string;
@@ -39,11 +39,11 @@ export namespace config {
 	    examples?: FewShotExample[];
 	    temperature?: number;
 	    topP?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new RefinementProfile(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -55,7 +55,7 @@ export namespace config {
 	        this.temperature = source["temperature"];
 	        this.topP = source["topP"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -81,6 +81,7 @@ export namespace config {
 	    refinementProviderId: string;
 	    refinementProfiles: RefinementProfile[];
 	    activeProfileId: string;
+	    globalRules?: string;
 	    systemPrompt?: string;
 	    refinementModel?: string;
 	    setupComplete: boolean;
@@ -104,6 +105,7 @@ export namespace config {
 	        this.refinementProviderId = source["refinementProviderId"];
 	        this.refinementProfiles = this.convertValues(source["refinementProfiles"], RefinementProfile);
 	        this.activeProfileId = source["activeProfileId"];
+	        this.globalRules = source["globalRules"];
 	        this.systemPrompt = source["systemPrompt"];
 	        this.refinementModel = source["refinementModel"];
 	        this.setupComplete = source["setupComplete"];

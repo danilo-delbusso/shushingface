@@ -11,6 +11,9 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 
 	if p := a.cfg.ActiveProfile(); p != nil {
 		opts.SystemPrompt = p.Prompt
+		if a.cfg.GlobalRules != "" {
+			opts.SystemPrompt += "\n\nGlobal rules (always apply):\n" + a.cfg.GlobalRules
+		}
 		opts.Sampling = ai.SamplingParams{
 			Temperature: p.Temperature,
 			TopP:        p.TopP,
@@ -49,7 +52,11 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 
 func (a *App) TestPrompt(sampleText, systemPrompt string) ProcessResult {
 	proc := a.engine.GetProcessor()
-	opts := ai.RefineOptions{SystemPrompt: systemPrompt}
+	prompt := systemPrompt
+	if a.cfg.GlobalRules != "" {
+		prompt += "\n\nGlobal rules (always apply):\n" + a.cfg.GlobalRules
+	}
+	opts := ai.RefineOptions{SystemPrompt: prompt}
 	refined, err := proc.Refine(a.ctx, sampleText, opts)
 	if err != nil {
 		return ProcessResult{Error: err.Error()}

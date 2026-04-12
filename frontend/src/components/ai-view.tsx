@@ -75,6 +75,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     settings.refinementProfiles ?? [],
   );
   const [activeId, setActiveId] = useState(settings.activeProfileId);
+  const [globalRules, setGlobalRules] = useState(settings.globalRules ?? "");
 
   const saveAll = (
     profiles?: typeof draftProfiles,
@@ -93,6 +94,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
         transcriptionModel: transModel,
         refinementProfiles: p,
         activeProfileId: a,
+        globalRules,
       }),
     );
   };
@@ -271,6 +273,30 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
         </Card>
 
         <Separator />
+
+        {/* Global Rules */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              Global Rules <InfoTip text="Rules applied to every refinement style. Use this for preferences like 'don't use em dashes' or 'use British English' so you don't have to repeat them in each profile." />
+            </CardTitle>
+            <CardDescription>
+              Applied to all styles, appended after the style-specific prompt.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <textarea
+              value={globalRules}
+              onChange={(e) => setGlobalRules(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+              placeholder={"- Don't use em dashes\n- Use British English spelling\n- Keep sentences under 20 words"}
+            />
+            <Button size="sm" onClick={() => saveAll()}>
+              Save
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Profiles */}
         <div className="flex items-center justify-between">
