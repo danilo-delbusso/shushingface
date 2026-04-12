@@ -429,7 +429,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                 label={
                   <span className="text-xs">
                     Language{" "}
-                    <InfoTip text="Hint the transcription model about what language you speak. Auto-detect works well for most cases." />
+                    <InfoTip text="Tell the model what language you're speaking in. This improves accuracy but will produce gibberish if set to the wrong language. Auto-detect works well for most cases." />
                   </span>
                 }
               >
