@@ -24,7 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfoTip } from "@/components/info-tip";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
-import type { config, ai } from "../../wailsjs/go/models";
+import { config } from "../../wailsjs/go/models";
+import type { ai } from "../../wailsjs/go/models";
 
 // Known provider presets — everything except the API key is pre-configured.
 const providerPresets: Record<

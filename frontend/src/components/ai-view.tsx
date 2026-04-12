@@ -42,7 +42,8 @@ import { Slider } from "@/components/ui/slider";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
-import type { config, ai } from "../../wailsjs/go/models";
+import { config } from "../../wailsjs/go/models";
+import type { ai } from "../../wailsjs/go/models";
 
 const iconMap: Record<string, React.FC<{ className?: string }>> = {
   coffee: Coffee,
