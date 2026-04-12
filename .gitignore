@@ -49,5 +49,8 @@ Thumbs.db
 GEMINI.md
 .claude/
 claude.json
-docs/
 *.plan.md
+
+# Build artifacts
+dist/
+*.deb
