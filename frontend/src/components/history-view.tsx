@@ -1,4 +1,4 @@
-import { History, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { History, Trash2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -50,28 +50,46 @@ export function HistoryView({ items, onClear }: HistoryViewProps) {
 
 function HistoryItem({ item }: { item: history.Record }) {
   const [open, setOpen] = useState(false);
+  const isError = !!item.error;
 
   return (
-    <div className="space-y-0.5 rounded-lg border bg-card px-3 py-2 text-card-foreground">
+    <div
+      className={`space-y-0.5 rounded-lg border text-card-foreground px-3 py-2 ${
+        isError ? "border-destructive/30 bg-destructive/5" : "bg-card"
+      }`}
+    >
       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>{new Date(item.timestamp).toLocaleString()}</span>
+        <span className="flex items-center gap-1">
+          {isError && <AlertTriangle className="size-3 text-destructive shrink-0" />}
+          {new Date(item.timestamp).toLocaleString()}
+        </span>
         {item.activeApp && (
           <span className="font-medium text-primary">{item.activeApp}</span>
         )}
       </div>
-      <p className="text-sm">{item.refinedMessage}</p>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {open ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-        transcript
-      </button>
-      {open && (
-        <p className="text-xs text-muted-foreground italic">
-          &ldquo;{item.rawTranscript}&rdquo;
-        </p>
+      {isError ? (
+        <p className="text-xs text-destructive">{item.error}</p>
+      ) : (
+        <>
+          <p className="text-sm">{item.refinedMessage}</p>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {open ? (
+              <ChevronUp className="size-3" />
+            ) : (
+              <ChevronDown className="size-3" />
+            )}
+            transcript
+          </button>
+          {open && (
+            <p className="text-xs text-muted-foreground italic">
+              &ldquo;{item.rawTranscript}&rdquo;
+            </p>
+          )}
+        </>
       )}
     </div>
   );

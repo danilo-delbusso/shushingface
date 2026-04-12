@@ -9,5 +9,8 @@ func RecordingStarted() {}
 // RecordingProcessing is a no-op on non-Linux platforms.
 func RecordingProcessing() {}
 
+// Error is a no-op on non-Linux platforms.
+func Error(title, body string) {}
+
 // RecordingDone is a no-op on non-Linux platforms.
 func RecordingDone() {}

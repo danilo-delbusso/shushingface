@@ -256,11 +256,12 @@ export namespace history {
 	    rawTranscript: string;
 	    refinedMessage: string;
 	    activeApp: string;
-	
+	    error?: string;
+
 	    static createFrom(source: any = {}) {
 	        return new Record(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -268,6 +269,7 @@ export namespace history {
 	        this.rawTranscript = source["rawTranscript"];
 	        this.refinedMessage = source["refinedMessage"];
 	        this.activeApp = source["activeApp"];
+	        this.error = source["error"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

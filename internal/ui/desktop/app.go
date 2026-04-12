@@ -107,11 +107,18 @@ func (a *App) StopAndProcess() ProcessResult {
 	indicator.SetRecording(false)
 	if err != nil {
 		slog.Error("StopAndProcess failed", "error", err)
+		if a.cfg.EnableNotifications {
+			notify.Error("Transcription failed", err.Error())
+		}
+		// Record the failure in history
+		if a.cfg.EnableHistory && a.history != nil {
+			a.history.Insert("", "", activeApp, err.Error())
+		}
 		return ProcessResult{Error: err.Error()}
 	}
 
 	if a.cfg.EnableHistory && a.history != nil && transcript != "" {
-		if _, histErr := a.history.Insert(transcript, refined, activeApp); histErr != nil {
+		if _, histErr := a.history.Insert(transcript, refined, activeApp, ""); histErr != nil {
 			slog.Error("failed to insert history", "error", histErr)
 		}
 	}
@@ -119,6 +126,9 @@ func (a *App) StopAndProcess() ProcessResult {
 	if a.cfg.AutoPaste && refined != "" {
 		if err := paste.Type(refined); err != nil {
 			slog.Warn("auto-paste failed", "error", err)
+			if a.cfg.EnableNotifications {
+				notify.Error("Auto-paste failed", err.Error())
+			}
 		}
 	}
 

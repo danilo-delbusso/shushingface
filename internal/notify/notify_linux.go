@@ -26,6 +26,11 @@ func RecordingProcessing() {
 	send("shushingface", "Processing with AI...", "audio-input-microphone", 0)
 }
 
+// Error shows a notification about a failure. Auto-dismisses after 5 seconds.
+func Error(title, body string) {
+	send(title, body, "dialog-error", 5000)
+}
+
 // RecordingDone dismisses the recording notification.
 func RecordingDone() {
 	if lastID == 0 {

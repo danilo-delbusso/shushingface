@@ -16,6 +16,7 @@ type Record struct {
 	RawTranscript  string    `json:"rawTranscript"`
 	RefinedMessage string    `json:"refinedMessage"`
 	ActiveApp      string    `json:"activeApp"`
+	Error          string    `json:"error,omitempty"`
 }
 
 // Manager handles the connection and queries to the local SQLite history database.
@@ -54,13 +55,16 @@ func NewManager() (*Manager, error) {
 		return nil, err
 	}
 
+	// Migration: add error column if it doesn't exist
+	db.Exec(`ALTER TABLE transcriptions ADD COLUMN error TEXT DEFAULT ''`)
+
 	return &Manager{db: db}, nil
 }
 
 // Insert adds a new transcription event to the local history database.
-func (m *Manager) Insert(rawTranscript, refinedMessage, activeApp string) (int64, error) {
-	stmt := `INSERT INTO transcriptions (raw_transcript, refined_message, active_app) VALUES (?, ?, ?)`
-	res, err := m.db.Exec(stmt, rawTranscript, refinedMessage, activeApp)
+func (m *Manager) Insert(rawTranscript, refinedMessage, activeApp, errMsg string) (int64, error) {
+	stmt := `INSERT INTO transcriptions (raw_transcript, refined_message, active_app, error) VALUES (?, ?, ?, ?)`
+	res, err := m.db.Exec(stmt, rawTranscript, refinedMessage, activeApp, errMsg)
 	if err != nil {
 		return 0, err
 	}
@@ -69,7 +73,7 @@ func (m *Manager) Insert(rawTranscript, refinedMessage, activeApp string) (int64
 
 // GetHistory retrieves past transcription events, ordered from newest to oldest.
 func (m *Manager) GetHistory(limit, offset int) ([]Record, error) {
-	stmt := `SELECT id, timestamp, raw_transcript, refined_message, active_app FROM transcriptions ORDER BY timestamp DESC LIMIT ? OFFSET ?`
+	stmt := `SELECT id, timestamp, raw_transcript, refined_message, active_app, COALESCE(error, '') FROM transcriptions ORDER BY timestamp DESC LIMIT ? OFFSET ?`
 	rows, err := m.db.Query(stmt, limit, offset)
 	if err != nil {
 		return nil, err
@@ -79,7 +83,7 @@ func (m *Manager) GetHistory(limit, offset int) ([]Record, error) {
 	records := []Record{}
 	for rows.Next() {
 		var r Record
-		if err := rows.Scan(&r.ID, &r.Timestamp, &r.RawTranscript, &r.RefinedMessage, &r.ActiveApp); err != nil {
+		if err := rows.Scan(&r.ID, &r.Timestamp, &r.RawTranscript, &r.RefinedMessage, &r.ActiveApp, &r.Error); err != nil {
 			return nil, err
 		}
 		records = append(records, r)
