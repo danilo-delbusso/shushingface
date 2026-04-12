@@ -51,12 +51,4 @@ jobs:
         run: ./scripts/generate-changelog.sh CHANGELOG.md
 
       - name: Create release
-        uses: https://code.forgejo.org/actions/forgejo-release@v2
-        with:
-          direction: upload
-          url: https://codeberg.org
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
-          title: ${{ github.ref_name }}
-          release-dir: dist
-          release-notes-file: CHANGELOG.md
+        run: ./scripts/create-release.sh "${{ github.ref_name }}" "${{ secrets.GITHUB_TOKEN }}"
