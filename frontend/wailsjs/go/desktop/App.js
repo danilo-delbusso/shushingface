@@ -18,10 +18,6 @@ export function GetDefaultProfiles() {
   return window['go']['desktop']['App']['GetDefaultProfiles']();
 }
 
-export function GetDefaultSettings() {
-  return window['go']['desktop']['App']['GetDefaultSettings']();
-}
-
 export function GetHistory(arg1, arg2) {
   return window['go']['desktop']['App']['GetHistory'](arg1, arg2);
 }
@@ -64,10 +60,6 @@ export function ListProviders() {
 
 export function SaveSettings(arg1) {
   return window['go']['desktop']['App']['SaveSettings'](arg1);
-}
-
-export function SimulateUpdate() {
-  return window['go']['desktop']['App']['SimulateUpdate']();
 }
 
 export function StartRecording() {
