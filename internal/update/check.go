@@ -23,7 +23,7 @@ func Check(ctx context.Context, currentVersion string) (*Release, error) {
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "GET",
-		"https://codeberg.org/api/v1/repos/dbus/shushingface/releases/latest", nil)
+		"https://codeberg.org/api/v1/repos/dbus/shushingface/releases?limit=1", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -38,17 +38,17 @@ func Check(ctx context.Context, currentVersion string) (*Release, error) {
 		return nil, fmt.Errorf("release API returned %d", resp.StatusCode)
 	}
 
-	var rel Release
-	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+	var releases []Release
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, err
 	}
 
-	if rel.TagName == "" {
+	if len(releases) == 0 || releases[0].TagName == "" {
 		return nil, nil
 	}
 
-	if isNewer(currentVersion, rel.TagName) {
-		return &rel, nil
+	if isNewer(currentVersion, releases[0].TagName) {
+		return &releases[0], nil
 	}
 	return nil, nil
 }
