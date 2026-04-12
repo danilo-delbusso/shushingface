@@ -213,7 +213,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     defaultValues: {
       transcriptionConnectionId: settings.transcriptionConnectionId,
       transcriptionModel: settings.transcriptionModel,
-      transcriptionLanguage: settings.transcriptionLanguage ?? "",
+      transcriptionLanguages: settings.transcriptionLanguages ?? [],
       refinementConnectionId: settings.refinementConnectionId,
       refinementModel: settings.refinementModel,
     },
@@ -428,29 +428,49 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               <FormField
                 label={
                   <span className="text-xs">
-                    Language{" "}
-                    <InfoTip text="Tell the model what language you're speaking in. This improves accuracy but will produce gibberish if set to the wrong language. Auto-detect works well for most cases." />
+                    Languages{" "}
+                    <InfoTip text="Select the language(s) you speak. One language gives the best accuracy. Multiple or none = auto-detect." />
                   </span>
                 }
               >
-                <Controller name="transcriptionLanguage" control={modelsForm.control} render={({ field }) => (
-                  <Select value={field.value || "__auto__"} onValueChange={(v) => field.onChange(v === "__auto__" ? "" : v)}>
-                    <SelectTrigger className="text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__auto__" className="text-xs">
-                        Auto-detect
-                      </SelectItem>
-                      <SelectSeparator />
-                      {whisperLanguages.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code} className="text-xs">
-                          {lang.flag} {lang.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )} />
+                <Controller name="transcriptionLanguages" control={modelsForm.control} render={({ field }) => {
+                  const selected = new Set(field.value ?? []);
+                  const toggle = (code: string) => {
+                    const next = new Set(selected);
+                    if (next.has(code)) next.delete(code);
+                    else next.add(code);
+                    field.onChange(Array.from(next));
+                  };
+                  return (
+                    <div className="space-y-2">
+                      {selected.size === 0 && (
+                        <p className="text-xs text-muted-foreground">Auto-detect (no language selected)</p>
+                      )}
+                      {selected.size > 1 && (
+                        <p className="text-xs text-muted-foreground">Multiple languages selected — using auto-detect</p>
+                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {whisperLanguages.map((lang) => {
+                          const active = selected.has(lang.code);
+                          return (
+                            <button
+                              key={lang.code}
+                              type="button"
+                              onClick={() => toggle(lang.code)}
+                              className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                                active
+                                  ? "border-primary bg-primary/10 text-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:border-muted-foreground/30"
+                              }`}
+                            >
+                              {lang.flag} {lang.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }} />
               </FormField>
             </div>
             <Separator />

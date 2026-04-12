@@ -15,11 +15,11 @@ interface RecordViewProps {
   results: desktop.ProcessResult[];
   profiles: config.RefinementProfile[];
   activeProfile: config.RefinementProfile | null;
-  language: string;
+  languages: string[];
   onToggle: () => void;
   onGoToSettings: () => void;
   onSwitchProfile: (id: string) => void;
-  onSwitchLanguage: (code: string) => void;
+  onSwitchLanguages: (codes: string[]) => void;
 }
 
 export function RecordView({
@@ -29,11 +29,11 @@ export function RecordView({
   results,
   profiles,
   activeProfile,
-  language,
+  languages,
   onToggle,
   onGoToSettings,
   onSwitchProfile,
-  onSwitchLanguage,
+  onSwitchLanguages,
 }: RecordViewProps) {
   if (!configured) {
     return (
@@ -67,8 +67,8 @@ export function RecordView({
             />
           )}
           <LanguageSwitcher
-            language={language}
-            onSwitch={onSwitchLanguage}
+            languages={languages}
+            onSwitch={onSwitchLanguages}
           />
         </div>
         <button
@@ -174,14 +174,28 @@ function ProfileSwitcher({
 }
 
 function LanguageSwitcher({
-  language,
+  languages,
   onSwitch,
 }: {
-  language: string;
-  onSwitch: (code: string) => void;
+  languages: string[];
+  onSwitch: (codes: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const current = getLanguage(language);
+  const selected = new Set(languages);
+
+  const toggle = (code: string) => {
+    const next = new Set(selected);
+    if (next.has(code)) next.delete(code);
+    else next.add(code);
+    onSwitch(Array.from(next));
+  };
+
+  const label =
+    languages.length === 0
+      ? "Auto"
+      : languages
+          .map((c) => getLanguage(c)?.flag ?? c)
+          .join(" ");
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -190,12 +204,8 @@ function LanguageSwitcher({
           type="button"
           className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
         >
-          {current ? (
-            <span>{current.flag}</span>
-          ) : (
-            <Globe className="size-3 shrink-0" />
-          )}
-          {current?.name ?? "Auto"}
+          {languages.length === 0 && <Globe className="size-3 shrink-0" />}
+          {label}
           <ChevronDown className="size-3 opacity-50" />
         </button>
       </Popover.Trigger>
@@ -206,22 +216,22 @@ function LanguageSwitcher({
         >
           <button
             type="button"
-            onClick={() => { onSwitch(""); setOpen(false); }}
+            onClick={() => { onSwitch([]); setOpen(false); }}
             className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
-              !language ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
+              languages.length === 0 ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
             }`}
           >
             <Globe className="size-3.5 shrink-0" />
             <span className="flex-1 text-left">Auto-detect</span>
-            {!language && <Check className="size-3 shrink-0 opacity-50" />}
+            {languages.length === 0 && <Check className="size-3 shrink-0 opacity-50" />}
           </button>
           {whisperLanguages.map((lang) => {
-            const isActive = lang.code === language;
+            const isActive = selected.has(lang.code);
             return (
               <button
                 key={lang.code}
                 type="button"
-                onClick={() => { onSwitch(lang.code); setOpen(false); }}
+                onClick={() => toggle(lang.code)}
                 className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
                   isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
                 }`}

@@ -85,7 +85,12 @@ func (a *App) StopAndProcess() ProcessResult {
 	}
 	activeApp := osutil.GetActiveWindowName()
 
-	tOpts := ai.TranscribeOptions{Language: a.cfg.TranscriptionLanguage}
+	// Single language hint if exactly one is selected; auto-detect otherwise
+	lang := ""
+	if len(a.cfg.TranscriptionLanguages) == 1 {
+		lang = a.cfg.TranscriptionLanguages[0]
+	}
+	tOpts := ai.TranscribeOptions{Language: lang}
 	rOpts := a.buildRefineOptions(activeApp)
 	slog.Info("using refinement profile", "id", rOpts.SystemPrompt[:min(30, len(rOpts.SystemPrompt))], "examples", len(rOpts.Examples))
 
