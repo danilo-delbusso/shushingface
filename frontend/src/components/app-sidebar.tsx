@@ -10,6 +10,7 @@ import {
   ChevronRight,
   AlertTriangle,
   ArrowUpCircle,
+  Info,
 } from "lucide-react";
 import { ExternalLink } from "@/components/ui/external-link";
 import {
@@ -36,7 +37,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Quit } from "../../wailsjs/runtime/runtime";
 import { Collapsible } from "radix-ui";
 
-export type View = "home" | "history" | "connections" | "ai" | "appearance" | "general";
+export type View = "home" | "history" | "connections" | "ai" | "appearance" | "general" | "about";
 
 interface AppSidebarProps {
   view: View;
@@ -57,7 +58,7 @@ export function AppSidebar({
   version,
   updateAvailable,
 }: AppSidebarProps) {
-  const settingsOpen = view === "connections" || view === "ai" || view === "appearance" || view === "general";
+  const settingsOpen = view === "connections" || view === "ai" || view === "appearance" || view === "general" || view === "about";
 
   return (
     <Sidebar collapsible="none" variant="sidebar">
@@ -166,6 +167,15 @@ export function AppSidebar({
                         >
                           <SlidersHorizontal className="size-3.5" />
                           <span>General</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          isActive={view === "about"}
+                          onClick={() => onNavigate("about")}
+                        >
+                          <Info className="size-3.5" />
+                          <span>About</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>

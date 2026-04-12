@@ -26,6 +26,18 @@ export function GetHistory(arg1, arg2) {
   return window['go']['desktop']['App']['GetHistory'](arg1, arg2);
 }
 
+export function GetLogPath() {
+  return window['go']['desktop']['App']['GetLogPath']();
+}
+
+export function GetRecentLogs(arg1) {
+  return window['go']['desktop']['App']['GetRecentLogs'](arg1);
+}
+
+export function IsSecretStorageSecure() {
+  return window['go']['desktop']['App']['IsSecretStorageSecure']();
+}
+
 export function GetPasteStatus() {
   return window['go']['desktop']['App']['GetPasteStatus']();
 }
@@ -40,10 +52,6 @@ export function GetSettings() {
 
 export function GetVersion() {
   return window['go']['desktop']['App']['GetVersion']();
-}
-
-export function IsSecretStorageSecure() {
-  return window['go']['desktop']['App']['IsSecretStorageSecure']();
 }
 
 export function ListModelsForConnection(arg1) {

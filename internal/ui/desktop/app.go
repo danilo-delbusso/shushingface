@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -289,6 +291,28 @@ func (a *App) ListModelsForConnection(connectionID string) ([]ai.ModelInfo, erro
 		return nil, fmt.Errorf("API key not configured for %s", conn.Name)
 	}
 	return provider.ListModels(a.ctx, conn.APIKey, conn.BaseURL)
+}
+
+func (a *App) GetLogPath() string {
+	p, _ := config.GetLogPath()
+	return p
+}
+
+func (a *App) GetRecentLogs(lines int) (string, error) {
+	logPath, err := config.GetLogPath()
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		return "", err
+	}
+	// Return last N lines
+	all := strings.Split(string(data), "\n")
+	if len(all) > lines {
+		all = all[len(all)-lines:]
+	}
+	return strings.Join(all, "\n"), nil
 }
 
 func (a *App) GetDefaultBuiltInRules() string {

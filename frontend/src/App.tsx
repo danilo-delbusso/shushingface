@@ -10,6 +10,7 @@ import { ConnectionsView } from "@/components/connections-view";
 import { AiView } from "@/components/ai-view";
 import { AppearanceView } from "@/components/appearance-view";
 import { SettingsView } from "@/components/settings-view";
+import { AboutView } from "@/components/about-view";
 import { WelcomeWizard } from "@/components/welcome-wizard";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -154,6 +155,9 @@ function App() {
               pasteInstallCmd={pasteStatus?.installCmd ?? ""}
               onSave={saveSettings}
             />
+          )}
+          {view === "about" && (
+            <AboutView version={appVersion} platform={platform} />
           )}
         </SidebarInset>
       </SidebarProvider>
