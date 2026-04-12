@@ -153,7 +153,7 @@ export function SettingsView({
                 </Button>
               }
               title="Reset and run setup?"
-              description="This will walk you through the setup wizard again. Your profiles and settings will be preserved."
+              description="This will reset all settings to defaults and walk you through the setup wizard again. Your API key will be kept."
               confirmLabel="Reset"
               onConfirm={onRunSetup}
             />

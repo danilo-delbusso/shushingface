@@ -10,6 +10,10 @@ export function GetDefaultProfiles() {
   return window['go']['desktop']['App']['GetDefaultProfiles']();
 }
 
+export function GetDefaultSettings() {
+  return window['go']['desktop']['App']['GetDefaultSettings']();
+}
+
 export function GetHistory(arg1, arg2) {
   return window['go']['desktop']['App']['GetHistory'](arg1, arg2);
 }

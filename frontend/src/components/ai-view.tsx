@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Settings2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,20 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
   const setActive = (id: string) => {
     setActiveId(id);
     saveAll(undefined, id);
+  };
+
+  const restoreDefaultProfiles = async () => {
+    const defaults = await AppBridge.GetDefaultProfiles();
+    const defaultIds = new Set(defaults.map((d) => d.id));
+    // Keep custom profiles, replace built-in ones with fresh defaults.
+    const custom = draftProfiles.filter((p) => !defaultIds.has(p.id));
+    const updated = [...defaults, ...custom];
+    setDraftProfiles(updated);
+    // If active profile was a built-in, keep it active; otherwise leave as is.
+    const newActive = defaultIds.has(activeId) ? activeId : updated[0]?.id ?? "";
+    setActiveId(newActive);
+    saveAll(updated, newActive);
+    toast.success("Default styles restored");
   };
 
   const placeholderText =
@@ -242,9 +257,22 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
           <h3 className="text-sm font-semibold flex items-center gap-1.5">
             Refinement Styles <InfoTip text="Each style defines how your speech gets rewritten. Choose a style before recording, or set one as active." />
           </h3>
-          <Button variant="outline" size="sm" onClick={addProfile}>
-            <Plus className="size-3.5" /> Add
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <ConfirmDialog
+              trigger={
+                <Button variant="ghost" size="sm">
+                  <RotateCcw className="size-3.5" /> Restore Defaults
+                </Button>
+              }
+              title="Restore default styles?"
+              description="This will replace the built-in styles (Casual, Professional, Concise) with their defaults. Custom styles will be kept."
+              confirmLabel="Restore"
+              onConfirm={restoreDefaultProfiles}
+            />
+            <Button variant="outline" size="sm" onClick={addProfile}>
+              <Plus className="size-3.5" /> Add
+            </Button>
+          </div>
         </div>
 
         {draftProfiles.map((profile) => {

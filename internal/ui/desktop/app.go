@@ -157,6 +157,10 @@ func (a *App) GetDefaultProfiles() []config.RefinementProfile {
 	return config.DefaultProfiles(config.DefaultSettings().TranscriptionModel)
 }
 
+func (a *App) GetDefaultSettings() *config.Settings {
+	return config.DefaultSettings()
+}
+
 func (a *App) GetHistory(limit, offset int) ([]history.Record, error) {
 	if a.history == nil {
 		return nil, fmt.Errorf("history is disabled")

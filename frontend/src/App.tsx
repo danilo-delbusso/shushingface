@@ -10,6 +10,7 @@ import { AppearanceView } from "@/components/appearance-view";
 import { SettingsView } from "@/components/settings-view";
 import { WelcomeWizard } from "@/components/welcome-wizard";
 import { useSettings, useHistory, useRecording, useTheme, usePlatform, usePasteStatus, isConfigured } from "@/lib/hooks";
+import * as AppBridge from "../wailsjs/go/desktop/App";
 import { config } from "../wailsjs/go/models";
 
 function App() {
@@ -87,14 +88,21 @@ function App() {
               pasteAvailable={pasteStatus?.available ?? true}
               pasteInstallCmd={pasteStatus?.installCmd ?? ""}
               onSave={saveSettings}
-              onRunSetup={() =>
+              onRunSetup={async () => {
+                const defaults = await AppBridge.GetDefaultSettings();
+                const providerId = settings.transcriptionProviderId;
+                const apiKey = settings.providers?.[providerId]?.apiKey ?? "";
                 saveSettings(
                   config.Settings.createFrom({
-                    ...settings,
+                    ...defaults,
+                    providers: {
+                      ...defaults.providers,
+                      [providerId]: { ...defaults.providers[providerId], apiKey },
+                    },
                     setupComplete: false,
                   }),
-                )
-              }
+                );
+              }}
             />
           )}
         </SidebarInset>
