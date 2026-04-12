@@ -119,13 +119,17 @@ export function ConnectionsView({
                   }`}
                 >
                   <div
-                    className={`flex size-9 items-center justify-center rounded-md text-sm font-bold ${
+                    className={`flex size-9 items-center justify-center rounded-md ${
                       active
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
-                    {p.displayName[0]}
+                    {meta?.icon ? (
+                      <img src={meta.icon} alt="" className="size-4" />
+                    ) : (
+                      <span className="text-sm font-bold">{p.displayName[0]}</span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{p.displayName}</p>
