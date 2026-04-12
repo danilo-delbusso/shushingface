@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import type { config, history, desktop, platform, ai } from "../../wailsjs/go/models";
@@ -64,9 +64,13 @@ export function useSettings() {
   return { settings, setSettings, saveSettings };
 }
 
-/** Fetch models for a specific connection ID. */
+/** Fetch models for a specific connection ID, with cross-instance cache. */
+const modelCache = new Map<string, ai.ModelInfo[]>();
+
 export function useModelsForConnection(connectionId: string | undefined) {
-  const [models, setModels] = useState<ai.ModelInfo[]>([]);
+  const [models, setModels] = useState<ai.ModelInfo[]>(
+    () => (connectionId ? modelCache.get(connectionId) : undefined) ?? [],
+  );
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -77,7 +81,9 @@ export function useModelsForConnection(connectionId: string | undefined) {
     setLoading(true);
     try {
       const result = await AppBridge.ListModelsForConnection(connectionId);
-      setModels(result ?? []);
+      const list = result ?? [];
+      modelCache.set(connectionId, list);
+      setModels(list);
     } catch {
       setModels([]);
     } finally {
@@ -86,11 +92,21 @@ export function useModelsForConnection(connectionId: string | undefined) {
   }, [connectionId]);
 
   useEffect(() => {
+    const cached = connectionId ? modelCache.get(connectionId) : undefined;
+    if (cached) {
+      setModels(cached);
+    }
     refresh();
-  }, [refresh]);
+  }, [refresh, connectionId]);
 
-  const transcriptionModels = models.filter((m) => m.category === "transcription");
-  const chatModels = models.filter((m) => m.category === "chat");
+  const transcriptionModels = useMemo(
+    () => models.filter((m) => m.category === "transcription"),
+    [models],
+  );
+  const chatModels = useMemo(
+    () => models.filter((m) => m.category === "chat"),
+    [models],
+  );
 
   return { models, transcriptionModels, chatModels, loading, refresh };
 }

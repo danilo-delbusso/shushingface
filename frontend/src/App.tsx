@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { EventsOn } from "../wailsjs/runtime/runtime";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -60,6 +60,14 @@ function App() {
     refreshHistory,
   );
 
+  const activeProfile = useMemo(
+    () =>
+      settings?.refinementProfiles?.find(
+        (p) => p.id === settings.activeProfileId,
+      ) ?? null,
+    [settings?.refinementProfiles, settings?.activeProfileId],
+  );
+
   useEffect(() => {
     if (settings && !settings.setupComplete) return;
     if (settings && !isConfigured(settings)) setView("connections");
@@ -101,11 +109,7 @@ function App() {
               isProcessing={isProcessing}
               results={results}
               profiles={settings.refinementProfiles ?? []}
-              activeProfile={
-                settings.refinementProfiles?.find(
-                  (p) => p.id === settings.activeProfileId,
-                ) ?? null
-              }
+              activeProfile={activeProfile}
               language={settings.transcriptionLanguage ?? ""}
               onToggle={toggle}
               onGoToSettings={() => setView("connections")}
