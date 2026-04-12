@@ -4,11 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"codeberg.org/dbus/shushingface/internal/ai"
 )
+
+// httpClient is shared across all model-listing calls.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
 
 func init() { ai.RegisterProvider(&provider{}) }
 
@@ -31,12 +36,7 @@ func (p *provider) NewProcessor(apiKey, baseURL, transcriptionModel, refinementM
 	return NewProcessor(baseURL, apiKey, transcriptionModel, refinementModel), nil
 }
 
-// ──────────────────────────────────────────────────
-// Shared model listing — used by all OpenAI-compatible providers
-// ──────────────────────────────────────────────────
-
-// ModelClassifier decides the category for a model ID.
-// Return "" to skip the model entirely.
+// ModelClassifier decides the category for a model ID. Return "" to skip it.
 type ModelClassifier func(id string) string
 
 // DefaultClassifier is a generic heuristic: whisper = transcription, rest = chat.
@@ -60,14 +60,15 @@ func ListModels(ctx context.Context, apiKey, baseURL string, classify ModelClass
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("models API returned %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("models API returned %d: %s", resp.StatusCode, apiErrorMessage(body))
 	}
 
 	var body struct {

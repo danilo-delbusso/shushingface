@@ -1,6 +1,3 @@
-// Package openaicompat implements an AI processor that works with any
-// OpenAI-compatible API (OpenAI, Ollama, LM Studio, vLLM, Together, Fireworks, etc.).
-// No external dependencies — uses raw HTTP against the standard endpoints.
 package openaicompat
 
 import (
@@ -16,6 +13,23 @@ import (
 
 	"codeberg.org/dbus/shushingface/internal/ai"
 )
+
+// apiErrorMessage extracts a human-readable message from an OpenAI-style
+// error response body. Falls back to the raw body if parsing fails.
+func apiErrorMessage(body []byte) string {
+	var parsed struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(body, &parsed) == nil && parsed.Error.Message != "" {
+		return parsed.Error.Message
+	}
+	if len(body) > 200 {
+		return string(body[:200]) + "…"
+	}
+	return string(body)
+}
 
 type processor struct {
 	baseURL            string
@@ -74,9 +88,12 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte, opts ai.Tran
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading transcription response: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("transcription API returned %d: %s", resp.StatusCode, string(respBody))
+		return "", fmt.Errorf("transcription API returned %d: %s", resp.StatusCode, apiErrorMessage(respBody))
 	}
 
 	var result struct {
@@ -143,9 +160,12 @@ func (p *processor) Refine(ctx context.Context, transcript string, opts ai.Refin
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading chat response: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("chat API returned %d: %s", resp.StatusCode, string(respBody))
+		return "", fmt.Errorf("chat API returned %d: %s", resp.StatusCode, apiErrorMessage(respBody))
 	}
 
 	var result struct {
