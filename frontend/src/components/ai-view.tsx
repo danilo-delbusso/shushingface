@@ -1,4 +1,13 @@
 import { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  modelsSchema,
+  globalRulesSchema,
+  type ModelsFormData,
+  type GlobalRulesFormData,
+} from "@/lib/schemas";
+import { FormField } from "@/components/ui/form-field";
 import {
   Play,
   Loader2,
@@ -194,36 +203,68 @@ interface AiViewProps {
 export function AiView({ settings, configured, onSave }: AiViewProps) {
   const connections = settings.connections ?? [];
 
-  const [transConnId, setTransConnId] = useState(
-    settings.transcriptionConnectionId,
-  );
-  const [transModel, setTransModel] = useState(settings.transcriptionModel);
-  const [refConnId, setRefConnId] = useState(settings.refinementConnectionId);
-  const [refModel, setRefModel] = useState(settings.refinementModel);
-  const [sampleText, setSampleText] = useState("");
-  const [testResult, setTestResult] = useState("");
-  const [testing, setTesting] = useState(false);
-  const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState<string | null>(null);
+  // ── Models form ──
+  const modelsForm = useForm<ModelsFormData>({
+    resolver: zodResolver(modelsSchema),
+    defaultValues: {
+      transcriptionConnectionId: settings.transcriptionConnectionId,
+      transcriptionModel: settings.transcriptionModel,
+      refinementConnectionId: settings.refinementConnectionId,
+      refinementModel: settings.refinementModel,
+    },
+  });
+  const transConnId = modelsForm.watch("transcriptionConnectionId");
+  const refConnId = modelsForm.watch("refinementConnectionId");
+  const refModel = modelsForm.watch("refinementModel");
+  const { transcriptionModels } = useModelsForConnection(transConnId);
+  const { chatModels: refChatModels } = useModelsForConnection(refConnId);
+
+  const saveModels = (data: ModelsFormData) => {
+    onSave(config.Settings.createFrom({ ...settings, ...data }));
+  };
+
+  // ── Global rules form ──
+  const rulesForm = useForm<GlobalRulesFormData>({
+    resolver: zodResolver(globalRulesSchema),
+    defaultValues: {
+      globalRules: settings.globalRules ?? "",
+      builtInRules: settings.builtInRules ?? "",
+    },
+  });
   const [globalAdvancedOpen, setGlobalAdvancedOpen] = useState(false);
+
+  useEffect(() => {
+    if (!settings.builtInRules) {
+      AppBridge.GetDefaultBuiltInRules().then((rules) =>
+        rulesForm.setValue("builtInRules", rules),
+      );
+    }
+  }, [settings.builtInRules, rulesForm]);
+
+  const saveRules = (data: GlobalRulesFormData) => {
+    onSave(
+      config.Settings.createFrom({
+        ...settings,
+        globalRules: data.globalRules,
+        builtInRules: data.builtInRules || undefined,
+      }),
+    );
+  };
+
+  // ── Profiles (list-level state, per-card forms in Phase 4) ──
   const [draftProfiles, setDraftProfiles] = useState(
     settings.refinementProfiles ?? [],
   );
   const [activeId, setActiveId] = useState(settings.activeProfileId);
-  const [globalRules, setGlobalRules] = useState(settings.globalRules ?? "");
-  const [builtInRules, setBuiltInRules] = useState(settings.builtInRules ?? "");
+  const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState<string | null>(null);
 
-  // Fetch models per-connection
-  const { transcriptionModels } = useModelsForConnection(transConnId);
-  const { chatModels: refChatModels } = useModelsForConnection(refConnId);
+  // ── Test playground (UI state only) ──
+  const [sampleText, setSampleText] = useState("");
+  const [testResult, setTestResult] = useState("");
+  const [testing, setTesting] = useState(false);
 
-  useEffect(() => {
-    if (!settings.builtInRules) {
-      AppBridge.GetDefaultBuiltInRules().then(setBuiltInRules);
-    }
-  }, [settings.builtInRules]);
-
-  const saveAll = (
+  const saveProfiles = (
     profiles?: typeof draftProfiles,
     newActiveId?: string,
   ) => {
@@ -232,14 +273,8 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     onSave(
       config.Settings.createFrom({
         ...settings,
-        transcriptionConnectionId: transConnId,
-        transcriptionModel: transModel,
-        refinementConnectionId: refConnId,
-        refinementModel: refModel,
         refinementProfiles: p,
         activeProfileId: a,
-        globalRules,
-        builtInRules: builtInRules || undefined,
       }),
     );
   };
@@ -257,14 +292,14 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     );
   };
 
-  const saveProfile = (_id: string) => saveAll(draftProfiles);
+  const saveProfile = (_id: string) => saveProfiles(draftProfiles);
 
   const deleteProfile = (id: string) => {
     const updated = draftProfiles.filter((p) => p.id !== id);
     const newActive = activeId === id ? updated[0]?.id ?? "" : activeId;
     setDraftProfiles(updated);
     setActiveId(newActive);
-    saveAll(updated, newActive);
+    saveProfiles(updated, newActive);
   };
 
   const addProfile = () => {
@@ -283,7 +318,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
 
   const setActive = (id: string) => {
     setActiveId(id);
-    saveAll(undefined, id);
+    saveProfiles(undefined, id);
   };
 
   const applyDefaultsToAll = () => {
@@ -295,7 +330,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
       }),
     );
     setDraftProfiles(updated);
-    saveAll(updated);
+    saveProfiles(updated);
     toast.success("All styles now use global defaults");
   };
 
@@ -309,7 +344,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
       ? activeId
       : updated[0]?.id ?? "";
     setActiveId(newActive);
-    saveAll(updated, newActive);
+    saveProfiles(updated, newActive);
     toast.success("Default styles restored");
   };
 
@@ -319,13 +354,13 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     if (!def) return;
     const updated = draftProfiles.map((p) => (p.id === id ? def : p));
     setDraftProfiles(updated);
-    saveAll(updated);
+    saveProfiles(updated);
     toast.success(`"${def.name}" restored to default`);
   };
 
   const restoreBuiltInRules = async () => {
     const rules = await AppBridge.GetDefaultBuiltInRules();
-    setBuiltInRules(rules);
+    rulesForm.setValue("builtInRules", rules, { shouldDirty: true });
     toast.success("Built-in rules restored to default");
   };
 
@@ -382,45 +417,37 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
             {/* Transcription */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Transcription</Label>
-              <div className="space-y-1">
-                <Label className="text-xs">Connection</Label>
-                <ConnectionSelect
-                  value={transConnId}
-                  onChange={setTransConnId}
-                  connections={connections}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Model</Label>
-                <ModelSelect
-                  value={transModel}
-                  onChange={setTransModel}
-                  models={transcriptionModels}
-                />
-              </div>
+              <FormField label={<span className="text-xs">Connection</span>} error={modelsForm.formState.errors.transcriptionConnectionId?.message}>
+                <Controller name="transcriptionConnectionId" control={modelsForm.control} render={({ field }) => (
+                  <ConnectionSelect value={field.value} onChange={field.onChange} connections={connections} />
+                )} />
+              </FormField>
+              <FormField label={<span className="text-xs">Model</span>}>
+                <Controller name="transcriptionModel" control={modelsForm.control} render={({ field }) => (
+                  <ModelSelect value={field.value} onChange={field.onChange} models={transcriptionModels} />
+                )} />
+              </FormField>
             </div>
             <Separator />
             {/* Refinement */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Refinement</Label>
-              <div className="space-y-1">
-                <Label className="text-xs">Connection</Label>
-                <ConnectionSelect
-                  value={refConnId}
-                  onChange={setRefConnId}
-                  connections={connections}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Model</Label>
-                <ModelSelect
-                  value={refModel}
-                  onChange={setRefModel}
-                  models={refChatModels}
-                />
-              </div>
+              <FormField label={<span className="text-xs">Connection</span>} error={modelsForm.formState.errors.refinementConnectionId?.message}>
+                <Controller name="refinementConnectionId" control={modelsForm.control} render={({ field }) => (
+                  <ConnectionSelect value={field.value} onChange={field.onChange} connections={connections} />
+                )} />
+              </FormField>
+              <FormField label={<span className="text-xs">Model</span>}>
+                <Controller name="refinementModel" control={modelsForm.control} render={({ field }) => (
+                  <ModelSelect value={field.value} onChange={field.onChange} models={refChatModels} />
+                )} />
+              </FormField>
             </div>
-            <Button size="sm" onClick={() => saveAll()}>
+            <Button
+              size="sm"
+              onClick={modelsForm.handleSubmit(saveModels)}
+              disabled={!modelsForm.formState.isDirty}
+            >
               Save
             </Button>
           </CardContent>
@@ -441,8 +468,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
           </CardHeader>
           <CardContent className="space-y-3">
             <textarea
-              value={globalRules}
-              onChange={(e) => setGlobalRules(e.target.value)}
+              {...rulesForm.register("globalRules")}
               rows={3}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
               placeholder={
@@ -459,8 +485,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                 Core rules always applied. Edit with care.
               </p>
               <textarea
-                value={builtInRules}
-                onChange={(e) => setBuiltInRules(e.target.value)}
+                {...rulesForm.register("builtInRules")}
                 rows={6}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                 placeholder="Built-in rules (leave empty for defaults)"
@@ -478,7 +503,11 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               />
             </AdvancedToggle>
 
-            <Button size="sm" onClick={() => saveAll()}>
+            <Button
+              size="sm"
+              onClick={rulesForm.handleSubmit(saveRules)}
+              disabled={!rulesForm.formState.isDirty}
+            >
               Save
             </Button>
           </CardContent>
