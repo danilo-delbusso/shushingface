@@ -199,24 +199,30 @@ func (a *App) hydrateSecrets() {
 }
 
 func (a *App) SaveSettings(newSettings config.Settings) error {
-	// Store API keys in the secret store, strip from config if keyring is available
+	// Store API keys in the secret store
 	for i := range newSettings.Connections {
 		conn := &newSettings.Connections[i]
 		if conn.APIKey != "" {
 			if err := a.secrets.Set("apikey:"+conn.ID, conn.APIKey); err != nil {
 				slog.Warn("failed to store API key in secret store", "connection", conn.ID, "error", err)
-			} else if a.secrets.IsSecure() {
-				conn.APIKey = "" // don't persist in config when keyring is used
 			}
 		}
 	}
 
+	// Build processors with full keys (before stripping)
 	pair, err := factory.NewFromConfig(&newSettings)
 	if err != nil {
 		return fmt.Errorf("failed to reload AI processors: %w", err)
 	}
 
-	if err := config.Save(&newSettings); err != nil {
+	// Strip API keys from config file when keyring is available
+	configToSave := newSettings
+	if a.secrets.IsSecure() {
+		for i := range configToSave.Connections {
+			configToSave.Connections[i].APIKey = ""
+		}
+	}
+	if err := config.Save(&configToSave); err != nil {
 		return err
 	}
 
@@ -259,6 +265,7 @@ func (a *App) ListProviders() []ai.ProviderInfo {
 
 // ListModelsForConnection fetches available models for a specific connection.
 func (a *App) ListModelsForConnection(connectionID string) ([]ai.ModelInfo, error) {
+	a.hydrateSecrets()
 	conn := a.cfg.GetConnection(connectionID)
 	if conn == nil {
 		return nil, fmt.Errorf("connection not found: %s", connectionID)

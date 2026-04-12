@@ -26,6 +26,8 @@ export function GetSettings():Promise<config.Settings>;
 
 export function GetVersion():Promise<string>;
 
+export function IsSecretStorageSecure():Promise<boolean>;
+
 export function ListModelsForConnection(arg1:string):Promise<Array<ai.ModelInfo>>;
 
 export function ListProviders():Promise<Array<ai.ProviderInfo>>;

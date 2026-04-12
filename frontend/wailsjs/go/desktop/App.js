@@ -42,6 +42,10 @@ export function GetVersion() {
   return window['go']['desktop']['App']['GetVersion']();
 }
 
+export function IsSecretStorageSecure() {
+  return window['go']['desktop']['App']['IsSecretStorageSecure']();
+}
+
 export function ListModelsForConnection(arg1) {
   return window['go']['desktop']['App']['ListModelsForConnection'](arg1);
 }
