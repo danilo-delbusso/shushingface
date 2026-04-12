@@ -50,7 +50,7 @@ jobs:
         with:
           direction: upload
           url: https://codeberg.org
-          token: ${{ secrets.RELEASE_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           release-dir: dist
           release-notes: CHANGELOG.md
