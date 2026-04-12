@@ -428,36 +428,28 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               <FormField
                 label={
                   <span className="text-xs">
-                    Languages{" "}
-                    <InfoTip text="Select the language(s) you speak. One language gives the best accuracy. Multiple or none = auto-detect." />
+                    Language{" "}
+                    <InfoTip text="Tell the model what language you're speaking in. This improves accuracy but will produce gibberish if set to the wrong language. Auto-detect works well for most cases." />
                   </span>
                 }
               >
                 <Controller name="transcriptionLanguage" control={modelsForm.control} render={({ field }) => (
-                  <div className="space-y-2">
-                    {!field.value && (
-                      <p className="text-xs text-muted-foreground">Auto-detect (no language selected)</p>
-                    )}
-                    <div className="flex flex-wrap gap-1.5">
-                      {whisperLanguages.map((lang) => {
-                        const active = field.value === lang.code;
-                        return (
-                          <button
-                            key={lang.code}
-                            type="button"
-                            onClick={() => field.onChange(active ? "" : lang.code)}
-                            className={`rounded-md border px-2 py-1 text-xs transition-colors ${
-                              active
-                                ? "border-primary bg-primary/10 text-foreground"
-                                : "border-border bg-background text-muted-foreground hover:border-muted-foreground/30"
-                            }`}
-                          >
-                            {lang.flag} {lang.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <Select value={field.value || "__auto__"} onValueChange={(v) => field.onChange(v === "__auto__" ? "" : v)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__auto__" className="text-xs">
+                        Auto-detect
+                      </SelectItem>
+                      <SelectSeparator />
+                      {whisperLanguages.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                          {lang.flag} {lang.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )} />
               </FormField>
             </div>
