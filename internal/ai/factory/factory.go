@@ -22,8 +22,8 @@ func (r *Router) Transcribe(ctx context.Context, wavData []byte) (string, error)
 	return r.transcriber.Transcribe(ctx, wavData)
 }
 
-func (r *Router) Refine(ctx context.Context, transcript, systemPrompt string) (string, error) {
-	return r.refiner.Refine(ctx, transcript, systemPrompt)
+func (r *Router) Refine(ctx context.Context, transcript string, opts ai.RefineOptions) (string, error) {
+	return r.refiner.Refine(ctx, transcript, opts)
 }
 
 // NewFromConfig builds the AI Dependency Graph (the Router) based on current settings.
@@ -95,7 +95,7 @@ func (p *PlaceholderProcessor) Transcribe(ctx context.Context, wavData []byte) (
 	return "", errors.New(p.Reason)
 }
 
-func (p *PlaceholderProcessor) Refine(ctx context.Context, transcript, systemPrompt string) (string, error) {
+func (p *PlaceholderProcessor) Refine(ctx context.Context, transcript string, opts ai.RefineOptions) (string, error) {
 	return "", errors.New(p.Reason)
 }
 

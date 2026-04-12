@@ -38,8 +38,8 @@ func (e *Engine) StartRecording() error {
 	return e.recorder.Start()
 }
 
-// StopAndProcess stops recording, transcribes, and refines with the given prompt.
-func (e *Engine) StopAndProcess(ctx context.Context, prompt string) (transcript string, refined string, err error) {
+// StopAndProcess stops recording, transcribes, and refines with the given options.
+func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions) (transcript string, refined string, err error) {
 	samples, err := e.recorder.Stop()
 	if err != nil {
 		return "", "", err
@@ -63,7 +63,7 @@ func (e *Engine) StopAndProcess(ctx context.Context, prompt string) (transcript 
 		return "", "", nil
 	}
 
-	refined, err = proc.Refine(ctx, transcript, prompt)
+	refined, err = proc.Refine(ctx, transcript, opts)
 	if err != nil {
 		return transcript, "", err
 	}

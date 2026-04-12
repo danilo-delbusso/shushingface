@@ -14,12 +14,20 @@ type ProviderConfig struct {
 	BaseURL string `json:"baseUrl"`
 }
 
+type FewShotExample struct {
+	Input  string `json:"input"`
+	Output string `json:"output"`
+}
+
 type RefinementProfile struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Icon   string `json:"icon"`   // lucide icon name
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Icon        string           `json:"icon"`   // lucide icon name
+	Model       string           `json:"model"`
+	Prompt      string           `json:"prompt"`
+	Examples    []FewShotExample `json:"examples,omitempty"`
+	Temperature float32          `json:"temperature,omitempty"`
+	TopP        float32          `json:"topP,omitempty"`
 }
 
 type Settings struct {
@@ -69,7 +77,9 @@ func (s *Settings) ActiveProfile() *RefinementProfile {
 const baseRules = "\n\nRules:\n" +
 	"- Output only the rewritten text, nothing else.\n" +
 	"- Preserve the speaker's original meaning, intent, and any questions exactly as stated.\n" +
-	"- Fix grammar, punctuation, and sentence structure.\n" +
+	"- Clean up speech artifacts: filler words (um, uh, like, you know), false starts, and repetitions.\n" +
+	"- Keep the speaker's natural phrasing and word choices where they already work — only fix what is actually broken.\n" +
+	"- Never add words, ideas, or formality the speaker did not express.\n" +
 	"- Return well-written input unchanged."
 
 // DefaultProfiles returns the 3 preset refinement profiles.
@@ -80,26 +90,62 @@ func DefaultProfiles(model string) []RefinementProfile {
 			Name:  "Casual",
 			Icon:  "coffee",
 			Model: model,
-			Prompt: "You are a speech-to-text editor. Rewrite the transcript into natural, relaxed text — " +
-				"the tone of a message to a friendly colleague. Keep contractions, informal phrasing, and a warm feel. " +
-				"Clean up speech artifacts (false starts, filler words, repetitions) but preserve the speaker's voice." + baseRules,
+			Prompt: "You are a speech-to-text editor. Rewrite the transcript so it reads like something the speaker would actually type — " +
+				"relaxed, natural, the way you'd message a colleague you're comfortable with. " +
+				"Keep contractions, casual phrasing, and personality. Shorter is better." + baseRules,
+			Examples: []FewShotExample{
+				{
+					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
+					Output: "I think we should move the meeting to Thursday — John can't make Wednesday and it'd be better if everyone's there",
+				},
+				{
+					Input:  "hey so the the deployment went fine but we noticed that the the login page is loading kind of slowly so we might want to look into that",
+					Output: "hey, deployment went fine but the login page is loading kinda slow — we should probably look into that",
+				},
+			},
+			Temperature: 0.4,
+			TopP:        0.9,
 		},
 		{
 			ID:    "professional",
 			Name:  "Professional",
 			Icon:  "briefcase",
 			Model: model,
-			Prompt: "You are a speech-to-text editor. Rewrite the transcript into clear, polished professional text " +
-				"suitable for emails and workplace communication. Use complete sentences, appropriate formality, and precise language. " +
-				"Clean up speech artifacts (false starts, filler words, repetitions) while keeping the message substantive." + baseRules,
+			Prompt: "You are a speech-to-text editor. Rewrite the transcript into clear, professional text " +
+				"suitable for emails and workplace communication. Use complete sentences and precise language, " +
+				"but keep it human — avoid corporate jargon and stiff phrasing that nobody would actually write." + baseRules,
+			Examples: []FewShotExample{
+				{
+					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
+					Output: "I'd like to move the meeting to Thursday since John can't make it on Wednesday. It would be better to have everyone there.",
+				},
+				{
+					Input:  "I just wanted to flag that uh the the API response times have been creeping up over the past week or so and I think we should probably look into it before it becomes a bigger issue",
+					Output: "I wanted to flag that API response times have been creeping up over the past week. We should look into it before it becomes a bigger issue.",
+				},
+			},
+			Temperature: 0.3,
+			TopP:        0.9,
 		},
 		{
 			ID:    "concise",
 			Name:  "Concise",
 			Icon:  "zap",
 			Model: model,
-			Prompt: "You are a speech-to-text editor. Compress the transcript to its essential meaning in one to two sentences. " +
-				"Strip filler, hedging, repetition, and unnecessary detail. Every word must earn its place." + baseRules,
+			Prompt: "You are a speech-to-text editor. Compress the transcript to its essential meaning. " +
+				"Strip filler, hedging, repetition, and unnecessary detail. One to two sentences. Every word earns its place." + baseRules,
+			Examples: []FewShotExample{
+				{
+					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
+					Output: "Move the meeting to Thursday — John can't make Wednesday.",
+				},
+				{
+					Input:  "I just wanted to flag that uh the the API response times have been creeping up over the past week or so and I think we should probably look into it before it becomes a bigger issue",
+					Output: "API response times are creeping up. We should investigate before it gets worse.",
+				},
+			},
+			Temperature: 0.2,
+			TopP:        0.9,
 		},
 	}
 }
