@@ -19,6 +19,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/osutil"
 	"codeberg.org/dbus/shushingface/internal/paste"
 	"codeberg.org/dbus/shushingface/internal/platform"
+	"codeberg.org/dbus/shushingface/internal/secrets"
 	"codeberg.org/dbus/shushingface/internal/update"
 	"codeberg.org/dbus/shushingface/internal/version"
 )
@@ -27,12 +28,13 @@ type App struct {
 	ctx      context.Context
 	engine   *core.Engine
 	cfg      *config.Settings
+	secrets  secrets.Store
 	history  *history.Repository
 	cleanIPC func()
 }
 
-func NewApp(engine *core.Engine, cfg *config.Settings, hist *history.Repository) *App {
-	return &App{engine: engine, cfg: cfg, history: hist}
+func NewApp(engine *core.Engine, cfg *config.Settings, secretStore secrets.Store, hist *history.Repository) *App {
+	return &App{engine: engine, cfg: cfg, secrets: secretStore, history: hist}
 }
 
 func (a *App) Startup(ctx context.Context) {
@@ -161,6 +163,10 @@ func (a *App) GetVersion() string {
 	return version.Version()
 }
 
+func (a *App) IsSecretStorageSecure() bool {
+	return a.secrets.IsSecure()
+}
+
 // SimulateUpdate emits a fake update-available event for testing the UI.
 func (a *App) SimulateUpdate() {
 	wailsRuntime.EventsEmit(a.ctx, "update-available", map[string]string{
@@ -173,9 +179,38 @@ func (a *App) GetPlatform() platform.Info {
 	return platform.Detect()
 }
 
-func (a *App) GetSettings() *config.Settings { return a.cfg }
+func (a *App) GetSettings() *config.Settings {
+	// Hydrate API keys from the secret store before returning
+	a.hydrateSecrets()
+	return a.cfg
+}
+
+// hydrateSecrets fills in API keys from the secret store for connections
+// that have empty keys in the config (because the keyring holds them).
+func (a *App) hydrateSecrets() {
+	for i := range a.cfg.Connections {
+		conn := &a.cfg.Connections[i]
+		if conn.APIKey == "" {
+			if key, err := a.secrets.Get("apikey:" + conn.ID); err == nil {
+				conn.APIKey = key
+			}
+		}
+	}
+}
 
 func (a *App) SaveSettings(newSettings config.Settings) error {
+	// Store API keys in the secret store, strip from config if keyring is available
+	for i := range newSettings.Connections {
+		conn := &newSettings.Connections[i]
+		if conn.APIKey != "" {
+			if err := a.secrets.Set("apikey:"+conn.ID, conn.APIKey); err != nil {
+				slog.Warn("failed to store API key in secret store", "connection", conn.ID, "error", err)
+			} else if a.secrets.IsSecure() {
+				conn.APIKey = "" // don't persist in config when keyring is used
+			}
+		}
+	}
+
 	pair, err := factory.NewFromConfig(&newSettings)
 	if err != nil {
 		return fmt.Errorf("failed to reload AI processors: %w", err)

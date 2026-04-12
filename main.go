@@ -18,6 +18,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/db"
 	"codeberg.org/dbus/shushingface/internal/history"
 	"codeberg.org/dbus/shushingface/internal/ipc"
+	"codeberg.org/dbus/shushingface/internal/secrets"
 	"codeberg.org/dbus/shushingface/internal/ui/desktop"
 )
 
@@ -70,6 +71,7 @@ func main() {
 	defer database.Close()
 
 	hist := history.NewRepository(database)
+	secretStore := secrets.New()
 
 	recorder, err := malgo.NewRecorder(16000)
 	if err != nil {
@@ -85,7 +87,7 @@ func main() {
 	}
 
 	engine := core.NewEngine(recorder, pair.Transcriber, pair.Refiner)
-	app := desktop.NewApp(engine, cfg, hist)
+	app := desktop.NewApp(engine, cfg, secretStore, hist)
 
 	logPath, _ := config.GetLogPath()
 	appLogger := logger.NewFileLogger(logPath)
