@@ -77,7 +77,8 @@ func (s *Settings) ActiveProfile() *RefinementProfile {
 
 const baseRules = "\n\nRules:\n" +
 	"- Output only the rewritten text, nothing else.\n" +
-	"- Preserve the speaker's original meaning, intent, and any questions exactly as stated.\n" +
+	"- Keep all meaning intact — never drop points, details, or nuance the speaker expressed.\n" +
+	"- Preserve the speaker's original intent and any questions exactly as stated.\n" +
 	"- Clean up speech artifacts: filler words (um, uh, like, you know), false starts, and repetitions.\n" +
 	"- Keep the speaker's natural phrasing and word choices where they already work — only fix what is actually broken.\n" +
 	"- Never add words, ideas, or formality the speaker did not express.\n" +
@@ -93,7 +94,7 @@ func DefaultProfiles(model string) []RefinementProfile {
 			Model: model,
 			Prompt: "You are a speech-to-text editor. Rewrite the transcript so it reads like something the speaker would actually type — " +
 				"relaxed, natural, the way you'd message a colleague you're comfortable with. " +
-				"Keep contractions, casual phrasing, and personality. Keep all the meaning intact — don't drop points or compress." + baseRules,
+				"Keep contractions, casual phrasing, and personality." + baseRules,
 			Examples: []FewShotExample{
 				{
 					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
