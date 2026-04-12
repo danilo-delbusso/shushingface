@@ -81,13 +81,7 @@ func main() {
 	defer recorder.Close()
 
 	// Hydrate API keys from secret store before building processors
-	for i := range cfg.Connections {
-		if cfg.Connections[i].APIKey == "" {
-			if key, err := secretStore.Get("apikey:" + cfg.Connections[i].ID); err == nil {
-				cfg.Connections[i].APIKey = key
-			}
-		}
-	}
+	config.HydrateAPIKeys(cfg.Connections, secretStore.Get)
 
 	pair, err := factory.NewFromConfig(cfg)
 	if err != nil {
