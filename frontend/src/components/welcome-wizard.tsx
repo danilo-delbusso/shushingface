@@ -47,7 +47,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
       <div className="w-full max-w-md space-y-8 px-6">
         {/* Step 0: Welcome */}
         {step === 0 && (
-          <div className="flex flex-col items-center gap-6 text-center">
+          <div className="flex w-full flex-col items-center gap-6 text-center">
             <img src="/appicon.png" alt="" className="size-20" />
             <div className="space-y-2">
               <h1 className="text-2xl font-bold">welcome to shushing face</h1>
@@ -63,7 +63,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
 
         {/* Step 1: Choose provider + API key */}
         {step === 1 && (
-          <div className="flex flex-col gap-6">
+          <div className="flex w-full flex-col gap-6">
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-bold">connect an AI provider</h2>
               <p className="text-sm text-muted-foreground">
@@ -163,7 +163,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
 
         {/* Step 2: Choose style */}
         {step === 2 && (
-          <div className="flex flex-col gap-6">
+          <div className="flex w-full flex-col gap-6">
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-bold">choose your style</h2>
               <p className="text-sm text-muted-foreground">

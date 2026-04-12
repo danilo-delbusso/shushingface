@@ -100,7 +100,7 @@ export function ConnectionsView({
 
         {/* Provider picker — card per provider */}
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
             <Plug className="size-4" /> AI Provider
           </h3>
           <div className="grid gap-2">
