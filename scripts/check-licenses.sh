@@ -20,7 +20,7 @@ cat > "$OUT" << 'HEADER'
 
 HEADER
 
-go-licenses csv ./... 2>/dev/null | grep -v "codeberg.org/dbus/shushingface" | sort | while IFS=, read -r mod url license; do
+go-licenses csv --tags webkit2_41 ./... 2>/dev/null | grep -v "codeberg.org/dbus/shushingface" | sort | while IFS=, read -r mod url license; do
   echo "- **$mod** — $license" >> "$OUT"
 done
 
