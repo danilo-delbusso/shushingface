@@ -115,23 +115,8 @@ export namespace config {
 		    return a;
 		}
 	}
-	export class legacyProviderConfig {
-	    name: string;
-	    apiKey: string;
-	    baseUrl: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new legacyProviderConfig(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.apiKey = source["apiKey"];
-	        this.baseUrl = source["baseUrl"];
-	    }
-	}
 	export class Settings {
+	    configVersion: number;
 	    connections: Connection[];
 	    transcriptionConnectionId: string;
 	    transcriptionModel: string;
@@ -150,13 +135,6 @@ export namespace config {
 	    enableIndicator: boolean;
 	    enableNotifications: boolean;
 	    inputDeviceId?: string;
-	    providerId?: string;
-	    providerApiKey?: string;
-	    providerBaseUrl?: string;
-	    providers?: Record<string, legacyProviderConfig>;
-	    transcriptionProviderId?: string;
-	    refinementProviderId?: string;
-	    systemPrompt?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -164,6 +142,7 @@ export namespace config {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.configVersion = source["configVersion"];
 	        this.connections = this.convertValues(source["connections"], Connection);
 	        this.transcriptionConnectionId = source["transcriptionConnectionId"];
 	        this.transcriptionModel = source["transcriptionModel"];
@@ -182,13 +161,6 @@ export namespace config {
 	        this.enableIndicator = source["enableIndicator"];
 	        this.enableNotifications = source["enableNotifications"];
 	        this.inputDeviceId = source["inputDeviceId"];
-	        this.providerId = source["providerId"];
-	        this.providerApiKey = source["providerApiKey"];
-	        this.providerBaseUrl = source["providerBaseUrl"];
-	        this.providers = this.convertValues(source["providers"], legacyProviderConfig, true);
-	        this.transcriptionProviderId = source["transcriptionProviderId"];
-	        this.refinementProviderId = source["refinementProviderId"];
-	        this.systemPrompt = source["systemPrompt"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -39,6 +40,9 @@ type RefinementProfile struct {
 }
 
 type Settings struct {
+	// Schema version — managed by the migration system
+	ConfigVersion int `json:"configVersion"`
+
 	// Connections — multiple named AI service configurations
 	Connections []Connection `json:"connections"`
 
@@ -70,21 +74,6 @@ type Settings struct {
 
 	// Audio
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
-
-	// Legacy fields — kept only for migration, cleared on load
-	LegacyProviderID      string                          `json:"providerId,omitempty"`
-	LegacyProviderAPIKey  string                          `json:"providerApiKey,omitempty"`
-	LegacyProviderBaseURL string                          `json:"providerBaseUrl,omitempty"`
-	LegacyProviders       map[string]legacyProviderConfig `json:"providers,omitempty"`
-	LegacyTransProviderID string                          `json:"transcriptionProviderId,omitempty"`
-	LegacyRefProviderID   string                          `json:"refinementProviderId,omitempty"`
-	LegacySystemPrompt    string                          `json:"systemPrompt,omitempty"`
-}
-
-type legacyProviderConfig struct {
-	Name    string `json:"name"`
-	APIKey  string `json:"apiKey"`
-	BaseURL string `json:"baseUrl"`
 }
 
 // ──────────────────────────────────────────────────
@@ -231,6 +220,7 @@ func DefaultProfiles() []RefinementProfile {
 // DefaultSettings returns a sensible baseline configuration (no connections).
 func DefaultSettings() *Settings {
 	return &Settings{
+		ConfigVersion:      currentConfigVersion,
 		TranscriptionModel: DefaultTranscriptionModel,
 		RefinementModel:    DefaultRefinementModel,
 		RefinementProfiles: DefaultProfiles(),
@@ -285,82 +275,26 @@ func Load() (*Settings, error) {
 		return nil, err
 	}
 
-	var settings Settings
-	if err := json.Unmarshal(data, &settings); err != nil {
+	// Parse into raw map for migrations
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, err
 	}
 
-	migrated := false
-
-	// Migrate: old multi-provider map → single provider fields (intermediate step)
-	if settings.LegacyProviderID == "" && len(settings.LegacyProviders) > 0 {
-		provID := settings.LegacyTransProviderID
-		if provID == "" {
-			provID = settings.LegacyRefProviderID
-		}
-		if old, ok := settings.LegacyProviders[provID]; ok {
-			settings.LegacyProviderID = old.Name
-			if settings.LegacyProviderID == "" {
-				settings.LegacyProviderID = "groq"
-			}
-			settings.LegacyProviderAPIKey = old.APIKey
-			settings.LegacyProviderBaseURL = old.BaseURL
-		}
-		settings.LegacyProviders = nil
-		settings.LegacyTransProviderID = ""
-		settings.LegacyRefProviderID = ""
-		migrated = true
+	migrated, err := migrateConfig(raw)
+	if err != nil {
+		return nil, fmt.Errorf("config migration failed: %w", err)
 	}
 
-	// Migrate: single provider → connections slice
-	if len(settings.Connections) == 0 && settings.LegacyProviderID != "" {
-		connID := "default"
-		provID := settings.LegacyProviderID
-		settings.Connections = []Connection{{
-			ID:         connID,
-			Name:       providerDisplayName(provID),
-			ProviderID: provID,
-			APIKey:     settings.LegacyProviderAPIKey,
-			BaseURL:    settings.LegacyProviderBaseURL,
-		}}
-		settings.TranscriptionConnectionID = connID
-		settings.RefinementConnectionID = connID
-		settings.LegacyProviderID = ""
-		settings.LegacyProviderAPIKey = ""
-		settings.LegacyProviderBaseURL = ""
-		migrated = true
+	// Re-marshal migrated map into the struct
+	data, err = json.Marshal(raw)
+	if err != nil {
+		return nil, err
 	}
 
-	// Migrate: old single prompt → profiles
-	if len(settings.RefinementProfiles) == 0 {
-		if settings.LegacySystemPrompt != "" {
-			settings.RefinementProfiles = append(DefaultProfiles(), RefinementProfile{
-				ID:     "custom",
-				Name:   "Custom",
-				Icon:   "pen-tool",
-				Prompt: settings.LegacySystemPrompt,
-			})
-			settings.ActiveProfileID = "custom"
-		} else {
-			settings.RefinementProfiles = DefaultProfiles()
-			settings.ActiveProfileID = "professional"
-		}
-		settings.LegacySystemPrompt = ""
-		migrated = true
-	}
-
-	// Ensure models are set
-	if settings.RefinementModel == "" {
-		if p := settings.ActiveProfile(); p != nil && p.Model != "" {
-			settings.RefinementModel = p.Model
-		} else {
-			settings.RefinementModel = DefaultRefinementModel
-		}
-		migrated = true
-	}
-	if settings.TranscriptionModel == "" {
-		settings.TranscriptionModel = DefaultTranscriptionModel
-		migrated = true
+	var settings Settings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return nil, err
 	}
 
 	if migrated {
