@@ -52,31 +52,34 @@ check: lint test
 
 # --- Build & Run ---
 
+VERSION := `git describe --tags --always --dirty 2>/dev/null || echo "dev"`
+LDFLAGS := "-X codeberg.org/dbus/shushingface/internal/version.version=" + VERSION
+
 # Runs the Wails Desktop application in development mode
 dev:
     #!/bin/bash
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        wails dev -tags webkit2_41
+        wails dev -tags webkit2_41 -ldflags '{{LDFLAGS}}'
     else
-        wails dev
+        wails dev -ldflags '{{LDFLAGS}}'
     fi
 
 # Platform-aware build (auto-detects OS)
 build:
     #!/bin/bash
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        wails build -tags webkit2_41
+        wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}'
     else
-        wails build
+        wails build -ldflags '{{LDFLAGS}}'
     fi
 
 # Build for Linux explicitly
 build-linux:
-    wails build -tags webkit2_41
+    wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}'
 
 # Build for macOS explicitly
 build-darwin:
-    wails build
+    wails build -ldflags '{{LDFLAGS}}'
 
 # --- Install & Uninstall (Linux) ---
 # macOS: `wails build` produces a .app bundle in build/bin/

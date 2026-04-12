@@ -42,6 +42,7 @@ interface AppSidebarProps {
   configured: boolean;
   historyEnabled: boolean;
   hasWarnings?: boolean;
+  version?: string;
 }
 
 export function AppSidebar({
@@ -50,6 +51,7 @@ export function AppSidebar({
   configured,
   historyEnabled,
   hasWarnings,
+  version,
 }: AppSidebarProps) {
   const settingsOpen = view === "connections" || view === "ai" || view === "appearance" || view === "general";
 
@@ -171,6 +173,9 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        {version && (
+          <p className="px-3 pb-1 text-[10px] text-muted-foreground/50">{version}</p>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <ConfirmDialog

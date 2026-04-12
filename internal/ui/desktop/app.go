@@ -18,6 +18,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/osutil"
 	"codeberg.org/dbus/shushingface/internal/paste"
 	"codeberg.org/dbus/shushingface/internal/platform"
+	"codeberg.org/dbus/shushingface/internal/version"
 )
 
 type App struct {
@@ -133,6 +134,10 @@ func (a *App) StopAndProcess() ProcessResult {
 	}
 
 	return ProcessResult{Transcript: transcript, Refined: refined}
+}
+
+func (a *App) GetVersion() string {
+	return version.Version()
 }
 
 func (a *App) GetPlatform() platform.Info {

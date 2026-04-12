@@ -16,6 +16,8 @@ export function GetDefaultProfiles():Promise<Array<config.RefinementProfile>>;
 
 export function GetDefaultSettings():Promise<config.Settings>;
 
+export function GetVersion():Promise<string>;
+
 export function GetHistory(arg1:number,arg2:number):Promise<Array<history.Record>>;
 
 export function GetPasteStatus():Promise<desktop.PasteStatus>;

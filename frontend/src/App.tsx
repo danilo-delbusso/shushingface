@@ -20,6 +20,7 @@ import {
   usePasteStatus,
   isConfigured,
 } from "@/lib/hooks";
+import * as AppBridge from "../wailsjs/go/desktop/App";
 import { config } from "../wailsjs/go/models";
 
 function App() {
@@ -32,8 +33,13 @@ function App() {
   } = useHistory();
   const platform = usePlatform();
   const pasteStatus = usePasteStatus();
+  const [appVersion, setAppVersion] = useState("");
   const configured = isConfigured(settings);
   useTheme(settings?.theme);
+
+  useEffect(() => {
+    AppBridge.GetVersion().then(setAppVersion);
+  }, []);
 
   const { isRecording, isProcessing, results, toggle } = useRecording(
     configured,
@@ -70,6 +76,7 @@ function App() {
           onNavigate={setView}
           configured={configured}
           historyEnabled={settings.enableHistory}
+          version={appVersion}
         />
         <SidebarInset className="flex flex-col h-screen overflow-hidden">
           {view === "home" && (
