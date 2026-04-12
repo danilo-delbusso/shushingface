@@ -10,6 +10,9 @@ LDFLAGS="-X codeberg.org/dbus/shushingface/internal/version.version=$VERSION"
 
 echo "Building shushingface $VERSION..."
 
+# Clean previous build
+rm -rf build/bin/
+
 # Build
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     wails build -tags webkit2_41 -ldflags "$LDFLAGS"
