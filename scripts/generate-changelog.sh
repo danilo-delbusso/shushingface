@@ -6,7 +6,6 @@ set -euo pipefail
 OUT="${1:-CHANGELOG.md}"
 
 PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-CURRENT_TAG=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "HEAD")
 
 if [ -n "$PREV_TAG" ]; then
     echo "## Changes since $PREV_TAG" > "$OUT"
@@ -15,8 +14,8 @@ if [ -n "$PREV_TAG" ]; then
 else
     echo "## Initial Release" > "$OUT"
     echo "" >> "$OUT"
-    git log --pretty=format:"- %s" HEAD~20..HEAD >> "$OUT"
+    git log --pretty=format:"- %s" -20 >> "$OUT"
 fi
 
 echo "" >> "$OUT"
-echo "Changelog written to $OUT"
+echo "Changelog: $OUT ($(wc -l < "$OUT") lines)" >&2
