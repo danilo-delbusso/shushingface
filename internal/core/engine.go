@@ -9,47 +9,55 @@ import (
 	"codeberg.org/dbus/shushingface/internal/audio/wav"
 )
 
-type Engine struct {
+// Engine is the interface for the recording → transcription → refinement pipeline.
+type Engine interface {
+	StartRecording() error
+	StopAndProcess(ctx context.Context, tOpts ai.TranscribeOptions, rOpts ai.RefineOptions, refinerOverride ai.Refiner) (transcript string, refined string, err error)
+	SetTranscriber(t ai.Transcriber)
+	SetRefiner(r ai.Refiner)
+	GetRefiner() ai.Refiner
+}
+
+type engine struct {
 	mu          sync.RWMutex
 	recorder    audio.Recorder
 	transcriber ai.Transcriber
 	refiner     ai.Refiner
 }
 
-func NewEngine(recorder audio.Recorder, transcriber ai.Transcriber, refiner ai.Refiner) *Engine {
-	return &Engine{
+func NewEngine(recorder audio.Recorder, transcriber ai.Transcriber, refiner ai.Refiner) Engine {
+	return &engine{
 		recorder:    recorder,
 		transcriber: transcriber,
 		refiner:     refiner,
 	}
 }
 
-func (e *Engine) SetTranscriber(t ai.Transcriber) {
+func (e *engine) SetTranscriber(t ai.Transcriber) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.transcriber = t
 }
 
-func (e *Engine) SetRefiner(r ai.Refiner) {
+func (e *engine) SetRefiner(r ai.Refiner) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.refiner = r
 }
 
-func (e *Engine) GetRefiner() ai.Refiner {
+func (e *engine) GetRefiner() ai.Refiner {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.refiner
 }
 
-func (e *Engine) StartRecording() error {
+func (e *engine) StartRecording() error {
 	return e.recorder.Start()
 }
 
 // StopAndProcess stops recording, transcribes, and refines.
-// If refinerOverride is non-nil it is used instead of the default refiner
-// (for per-profile connection overrides).
-func (e *Engine) StopAndProcess(ctx context.Context, tOpts ai.TranscribeOptions, rOpts ai.RefineOptions, refinerOverride ai.Refiner) (transcript string, refined string, err error) {
+// If refinerOverride is non-nil it is used instead of the default refiner.
+func (e *engine) StopAndProcess(ctx context.Context, tOpts ai.TranscribeOptions, rOpts ai.RefineOptions, refinerOverride ai.Refiner) (transcript string, refined string, err error) {
 	samples, err := e.recorder.Stop()
 	if err != nil {
 		return "", "", err
