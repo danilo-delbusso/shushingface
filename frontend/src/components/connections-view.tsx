@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfoTip } from "@/components/info-tip";
 import { providerPresets } from "@/lib/providers";
-import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
+import { ExternalLink } from "@/components/ui/external-link";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 import type { ai } from "../../wailsjs/go/models";
@@ -152,13 +152,9 @@ export function ConnectionsView({
             <CardTitle className="flex items-center gap-2 text-sm">
               API Key
               {preset && (
-                <button
-                  type="button"
-                  className="cursor-pointer text-primary underline underline-offset-2 hover:text-primary/80 text-xs font-normal"
-                  onClick={() => BrowserOpenURL(preset.keyUrl)}
-                >
+                <ExternalLink href={preset.keyUrl} className="text-xs">
                   {preset.keyUrlLabel}
-                </button>
+                </ExternalLink>
               )}
             </CardTitle>
             <CardDescription>

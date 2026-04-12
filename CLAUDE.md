@@ -191,6 +191,18 @@ toast.error(`Failed: ${err}`);
 - All Go calls via `import * as AppBridge from "../../wailsjs/go/desktop/App"`
 - Always try/catch + `toast.error()` on failure
 
+### External links
+
+Use `<ExternalLink>` for any link that opens in the system browser. Never use `window.open()` (broken in Wails) or raw `<button>` styled as a link (wrong cursor, wrong semantics).
+
+```tsx
+import { ExternalLink } from "@/components/ui/external-link";
+
+<ExternalLink href="https://example.com" className="text-xs">
+  Link text
+</ExternalLink>
+```
+
 ## Don't
 
 - Don't add `font-mono` — it's the global font
@@ -200,3 +212,4 @@ toast.error(`Failed: ${err}`);
 - Don't use `TriangleAlert` — use `AlertTriangle`
 - Don't forget `shrink-0` on flex icons
 - Don't use `gap-1.5` in CardTitle — always `gap-2`
+- Don't use `window.open()` or `<button>` for external links — use `<ExternalLink>`

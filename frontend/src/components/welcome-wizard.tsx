@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getProfileIcon } from "@/lib/icons";
 import { providerPresets } from "@/lib/providers";
-import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
+import { ExternalLink } from "@/components/ui/external-link";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 import type { ai } from "../../wailsjs/go/models";
@@ -119,13 +119,9 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
             {/* API key */}
             <div className="space-y-2">
               {preset && (
-                <button
-                  type="button"
-                  className="cursor-pointer text-primary underline underline-offset-2 text-xs"
-                  onClick={() => BrowserOpenURL(preset.keyUrl)}
-                >
+                <ExternalLink href={preset.keyUrl} className="text-xs">
                   {preset.keyUrlLabel}
-                </button>
+                </ExternalLink>
               )}
               <div className="flex">
                 <Input
