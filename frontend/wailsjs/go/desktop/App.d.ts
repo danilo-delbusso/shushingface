@@ -20,17 +20,17 @@ export function GetHistory(arg1:number,arg2:number):Promise<Array<history.Record
 
 export function GetLogPath():Promise<string>;
 
-export function GetRecentLogs(arg1:number):Promise<string>;
-
-export function IsSecretStorageSecure():Promise<boolean>;
-
 export function GetPasteStatus():Promise<desktop.PasteStatus>;
 
 export function GetPlatform():Promise<platform.Info>;
 
+export function GetRecentLogs(arg1:number):Promise<string>;
+
 export function GetSettings():Promise<config.Settings>;
 
 export function GetVersion():Promise<string>;
+
+export function IsSecretStorageSecure():Promise<boolean>;
 
 export function ListModelsForConnection(arg1:string):Promise<Array<ai.ModelInfo>>;
 
