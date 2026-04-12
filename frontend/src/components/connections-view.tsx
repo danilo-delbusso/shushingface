@@ -1,4 +1,11 @@
 import { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  connectionSchema,
+  type ConnectionFormData,
+} from "@/lib/schemas";
+import { FormField } from "@/components/ui/form-field";
 import {
   Eye,
   EyeOff,
@@ -21,7 +28,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -185,41 +191,57 @@ function ConnectionCard({
   onDelete: () => void;
   inUse: boolean;
 }) {
-  // Draft state — only saved on explicit Save
-  const [name, setName] = useState(conn.name);
-  const [providerId, setProviderId] = useState(conn.providerId);
-  const [apiKey, setApiKey] = useState(conn.apiKey);
-  const [baseUrl, setBaseUrl] = useState(conn.baseUrl ?? "");
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    control,
+    formState: { errors, isDirty },
+  } = useForm<ConnectionFormData>({
+    resolver: zodResolver(connectionSchema),
+    defaultValues: {
+      name: conn.name,
+      providerId: conn.providerId,
+      apiKey: conn.apiKey,
+      baseUrl: conn.baseUrl ?? "",
+    },
+  });
+
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
 
-  const preset = providerPresets[providerId];
+  const watchedName = watch("name");
+  const watchedProviderId = watch("providerId");
+  const watchedApiKey = watch("apiKey");
+  const preset = providerPresets[watchedProviderId];
   const needsBaseUrl = preset?.requiresBaseUrl ?? false;
-  const [advOpen, setAdvOpen] = useState(!!baseUrl || needsBaseUrl);
+  const [advOpen, setAdvOpen] = useState(
+    !!conn.baseUrl || needsBaseUrl,
+  );
 
-  // Sync draft when the saved connection changes (e.g. after add)
+  // Reset form when saved connection changes externally
   useEffect(() => {
-    setName(conn.name);
-    setProviderId(conn.providerId);
-    setApiKey(conn.apiKey);
-    setBaseUrl(conn.baseUrl ?? "");
-  }, [conn.id, conn.name, conn.providerId, conn.apiKey, conn.baseUrl]);
+    reset({
+      name: conn.name,
+      providerId: conn.providerId,
+      apiKey: conn.apiKey,
+      baseUrl: conn.baseUrl ?? "",
+    });
+  }, [conn.id, conn.name, conn.providerId, conn.apiKey, conn.baseUrl, reset]);
 
-  const save = () => {
+  const onSubmit = (data: ConnectionFormData) => {
     onSave(
       config.Connection.createFrom({
         id: conn.id,
-        name,
-        providerId,
-        apiKey,
-        baseUrl: baseUrl || undefined,
+        ...data,
+        baseUrl: data.baseUrl || undefined,
       }),
     );
   };
 
   const testConnection = async () => {
-    // Save first so backend has the latest credentials
-    save();
+    handleSubmit(onSubmit)();
     setTesting(true);
     try {
       const models = await AppBridge.ListModelsForConnection(conn.id);
@@ -239,19 +261,25 @@ function ConnectionCard({
             {preset?.icon ? (
               <img src={preset.icon} alt="" className="size-4" />
             ) : (
-              <span className="text-xs font-bold">{name[0]}</span>
+              <span className="text-xs font-bold">
+                {watchedName?.[0] ?? "?"}
+              </span>
             )}
           </div>
           <div className="flex-1 min-w-0">
             <CardTitle className="flex items-center gap-2 text-sm">
-              {name}
-              {!apiKey && !needsBaseUrl && (
+              {watchedName || "Untitled"}
+              {!watchedApiKey && !needsBaseUrl && (
                 <AlertTriangle className="size-3 text-amber-500 shrink-0" />
               )}
             </CardTitle>
             <CardDescription className="text-xs">
-              {preset?.name ?? providerId}
-              {apiKey ? " — connected" : needsBaseUrl ? "" : " — needs API key"}
+              {preset?.name ?? watchedProviderId}
+              {watchedApiKey
+                ? " — connected"
+                : needsBaseUrl
+                  ? ""
+                  : " — needs API key"}
             </CardDescription>
           </div>
           <Button
@@ -270,64 +298,75 @@ function ConnectionCard({
       </CardHeader>
       {isExpanded && (
         <CardContent className="space-y-4 pt-0">
-          <div className="space-y-1">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label>Provider</Label>
-            <Select value={providerId} onValueChange={setProviderId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <FormField label="Name" error={errors.name?.message}>
+            <Input {...register("name")} />
+          </FormField>
+
+          <FormField label="Provider">
+            <Controller
+              name="providerId"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
 
           {/* Base URL — shown inline for providers that need it */}
           {needsBaseUrl && (
-            <div className="space-y-1">
-              <Label>
-                Base URL{" "}
-                <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
-              </Label>
+            <FormField
+              label={
+                <>
+                  Base URL{" "}
+                  <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
+                </>
+              }
+              error={errors.baseUrl?.message}
+            >
               <Input
-                value={baseUrl}
+                {...register("baseUrl")}
                 placeholder="http://localhost:11434/v1"
-                onChange={(e) => setBaseUrl(e.target.value)}
               />
-            </div>
+            </FormField>
           )}
 
-          <div className="space-y-1">
-            <Label className="flex items-center gap-2">
-              API Key
-              {needsBaseUrl && (
-                <span className="text-xs text-muted-foreground font-normal">
-                  optional for local
-                </span>
-              )}
-              {preset?.keyUrl && (
-                <ExternalLink
-                  href={preset.keyUrl}
-                  className="text-xs font-normal"
-                >
-                  {preset.keyUrlLabel}
-                </ExternalLink>
-              )}
-            </Label>
+          <FormField
+            label={
+              <span className="flex items-center gap-2">
+                API Key
+                {needsBaseUrl && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    optional for local
+                  </span>
+                )}
+                {preset?.keyUrl && (
+                  <ExternalLink
+                    href={preset.keyUrl}
+                    className="text-xs font-normal"
+                  >
+                    {preset.keyUrlLabel}
+                  </ExternalLink>
+                )}
+              </span>
+            }
+            error={errors.apiKey?.message}
+          >
             <div className="flex">
               <Input
                 type={showKey ? "text" : "password"}
-                value={apiKey}
+                {...register("apiKey")}
                 placeholder={preset?.keyPlaceholder ?? "API key..."}
-                onChange={(e) => setApiKey(e.target.value)}
                 className="rounded-r-none"
               />
               <Button
@@ -344,28 +383,34 @@ function ConnectionCard({
                 )}
               </Button>
             </div>
-          </div>
+          </FormField>
 
           {/* Base URL override for known providers (hidden behind Advanced) */}
           {!needsBaseUrl && (
             <AdvancedToggle open={advOpen} onToggle={setAdvOpen}>
-              <div className="space-y-1">
-                <Label className="text-xs flex items-center gap-1">
-                  Base URL{" "}
-                  <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
-                </Label>
+              <FormField
+                label={
+                  <span className="text-xs flex items-center gap-1">
+                    Base URL{" "}
+                    <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
+                  </span>
+                }
+              >
                 <Input
-                  value={baseUrl}
+                  {...register("baseUrl")}
                   placeholder="Leave empty for default"
-                  onChange={(e) => setBaseUrl(e.target.value)}
                   className="text-xs"
                 />
-              </div>
+              </FormField>
             </AdvancedToggle>
           )}
 
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={save}>
+            <Button
+              size="sm"
+              onClick={handleSubmit(onSubmit)}
+              disabled={!isDirty}
+            >
               Save
             </Button>
             <Button
@@ -390,7 +435,7 @@ function ConnectionCard({
                   <Trash2 className="size-3.5" /> Delete
                 </Button>
               }
-              title={`Delete "${name}"?`}
+              title={`Delete "${watchedName}"?`}
               description={
                 inUse
                   ? "This connection is currently in use by transcription, refinement, or a style. Deleting it may break things."
