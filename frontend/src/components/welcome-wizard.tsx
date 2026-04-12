@@ -43,8 +43,8 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   const totalSteps = 3;
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-8 px-6">
+    <div className="flex h-screen w-screen flex-col justify-center bg-background">
+      <div className="mx-auto w-full max-w-md space-y-8 px-6">
         {/* Step 0: Welcome */}
         {step === 0 && (
           <div className="space-y-6 text-center">
@@ -81,14 +81,14 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                     key={p.id}
                     type="button"
                     onClick={() => setProviderId(p.id)}
-                    className={`flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                    className={`flex items-center gap-3 overflow-hidden rounded-lg border-2 p-3 text-left transition-colors ${
                       active
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-muted-foreground/30"
                     }`}
                   >
                     <div
-                      className={`flex size-9 items-center justify-center rounded-md ${
+                      className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
                         active
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"

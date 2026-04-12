@@ -112,14 +112,14 @@ export function ConnectionsView({
                   key={p.id}
                   type="button"
                   onClick={() => setProviderId(p.id)}
-                  className={`flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                  className={`flex items-center gap-3 overflow-hidden rounded-lg border-2 p-3 text-left transition-colors ${
                     active
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-muted-foreground/30"
                   }`}
                 >
                   <div
-                    className={`flex size-9 items-center justify-center rounded-md ${
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
                       active
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground"
