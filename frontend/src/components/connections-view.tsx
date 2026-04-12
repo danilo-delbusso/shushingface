@@ -89,7 +89,6 @@ export function ConnectionsView({
     setConnections(updated);
     setExpandedId(id);
 
-    // If this is the first connection, auto-assign as default for both
     if (connections.length === 0) {
       onSave(
         config.Settings.createFrom({
@@ -107,7 +106,6 @@ export function ConnectionsView({
   const deleteConnection = (id: string) => {
     const updated = connections.filter((c) => c.id !== id);
     const patch: Partial<config.Settings> = { connections: updated };
-    // Clear references if this connection was the default
     if (settings.transcriptionConnectionId === id) {
       patch.transcriptionConnectionId = updated[0]?.id ?? "";
     }
@@ -116,15 +114,6 @@ export function ConnectionsView({
     }
     setConnections(updated);
     onSave(config.Settings.createFrom({ ...settings, ...patch }));
-  };
-
-  const testConnection = async (id: string) => {
-    try {
-      const models = await AppBridge.ListModelsForConnection(id);
-      toast.success(`Connected — ${models?.length ?? 0} models available`);
-    } catch (err) {
-      toast.error(`Connection failed: ${err}`);
-    }
   };
 
   const isInUse = (id: string) => {
@@ -160,182 +149,211 @@ export function ConnectionsView({
           </Card>
         )}
 
-        {connections.map((conn) => {
-          const preset = providerPresets[conn.providerId];
-          const isExpanded = expandedId === conn.id;
-          const [showKey, setShowKey] = useState(false);
-          const [testing, setTesting] = useState(false);
-          const [advOpen, setAdvOpen] = useState(!!conn.baseUrl);
-
-          return (
-            <Card key={conn.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    {preset?.icon ? (
-                      <img src={preset.icon} alt="" className="size-4" />
-                    ) : (
-                      <span className="text-xs font-bold">{conn.name[0]}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      {conn.name}
-                      {!conn.apiKey && (
-                        <AlertTriangle className="size-3 text-amber-500 shrink-0" />
-                      )}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {preset?.name ?? conn.providerId}
-                      {conn.apiKey ? " — connected" : " — needs API key"}
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    onClick={() => setExpandedId(isExpanded ? null : conn.id)}
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="size-3.5" />
-                    ) : (
-                      <ChevronDown className="size-3.5" />
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              {isExpanded && (
-                <CardContent className="space-y-4 pt-0">
-                  <div className="space-y-1">
-                    <Label>Name</Label>
-                    <Input
-                      value={conn.name}
-                      onChange={(e) =>
-                        updateConnection(conn.id, { name: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Provider</Label>
-                    <Select
-                      value={conn.providerId}
-                      onValueChange={(v) =>
-                        updateConnection(conn.id, { providerId: v })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {providers.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.displayName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="flex items-center gap-2">
-                      API Key
-                      {preset && (
-                        <ExternalLink
-                          href={preset.keyUrl}
-                          className="text-xs font-normal"
-                        >
-                          {preset.keyUrlLabel}
-                        </ExternalLink>
-                      )}
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        type={showKey ? "text" : "password"}
-                        value={conn.apiKey}
-                        placeholder={preset?.keyPlaceholder ?? "API key..."}
-                        onChange={(e) =>
-                          updateConnection(conn.id, { apiKey: e.target.value })
-                        }
-                        className="rounded-r-none"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowKey(!showKey)}
-                        className="rounded-l-none border-l-0"
-                      >
-                        {showKey ? (
-                          <EyeOff className="size-4" />
-                        ) : (
-                          <Eye className="size-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <AdvancedToggle open={advOpen} onToggle={setAdvOpen}>
-                    <div className="space-y-1">
-                      <Label className="text-xs flex items-center gap-1">
-                        Base URL{" "}
-                        <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
-                      </Label>
-                      <Input
-                        value={conn.baseUrl ?? ""}
-                        placeholder="Leave empty for default"
-                        onChange={(e) =>
-                          updateConnection(conn.id, {
-                            baseUrl: e.target.value || undefined,
-                          })
-                        }
-                        className="text-xs"
-                      />
-                    </div>
-                  </AdvancedToggle>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={testing || !conn.apiKey}
-                      onClick={async () => {
-                        setTesting(true);
-                        await testConnection(conn.id);
-                        setTesting(false);
-                      }}
-                    >
-                      {testing ? (
-                        <>
-                          <Loader2 className="size-3.5 animate-spin" />{" "}
-                          Testing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="size-3.5" /> Test
-                        </>
-                      )}
-                    </Button>
-                    <ConfirmDialog
-                      trigger={
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="size-3.5" /> Delete
-                        </Button>
-                      }
-                      title={`Delete "${conn.name}"?`}
-                      description={
-                        isInUse(conn.id)
-                          ? "This connection is currently in use by transcription, refinement, or a style. Deleting it may break things."
-                          : "This connection will be permanently removed."
-                      }
-                      confirmLabel="Delete"
-                      onConfirm={() => deleteConnection(conn.id)}
-                    />
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-          );
-        })}
+        {connections.map((conn) => (
+          <ConnectionCard
+            key={conn.id}
+            conn={conn}
+            providers={providers}
+            isExpanded={expandedId === conn.id}
+            onToggleExpand={() =>
+              setExpandedId(expandedId === conn.id ? null : conn.id)
+            }
+            onUpdate={(patch) => updateConnection(conn.id, patch)}
+            onDelete={() => deleteConnection(conn.id)}
+            inUse={isInUse(conn.id)}
+          />
+        ))}
       </div>
     </div>
+  );
+}
+
+function ConnectionCard({
+  conn,
+  providers,
+  isExpanded,
+  onToggleExpand,
+  onUpdate,
+  onDelete,
+  inUse,
+}: {
+  conn: config.Connection;
+  providers: ai.ProviderInfo[];
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onUpdate: (patch: Partial<config.Connection>) => void;
+  onDelete: () => void;
+  inUse: boolean;
+}) {
+  const preset = providerPresets[conn.providerId];
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [advOpen, setAdvOpen] = useState(!!conn.baseUrl);
+
+  const testConnection = async () => {
+    setTesting(true);
+    try {
+      const models = await AppBridge.ListModelsForConnection(conn.id);
+      toast.success(`Connected — ${models?.length ?? 0} models available`);
+    } catch (err) {
+      toast.error(`Connection failed: ${err}`);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            {preset?.icon ? (
+              <img src={preset.icon} alt="" className="size-4" />
+            ) : (
+              <span className="text-xs font-bold">{conn.name[0]}</span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              {conn.name}
+              {!conn.apiKey && (
+                <AlertTriangle className="size-3 text-amber-500 shrink-0" />
+              )}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {preset?.name ?? conn.providerId}
+              {conn.apiKey ? " — connected" : " — needs API key"}
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={onToggleExpand}
+          >
+            {isExpanded ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      {isExpanded && (
+        <CardContent className="space-y-4 pt-0">
+          <div className="space-y-1">
+            <Label>Name</Label>
+            <Input
+              value={conn.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Provider</Label>
+            <Select
+              value={conn.providerId}
+              onValueChange={(v) => onUpdate({ providerId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {providers.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="flex items-center gap-2">
+              API Key
+              {preset && (
+                <ExternalLink
+                  href={preset.keyUrl}
+                  className="text-xs font-normal"
+                >
+                  {preset.keyUrlLabel}
+                </ExternalLink>
+              )}
+            </Label>
+            <div className="flex">
+              <Input
+                type={showKey ? "text" : "password"}
+                value={conn.apiKey}
+                placeholder={preset?.keyPlaceholder ?? "API key..."}
+                onChange={(e) => onUpdate({ apiKey: e.target.value })}
+                className="rounded-r-none"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowKey(!showKey)}
+                className="rounded-l-none border-l-0"
+              >
+                {showKey ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <AdvancedToggle open={advOpen} onToggle={setAdvOpen}>
+            <div className="space-y-1">
+              <Label className="text-xs flex items-center gap-1">
+                Base URL{" "}
+                <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
+              </Label>
+              <Input
+                value={conn.baseUrl ?? ""}
+                placeholder="Leave empty for default"
+                onChange={(e) =>
+                  onUpdate({ baseUrl: e.target.value || undefined })
+                }
+                className="text-xs"
+              />
+            </div>
+          </AdvancedToggle>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={testing || !conn.apiKey}
+              onClick={testConnection}
+            >
+              {testing ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" /> Testing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="size-3.5" /> Test
+                </>
+              )}
+            </Button>
+            <ConfirmDialog
+              trigger={
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="size-3.5" /> Delete
+                </Button>
+              }
+              title={`Delete "${conn.name}"?`}
+              description={
+                inUse
+                  ? "This connection is currently in use by transcription, refinement, or a style. Deleting it may break things."
+                  : "This connection will be permanently removed."
+              }
+              confirmLabel="Delete"
+              onConfirm={onDelete}
+            />
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }
