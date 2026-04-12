@@ -21,30 +21,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfoTip } from "@/components/info-tip";
+import { providerPresets } from "@/lib/providers";
+import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 import type { ai } from "../../wailsjs/go/models";
-
-// Known provider presets — everything except the API key is pre-configured.
-const providerPresets: Record<
-  string,
-  {
-    name: string;
-    description: string;
-    keyPlaceholder: string;
-    keyUrl: string;
-    keyUrlLabel: string;
-  }
-> = {
-  groq: {
-    name: "Groq",
-    description:
-      "Ultra-fast inference with Llama, Whisper, Qwen, and more. Free tier available.",
-    keyPlaceholder: "gsk_...",
-    keyUrl: "https://console.groq.com/keys",
-    keyUrlLabel: "Get a free key",
-  },
-};
 
 interface ConnectionsViewProps {
   settings: config.Settings;
@@ -170,7 +151,7 @@ export function ConnectionsView({
                 <button
                   type="button"
                   className="text-primary underline underline-offset-2 hover:text-primary/80 text-xs font-normal"
-                  onClick={() => window.open(preset.keyUrl, "_blank")}
+                  onClick={() => BrowserOpenURL(preset.keyUrl)}
                 >
                   {preset.keyUrlLabel}
                 </button>
