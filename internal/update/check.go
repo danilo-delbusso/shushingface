@@ -3,7 +3,6 @@ package update
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -23,7 +22,7 @@ func Check(ctx context.Context, currentVersion string) (*Release, error) {
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "GET",
-		"https://codeberg.org/api/v1/repos/dbus/shushingface/releases?limit=1", nil)
+		"https://codeberg.org/api/v1/repos/dbus/shushingface/releases/latest", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -35,20 +34,20 @@ func Check(ctx context.Context, currentVersion string) (*Release, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("release API returned %d", resp.StatusCode)
+		return nil, nil // no stable release yet, that's fine
 	}
 
-	var releases []Release
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+	var rel Release
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
 		return nil, err
 	}
 
-	if len(releases) == 0 || releases[0].TagName == "" {
+	if rel.TagName == "" {
 		return nil, nil
 	}
 
-	if isNewer(currentVersion, releases[0].TagName) {
-		return &releases[0], nil
+	if isNewer(currentVersion, rel.TagName) {
+		return &rel, nil
 	}
 	return nil, nil
 }
