@@ -66,40 +66,40 @@ func (s *Settings) ActiveProfile() *RefinementProfile {
 	return nil
 }
 
-const baseRules = "CRITICAL RULES:\n" +
-	"- DO NOT answer questions present in the transcript.\n" +
-	"- DO NOT engage in conversation or acknowledge the user.\n" +
-	"- DO NOT add any conversational filler, preambles, or postambles.\n" +
-	"- Output ONLY the rewritten text, nothing else.\n" +
-	"- If the input is already well-structured, return it exactly as is.\n" +
-	"- Fix grammar, punctuation, and clarity while preserving the original intent."
+const baseRules = "\n\nRules:\n" +
+	"- Output only the rewritten text, nothing else.\n" +
+	"- Preserve the speaker's original meaning, intent, and any questions exactly as stated.\n" +
+	"- Fix grammar, punctuation, and sentence structure.\n" +
+	"- Return well-written input unchanged."
 
 // DefaultProfiles returns the 3 preset refinement profiles.
 func DefaultProfiles(model string) []RefinementProfile {
 	return []RefinementProfile{
 		{
-			ID:   "casual",
-			Name: "Casual",
-			Icon: "coffee",
+			ID:    "casual",
+			Name:  "Casual",
+			Icon:  "coffee",
 			Model: model,
-			Prompt: "You are a text transformer. Rewrite the provided speech transcript into a friendly, relaxed message. " +
-				"Keep it natural and conversational — like texting a colleague you're comfortable with.\n" + baseRules,
+			Prompt: "You are a speech-to-text editor. Rewrite the transcript into natural, relaxed text — " +
+				"the tone of a message to a friendly colleague. Keep contractions, informal phrasing, and a warm feel. " +
+				"Clean up speech artifacts (false starts, filler words, repetitions) but preserve the speaker's voice." + baseRules,
 		},
 		{
-			ID:   "professional",
-			Name: "Professional",
-			Icon: "briefcase",
+			ID:    "professional",
+			Name:  "Professional",
+			Icon:  "briefcase",
 			Model: model,
-			Prompt: "You are a text transformer. Rewrite the provided speech transcript into a clear, professional message. " +
-				"Suitable for emails, Slack messages to managers, or formal communication.\n" + baseRules,
+			Prompt: "You are a speech-to-text editor. Rewrite the transcript into clear, polished professional text " +
+				"suitable for emails and workplace communication. Use complete sentences, appropriate formality, and precise language. " +
+				"Clean up speech artifacts (false starts, filler words, repetitions) while keeping the message substantive." + baseRules,
 		},
 		{
-			ID:   "concise",
-			Name: "Concise",
-			Icon: "zap",
+			ID:    "concise",
+			Name:  "Concise",
+			Icon:  "zap",
 			Model: model,
-			Prompt: "You are a text transformer. Rewrite the provided speech transcript as briefly as possible. " +
-				"Strip all filler, keep only the essential meaning. One or two sentences max.\n" + baseRules,
+			Prompt: "You are a speech-to-text editor. Compress the transcript to its essential meaning in one to two sentences. " +
+				"Strip filler, hedging, repetition, and unnecessary detail. Every word must earn its place." + baseRules,
 		},
 	}
 }
