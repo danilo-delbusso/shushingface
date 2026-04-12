@@ -16,6 +16,7 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
@@ -57,6 +59,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
   const [testResult, setTestResult] = useState("");
   const [testing, setTesting] = useState(false);
   const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState<string | null>(null);
   const [draftProfiles, setDraftProfiles] = useState(
     settings.refinementProfiles ?? [],
   );
@@ -333,6 +336,145 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                     />
                   </div>
+
+                  {/* Advanced Options */}
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setAdvancedOpen(advancedOpen === profile.id ? null : profile.id)}
+                  >
+                    <Settings2 className="size-3" />
+                    Advanced
+                    {advancedOpen === profile.id ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                  </button>
+
+                  {advancedOpen === profile.id && (
+                    <div className="space-y-4 rounded-md border border-border bg-muted/30 p-3">
+                      {/* Temperature */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs flex items-center gap-1">
+                            Temperature <InfoTip text="Controls randomness. Lower values produce more consistent output; higher values add variety." />
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            value={profile.temperature ?? 0.3}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v >= 0 && v <= 1) updateDraftProfile(profile.id, { temperature: v });
+                            }}
+                            className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                          />
+                        </div>
+                        <Slider
+                          min={0}
+                          max={1}
+                          step={0.05}
+                          value={[profile.temperature ?? 0.3]}
+                          onValueChange={([v]) => updateDraftProfile(profile.id, { temperature: v })}
+                        />
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>Consistent</span>
+                          <span>Creative</span>
+                        </div>
+                      </div>
+
+                      {/* Top P */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs flex items-center gap-1">
+                            Top P <InfoTip text="Nucleus sampling. Limits token selection to the most probable tokens whose cumulative probability reaches this threshold." />
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0.1}
+                            max={1}
+                            step={0.05}
+                            value={profile.topP ?? 0.9}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v >= 0.1 && v <= 1) updateDraftProfile(profile.id, { topP: v });
+                            }}
+                            className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                          />
+                        </div>
+                        <Slider
+                          min={0.1}
+                          max={1}
+                          step={0.05}
+                          value={[profile.topP ?? 0.9]}
+                          onValueChange={([v]) => updateDraftProfile(profile.id, { topP: v })}
+                        />
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>Focused</span>
+                          <span>Diverse</span>
+                        </div>
+                      </div>
+
+                      {/* Few-shot Examples */}
+                      <div className="space-y-2">
+                        <Label className="text-xs flex items-center gap-1">
+                          Examples <InfoTip text="Before/after pairs that teach the model your preferred style. These are sent as conversation history before your transcript." />
+                        </Label>
+                        {(profile.examples ?? []).map((ex, i) => (
+                          <div key={i} className="space-y-1 rounded border border-border bg-background p-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-medium text-muted-foreground">Example {i + 1}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-5"
+                                onClick={() => {
+                                  const updated = [...(profile.examples ?? [])];
+                                  updated.splice(i, 1);
+                                  updateDraftProfile(profile.id, { examples: updated });
+                                }}
+                              >
+                                <Trash2 className="size-2.5" />
+                              </Button>
+                            </div>
+                            <textarea
+                              value={ex.input}
+                              onChange={(e) => {
+                                const updated = [...(profile.examples ?? [])];
+                                updated[i] = { ...updated[i], input: e.target.value };
+                                updateDraftProfile(profile.id, { examples: updated });
+                              }}
+                              rows={2}
+                              placeholder="Speech transcript (before)..."
+                              className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                            />
+                            <textarea
+                              value={ex.output}
+                              onChange={(e) => {
+                                const updated = [...(profile.examples ?? [])];
+                                updated[i] = { ...updated[i], output: e.target.value };
+                                updateDraftProfile(profile.id, { examples: updated });
+                              }}
+                              rows={2}
+                              placeholder="Desired output (after)..."
+                              className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs"
+                          onClick={() => {
+                            const updated = [...(profile.examples ?? []), { input: "", output: "" }];
+                            updateDraftProfile(profile.id, { examples: updated });
+                          }}
+                        >
+                          <Plus className="size-3" /> Add Example
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <Button size="sm" onClick={() => saveProfile(profile.id)}>
                       Save
