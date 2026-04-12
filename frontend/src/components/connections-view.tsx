@@ -188,7 +188,7 @@ function ConnectionCard({
   const preset = providerPresets[conn.providerId];
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [advOpen, setAdvOpen] = useState(!!conn.baseUrl);
+  const [advOpen, setAdvOpen] = useState(!!conn.baseUrl || !!preset?.requiresBaseUrl);
 
   const testConnection = async () => {
     setTesting(true);
@@ -266,10 +266,27 @@ function ConnectionCard({
               </SelectContent>
             </Select>
           </div>
+          {/* Base URL — shown inline for providers that need it */}
+          {preset?.requiresBaseUrl && (
+            <div className="space-y-1">
+              <Label>
+                Base URL{" "}
+                <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
+              </Label>
+              <Input
+                value={conn.baseUrl ?? ""}
+                placeholder="http://localhost:11434/v1"
+                onChange={(e) =>
+                  onUpdate({ baseUrl: e.target.value || undefined })
+                }
+              />
+            </div>
+          )}
+
           <div className="space-y-1">
             <Label className="flex items-center gap-2">
               API Key
-              {preset && (
+              {preset?.keyUrl && (
                 <ExternalLink
                   href={preset.keyUrl}
                   className="text-xs font-normal"
@@ -300,30 +317,38 @@ function ConnectionCard({
                 )}
               </Button>
             </div>
+            {preset?.requiresBaseUrl && (
+              <p className="text-xs text-muted-foreground">
+                Optional for local providers like Ollama.
+              </p>
+            )}
           </div>
 
-          <AdvancedToggle open={advOpen} onToggle={setAdvOpen}>
-            <div className="space-y-1">
-              <Label className="text-xs flex items-center gap-1">
-                Base URL{" "}
-                <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
-              </Label>
-              <Input
-                value={conn.baseUrl ?? ""}
-                placeholder="Leave empty for default"
-                onChange={(e) =>
-                  onUpdate({ baseUrl: e.target.value || undefined })
-                }
-                className="text-xs"
-              />
-            </div>
-          </AdvancedToggle>
+          {/* Base URL override for known providers (hidden behind Advanced) */}
+          {!preset?.requiresBaseUrl && (
+            <AdvancedToggle open={advOpen} onToggle={setAdvOpen}>
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  Base URL{" "}
+                  <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
+                </Label>
+                <Input
+                  value={conn.baseUrl ?? ""}
+                  placeholder="Leave empty for default"
+                  onChange={(e) =>
+                    onUpdate({ baseUrl: e.target.value || undefined })
+                  }
+                  className="text-xs"
+                />
+              </div>
+            </AdvancedToggle>
+          )}
 
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
-              disabled={testing || !conn.apiKey}
+              disabled={testing}
               onClick={testConnection}
             >
               {testing ? (

@@ -11,6 +11,7 @@ import (
 
 	// Register providers — each init() calls ai.RegisterProvider.
 	_ "codeberg.org/dbus/shushingface/internal/ai/groq"
+	_ "codeberg.org/dbus/shushingface/internal/ai/openaicompat"
 )
 
 // ProcessorPair holds the default transcriber and refiner built from config.
