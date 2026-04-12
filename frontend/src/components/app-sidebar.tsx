@@ -9,7 +9,9 @@ import {
   Plug,
   ChevronRight,
   AlertTriangle,
+  ArrowUpCircle,
 } from "lucide-react";
+import { ExternalLink } from "@/components/ui/external-link";
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +45,7 @@ interface AppSidebarProps {
   historyEnabled: boolean;
   hasWarnings?: boolean;
   version?: string;
+  updateAvailable?: { version: string; url: string } | null;
 }
 
 export function AppSidebar({
@@ -52,6 +55,7 @@ export function AppSidebar({
   historyEnabled,
   hasWarnings,
   version,
+  updateAvailable,
 }: AppSidebarProps) {
   const settingsOpen = view === "connections" || view === "ai" || view === "appearance" || view === "general";
 
@@ -173,6 +177,15 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        {updateAvailable && (
+          <ExternalLink
+            href={updateAvailable.url}
+            className="flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary no-underline hover:bg-primary/10"
+          >
+            <ArrowUpCircle className="size-3.5 shrink-0" />
+            {updateAvailable.version} available
+          </ExternalLink>
+        )}
         {version && (
           <p className="px-3 pb-1 text-[10px] text-muted-foreground/50">{version}</p>
         )}

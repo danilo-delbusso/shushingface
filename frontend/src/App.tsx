@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { EventsOn, BrowserOpenURL } from "../wailsjs/runtime/runtime";
-import { toast } from "sonner";
+import { EventsOn } from "../wailsjs/runtime/runtime";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -39,17 +38,19 @@ function App() {
   const configured = isConfigured(settings);
   useTheme(settings?.theme);
 
+  const [updateAvailable, setUpdateAvailable] = useState<{
+    version: string;
+    url: string;
+  } | null>(null);
+
   useEffect(() => {
     AppBridge.GetVersion().then(setAppVersion);
-    const cleanup = EventsOn("update-available", (data: { version: string; url: string }) => {
-      toast.info(`Version ${data.version} is available`, {
-        duration: 15000,
-        action: {
-          label: "Download",
-          onClick: () => BrowserOpenURL(data.url),
-        },
-      });
-    });
+    const cleanup = EventsOn(
+      "update-available",
+      (data: { version: string; url: string }) => {
+        setUpdateAvailable(data);
+      },
+    );
     return cleanup;
   }, []);
 
@@ -89,6 +90,7 @@ function App() {
           configured={configured}
           historyEnabled={settings.enableHistory}
           version={appVersion}
+          updateAvailable={updateAvailable}
         />
         <SidebarInset className="flex flex-col h-screen overflow-hidden">
           {view === "home" && (

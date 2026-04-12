@@ -161,6 +161,14 @@ func (a *App) GetVersion() string {
 	return version.Version()
 }
 
+// SimulateUpdate emits a fake update-available event for testing the UI.
+func (a *App) SimulateUpdate() {
+	wailsRuntime.EventsEmit(a.ctx, "update-available", map[string]string{
+		"version": "v99.0.0",
+		"url":     "https://codeberg.org/dbus/shushingface/releases",
+	})
+}
+
 func (a *App) GetPlatform() platform.Info {
 	return platform.Detect()
 }
