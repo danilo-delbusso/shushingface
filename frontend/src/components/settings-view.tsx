@@ -1,4 +1,5 @@
 import { Keyboard, SlidersHorizontal, AlertTriangle } from "lucide-react";
+import { ShortcutGuide } from "@/components/shortcut-guide";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
@@ -6,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -58,6 +58,7 @@ export function SettingsView({
               <InfoTip text="Configure a system keyboard shortcut to toggle recording from any app without opening the window." />
             </CardTitle>
             <ShortcutGuide platform={platform} />
+
           </CardHeader>
         </Card>
 
@@ -210,30 +211,3 @@ export function SettingsView({
   );
 }
 
-function ShortcutGuide({ platform }: { platform: platform.Info | null }) {
-  if (!platform) return null;
-
-  const command = (
-    <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-      shushingface --toggle
-    </code>
-  );
-
-  if (platform.os === "darwin" || platform.os === "windows") {
-    return (
-      <CardDescription>Global shortcut support coming soon.</CardDescription>
-    );
-  }
-
-  const de = platform.desktop?.toUpperCase() || "";
-  const path =
-    de.includes("KDE") || de.includes("PLASMA")
-      ? "System Settings → Shortcuts → Custom Shortcuts"
-      : "Settings → Keyboard → Custom Shortcuts";
-
-  return (
-    <CardDescription>
-      Bind {command} to a key in <strong>{path}</strong>
-    </CardDescription>
-  );
-}

@@ -17,6 +17,8 @@ import { getProfileIcon } from "@/lib/icons";
 import { providerPresets } from "@/lib/providers";
 import { ExternalLink } from "@/components/ui/external-link";
 import { InfoTip } from "@/components/info-tip";
+import { ShortcutGuide } from "@/components/shortcut-guide";
+import { usePlatform } from "@/lib/hooks";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 import type { ai } from "../../wailsjs/go/models";
@@ -37,6 +39,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   const [testing, setTesting] = useState(false);
   const [testOk, setTestOk] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState("professional");
+  const platformInfo = usePlatform();
 
   useEffect(() => {
     AppBridge.ListProviders().then(setProviders);
@@ -342,6 +345,27 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                 );
               })}
             </div>
+            <Button className="w-full" onClick={() => setStep(3)}>
+              next <ArrowRight className="size-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Step 3: Shortcuts */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <div className="space-y-2 text-center">
+              <h2 className="text-xl font-bold">set up a shortcut</h2>
+              <p className="text-sm text-muted-foreground">
+                bind a key to toggle recording from anywhere, without opening
+                the app window.
+              </p>
+            </div>
+
+            <div className="rounded-lg border bg-card p-4">
+              <ShortcutGuide platform={platformInfo} compact />
+            </div>
+
             <Button
               className="w-full"
               onClick={canProceed ? finishWithConnection : finishSkip}
@@ -353,7 +377,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
 
         {/* Step indicators */}
         <div className="flex justify-center gap-2">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
               className={`size-1.5 rounded-full transition-colors ${
