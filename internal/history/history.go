@@ -2,6 +2,7 @@ package history
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,7 +25,7 @@ type Manager struct {
 	db *sql.DB
 }
 
-// NewManager establishes a connection to the SQLite database and ensures the schema exists.
+// NewManager establishes a connection to the SQLite database and runs migrations.
 func NewManager() (*Manager, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -41,22 +42,14 @@ func NewManager() (*Manager, error) {
 		return nil, err
 	}
 
-	schema := `
-	CREATE TABLE IF NOT EXISTS transcriptions (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-		raw_transcript TEXT,
-		refined_message TEXT,
-		active_app TEXT
-	);`
+	// Bootstrap existing databases from before the migration system
+	bootstrapExistingDB(db)
 
-	if _, err := db.Exec(schema); err != nil {
+	// Run pending migrations
+	if err := runMigrations(db); err != nil {
 		db.Close()
-		return nil, err
+		return nil, fmt.Errorf("history db migration: %w", err)
 	}
-
-	// Migration: add error column if it doesn't exist
-	db.Exec(`ALTER TABLE transcriptions ADD COLUMN error TEXT DEFAULT ''`)
 
 	return &Manager{db: db}, nil
 }
