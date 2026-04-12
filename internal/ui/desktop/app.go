@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -28,20 +29,37 @@ import (
 
 type App struct {
 	ctx      context.Context
-	engine   *core.Engine
+	engine   core.Engine
+	mu       sync.RWMutex
 	cfg      *config.Settings
 	secrets  secrets.Store
-	history  *history.Repository
+	history  history.Store
 	cleanIPC func()
 }
 
-func NewApp(engine *core.Engine, cfg *config.Settings, secretStore secrets.Store, hist *history.Repository) *App {
+// Caller must hold at least a.mu.RLock.
+func (a *App) snapshotConfig() config.Settings {
+	s := *a.cfg
+	s.Connections = make([]config.Connection, len(a.cfg.Connections))
+	copy(s.Connections, a.cfg.Connections)
+	s.RefinementProfiles = make([]config.RefinementProfile, len(a.cfg.RefinementProfiles))
+	copy(s.RefinementProfiles, a.cfg.RefinementProfiles)
+	return s
+}
+
+func NewApp(engine core.Engine, cfg *config.Settings, secretStore secrets.Store, hist history.Store) *App {
 	return &App{engine: engine, cfg: cfg, secrets: secretStore, history: hist}
 }
 
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
-	if a.cfg.EnableIndicator {
+
+	a.mu.RLock()
+	enableIndicator := a.cfg.EnableIndicator
+	checkForUpdates := a.cfg.CheckForUpdates
+	a.mu.RUnlock()
+
+	if enableIndicator {
 		indicator.Start(func() { wailsRuntime.WindowShow(a.ctx) })
 	}
 
@@ -62,9 +80,13 @@ func (a *App) Startup(ctx context.Context) {
 	}
 
 	// Check for updates in background
-	if a.cfg.CheckForUpdates {
+	if checkForUpdates {
 		go func() {
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return
+			}
 			rel, err := update.Check(ctx, version.Version())
 			if err != nil {
 				slog.Debug("update check failed", "error", err)
@@ -97,7 +119,10 @@ func (a *App) Shutdown(_ context.Context) {
 func (a *App) StartRecording() error {
 	err := a.engine.StartRecording()
 	if err == nil {
-		if a.cfg.EnableNotifications {
+		a.mu.RLock()
+		doNotify := a.cfg.EnableNotifications
+		a.mu.RUnlock()
+		if doNotify {
 			notify.RecordingStarted()
 		}
 		indicator.SetRecording(true)
@@ -106,19 +131,23 @@ func (a *App) StartRecording() error {
 }
 
 func (a *App) StopAndProcess() ProcessResult {
-	if a.cfg.EnableNotifications {
+	a.mu.RLock()
+	cfg := a.snapshotConfig()
+	a.mu.RUnlock()
+
+	if cfg.EnableNotifications {
 		notify.RecordingProcessing()
 	}
 	activeApp := osutil.GetActiveWindowName()
 
-	tOpts := ai.TranscribeOptions{Language: a.cfg.TranscriptionLanguage}
-	rOpts := a.buildRefineOptions(activeApp)
+	tOpts := ai.TranscribeOptions{Language: cfg.TranscriptionLanguage}
+	rOpts := a.buildRefineOptions(&cfg, activeApp)
 	slog.Info("using refinement profile", "id", rOpts.SystemPrompt[:min(30, len(rOpts.SystemPrompt))], "examples", len(rOpts.Examples))
 
 	// Build per-profile refiner override if the profile specifies a different connection/model.
 	var refinerOverride ai.Refiner
-	if p := a.cfg.ActiveProfile(); p != nil && (p.ConnectionID != "" || p.Model != "") {
-		r, err := factory.BuildRefiner(a.cfg, p.ConnectionID, p.Model)
+	if p := cfg.ActiveProfile(); p != nil && (p.ConnectionID != "" || p.Model != "") {
+		r, err := factory.BuildRefiner(&cfg, p.ConnectionID, p.Model)
 		if err != nil {
 			slog.Warn("failed to build profile refiner, using default", "error", err)
 		} else {
@@ -127,32 +156,32 @@ func (a *App) StopAndProcess() ProcessResult {
 	}
 
 	transcript, refined, err := a.engine.StopAndProcess(a.ctx, tOpts, rOpts, refinerOverride)
-	if a.cfg.EnableNotifications {
+	if cfg.EnableNotifications {
 		notify.RecordingDone()
 	}
 	indicator.SetRecording(false)
 	if err != nil {
 		slog.Error("StopAndProcess failed", "error", err)
-		if a.cfg.EnableNotifications {
+		if cfg.EnableNotifications {
 			notify.Error("Transcription failed", err.Error())
 		}
 		// Record the failure in history
-		if a.cfg.EnableHistory {
+		if cfg.EnableHistory {
 			a.history.Insert("", "", activeApp, err.Error())
 		}
 		return ProcessResult{Error: err.Error()}
 	}
 
-	if a.cfg.EnableHistory && transcript != "" {
+	if cfg.EnableHistory && transcript != "" {
 		if _, histErr := a.history.Insert(transcript, refined, activeApp, ""); histErr != nil {
 			slog.Error("failed to insert history", "error", histErr)
 		}
 	}
 
-	if a.cfg.AutoPaste && refined != "" {
+	if cfg.AutoPaste && refined != "" {
 		if err := paste.Type(refined); err != nil {
 			slog.Warn("auto-paste failed", "error", err)
-			if a.cfg.EnableNotifications {
+			if cfg.EnableNotifications {
 				notify.Error("Auto-paste failed", err.Error())
 			}
 		}
@@ -169,44 +198,34 @@ func (a *App) IsSecretStorageSecure() bool {
 	return a.secrets.IsSecure()
 }
 
-// SimulateUpdate emits a fake update-available event for testing the UI.
-func (a *App) SimulateUpdate() {
-	wailsRuntime.EventsEmit(a.ctx, "update-available", map[string]string{
-		"version": "v99.0.0",
-		"url":     "https://codeberg.org/dbus/shushingface/releases",
-	})
-}
-
 func (a *App) GetPlatform() platform.Info {
 	return platform.Detect()
 }
 
 func (a *App) GetSettings() *config.Settings {
-	// Hydrate API keys from the secret store before returning
-	a.hydrateSecrets()
-	return a.cfg
-}
+	a.mu.RLock()
+	s := a.snapshotConfig()
+	a.mu.RUnlock()
 
-// hydrateSecrets fills in API keys from the secret store for connections
-// that have empty keys in the config (because the keyring holds them).
-func (a *App) hydrateSecrets() {
-	for i := range a.cfg.Connections {
-		conn := &a.cfg.Connections[i]
-		if conn.APIKey == "" {
-			if key, err := a.secrets.Get("apikey:" + conn.ID); err == nil {
-				conn.APIKey = key
-			}
-		}
-	}
+	// Hydrate API keys on the copy — the in-memory cfg stays stripped.
+	config.HydrateAPIKeys(s.Connections, a.secrets.Get)
+	return &s
 }
 
 func (a *App) SaveSettings(newSettings config.Settings) error {
+	// Snapshot old config to detect deleted connections and indicator changes.
+	a.mu.RLock()
+	oldConns := make([]config.Connection, len(a.cfg.Connections))
+	copy(oldConns, a.cfg.Connections)
+	oldIndicator := a.cfg.EnableIndicator
+	a.mu.RUnlock()
+
 	// Clean up secrets for deleted connections
 	newIDs := make(map[string]bool)
 	for _, conn := range newSettings.Connections {
 		newIDs[conn.ID] = true
 	}
-	for _, conn := range a.cfg.Connections {
+	for _, conn := range oldConns {
 		if !newIDs[conn.ID] {
 			a.secrets.Delete("apikey:" + conn.ID)
 		}
@@ -222,14 +241,15 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 		}
 	}
 
-	// Build processors with full keys (before stripping)
+	// Build processors with full keys (before stripping).
+	// This validates the config before committing any state changes.
 	pair, err := factory.NewFromConfig(&newSettings)
 	if err != nil {
 		return fmt.Errorf("failed to reload AI processors: %w", err)
 	}
 
 	// Strip API keys from the on-disk config when keyring is available.
-	// Deep-copy connections to avoid mutating newSettings (shared slice).
+	// Deep-copy connections to avoid mutating newSettings.
 	if a.secrets.IsSecure() {
 		stripped := newSettings
 		stripped.Connections = make([]config.Connection, len(newSettings.Connections))
@@ -246,16 +266,19 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 		}
 	}
 
+	// Commit state: update engine and config atomically.
 	a.engine.SetTranscriber(pair.Transcriber)
 	a.engine.SetRefiner(pair.Refiner)
 
-	if newSettings.EnableIndicator && !a.cfg.EnableIndicator {
+	if newSettings.EnableIndicator && !oldIndicator {
 		indicator.Start(func() { wailsRuntime.WindowShow(a.ctx) })
-	} else if !newSettings.EnableIndicator && a.cfg.EnableIndicator {
+	} else if !newSettings.EnableIndicator && oldIndicator {
 		indicator.Stop()
 	}
 
+	a.mu.Lock()
 	*a.cfg = newSettings
+	a.mu.Unlock()
 	return nil
 }
 
@@ -275,20 +298,24 @@ func (a *App) GetDefaultProfiles() []config.RefinementProfile {
 	return config.DefaultProfiles()
 }
 
-func (a *App) GetDefaultSettings() *config.Settings {
-	return config.DefaultSettings()
-}
-
 func (a *App) ListProviders() []ai.ProviderInfo {
 	return ai.ListProviders()
 }
 
-// ListModelsForConnection fetches available models for a specific connection.
 func (a *App) ListModelsForConnection(connectionID string) ([]ai.ModelInfo, error) {
-	a.hydrateSecrets()
-	conn := a.cfg.GetConnection(connectionID)
-	if conn == nil {
+	a.mu.RLock()
+	orig := a.cfg.GetConnection(connectionID)
+	if orig == nil {
+		a.mu.RUnlock()
 		return nil, fmt.Errorf("connection not found: %s", connectionID)
+	}
+	conn := *orig // copy so we can hydrate outside the lock
+	a.mu.RUnlock()
+
+	if conn.APIKey == "" {
+		if key, err := a.secrets.Get("apikey:" + conn.ID); err == nil {
+			conn.APIKey = key
+		}
 	}
 	provider, err := ai.GetProvider(conn.ProviderID)
 	if err != nil {
@@ -327,6 +354,12 @@ func (a *App) GetDefaultBuiltInRules() string {
 }
 
 func (a *App) GetHistory(limit, offset int) ([]history.Record, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	return a.history.GetHistory(limit, offset)
 }
 
@@ -334,13 +367,18 @@ func (a *App) ClearHistory() error {
 	return a.history.Clear()
 }
 
-// DeleteAllData clears history and resets settings to factory defaults.
 func (a *App) DeleteAllData() error {
 	if err := a.history.Clear(); err != nil {
 		return fmt.Errorf("failed to clear history: %w", err)
 	}
-	// Remove all API keys from the secret store
-	for _, conn := range a.cfg.Connections {
+
+	// Snapshot connections for secret cleanup.
+	a.mu.RLock()
+	oldConns := make([]config.Connection, len(a.cfg.Connections))
+	copy(oldConns, a.cfg.Connections)
+	a.mu.RUnlock()
+
+	for _, conn := range oldConns {
 		a.secrets.Delete("apikey:" + conn.ID)
 	}
 	defaults := config.DefaultSettings()
@@ -354,6 +392,9 @@ func (a *App) DeleteAllData() error {
 	}
 	a.engine.SetTranscriber(pair.Transcriber)
 	a.engine.SetRefiner(pair.Refiner)
+
+	a.mu.Lock()
 	*a.cfg = *defaults
+	a.mu.Unlock()
 	return nil
 }
