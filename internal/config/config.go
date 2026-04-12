@@ -45,7 +45,7 @@ type Settings struct {
 	// Default assignments — connection ID + model for each function
 	TranscriptionConnectionID string `json:"transcriptionConnectionId"`
 	TranscriptionModel        string `json:"transcriptionModel"`
-	TranscriptionLanguages    []string `json:"transcriptionLanguages,omitempty"` // ISO 639-1 codes; empty = auto-detect; 1 = hint; 2+ = auto-detect
+	TranscriptionLanguage     string `json:"transcriptionLanguage,omitempty"` // ISO 639-1 code; empty = auto-detect
 	RefinementConnectionID    string `json:"refinementConnectionId"`
 	RefinementModel           string `json:"refinementModel"`
 

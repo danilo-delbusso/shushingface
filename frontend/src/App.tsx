@@ -84,7 +84,7 @@ function App() {
                   (p) => p.id === settings.activeProfileId,
                 ) ?? null
               }
-              languages={settings.transcriptionLanguages ?? []}
+              language={settings.transcriptionLanguage ?? ""}
               onToggle={toggle}
               onGoToSettings={() => setView("connections")}
               onSwitchProfile={(id) =>
@@ -95,11 +95,11 @@ function App() {
                   }),
                 )
               }
-              onSwitchLanguages={(codes) =>
+              onSwitchLanguage={(code) =>
                 saveSettings(
                   config.Settings.createFrom({
                     ...settings,
-                    transcriptionLanguages: codes.length > 0 ? codes : undefined,
+                    transcriptionLanguage: code || undefined,
                   }),
                 )
               }

@@ -40,7 +40,7 @@ export type ConnectionFormData = z.infer<typeof connectionSchema>;
 export const modelsSchema = z.object({
   transcriptionConnectionId: z.string().min(1, "Select a connection"),
   transcriptionModel: z.string(),
-  transcriptionLanguages: z.array(z.string()).optional(),
+  transcriptionLanguage: z.string().optional(),
   refinementConnectionId: z.string().min(1, "Select a connection"),
   refinementModel: z.string(),
 });

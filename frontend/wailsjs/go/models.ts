@@ -135,7 +135,7 @@ export namespace config {
 	    connections: Connection[];
 	    transcriptionConnectionId: string;
 	    transcriptionModel: string;
-	    transcriptionLanguages?: string[];
+	    transcriptionLanguage?: string;
 	    refinementConnectionId: string;
 	    refinementModel: string;
 	    refinementProfiles: RefinementProfile[];
@@ -167,7 +167,7 @@ export namespace config {
 	        this.connections = this.convertValues(source["connections"], Connection);
 	        this.transcriptionConnectionId = source["transcriptionConnectionId"];
 	        this.transcriptionModel = source["transcriptionModel"];
-	        this.transcriptionLanguages = source["transcriptionLanguages"];
+	        this.transcriptionLanguage = source["transcriptionLanguage"];
 	        this.refinementConnectionId = source["refinementConnectionId"];
 	        this.refinementModel = source["refinementModel"];
 	        this.refinementProfiles = this.convertValues(source["refinementProfiles"], RefinementProfile);

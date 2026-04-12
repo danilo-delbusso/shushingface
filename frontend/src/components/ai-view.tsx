@@ -213,7 +213,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     defaultValues: {
       transcriptionConnectionId: settings.transcriptionConnectionId,
       transcriptionModel: settings.transcriptionModel,
-      transcriptionLanguages: settings.transcriptionLanguages ?? [],
+      transcriptionLanguage: settings.transcriptionLanguage ?? "",
       refinementConnectionId: settings.refinementConnectionId,
       refinementModel: settings.refinementModel,
     },
@@ -433,44 +433,32 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                   </span>
                 }
               >
-                <Controller name="transcriptionLanguages" control={modelsForm.control} render={({ field }) => {
-                  const selected = new Set(field.value ?? []);
-                  const toggle = (code: string) => {
-                    const next = new Set(selected);
-                    if (next.has(code)) next.delete(code);
-                    else next.add(code);
-                    field.onChange(Array.from(next));
-                  };
-                  return (
-                    <div className="space-y-2">
-                      {selected.size === 0 && (
-                        <p className="text-xs text-muted-foreground">Auto-detect (no language selected)</p>
-                      )}
-                      {selected.size > 1 && (
-                        <p className="text-xs text-muted-foreground">Multiple languages selected — using auto-detect</p>
-                      )}
-                      <div className="flex flex-wrap gap-1.5">
-                        {whisperLanguages.map((lang) => {
-                          const active = selected.has(lang.code);
-                          return (
-                            <button
-                              key={lang.code}
-                              type="button"
-                              onClick={() => toggle(lang.code)}
-                              className={`rounded-md border px-2 py-1 text-xs transition-colors ${
-                                active
-                                  ? "border-primary bg-primary/10 text-foreground"
-                                  : "border-border bg-background text-muted-foreground hover:border-muted-foreground/30"
-                              }`}
-                            >
-                              {lang.flag} {lang.name}
-                            </button>
-                          );
-                        })}
-                      </div>
+                <Controller name="transcriptionLanguage" control={modelsForm.control} render={({ field }) => (
+                  <div className="space-y-2">
+                    {!field.value && (
+                      <p className="text-xs text-muted-foreground">Auto-detect (no language selected)</p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {whisperLanguages.map((lang) => {
+                        const active = field.value === lang.code;
+                        return (
+                          <button
+                            key={lang.code}
+                            type="button"
+                            onClick={() => field.onChange(active ? "" : lang.code)}
+                            className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                              active
+                                ? "border-primary bg-primary/10 text-foreground"
+                                : "border-border bg-background text-muted-foreground hover:border-muted-foreground/30"
+                            }`}
+                          >
+                            {lang.flag} {lang.name}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                }} />
+                  </div>
+                )} />
               </FormField>
             </div>
             <Separator />
