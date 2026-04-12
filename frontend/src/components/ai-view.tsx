@@ -857,13 +857,13 @@ function ProfileCard({
                     </div>
                     <textarea
                       {...register(`examples.${i}.input`)}
-                      rows={2}
+                      rows={4}
                       placeholder="Speech transcript (before)..."
                       className={textareaCompactClass}
                     />
                     <textarea
                       {...register(`examples.${i}.output`)}
-                      rows={2}
+                      rows={4}
                       placeholder="Desired output (after)..."
                       className={textareaCompactClass}
                     />
