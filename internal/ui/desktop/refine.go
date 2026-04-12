@@ -2,6 +2,7 @@ package desktop
 
 import (
 	"codeberg.org/dbus/shushingface/internal/ai"
+	"codeberg.org/dbus/shushingface/internal/config"
 )
 
 // buildRefineOptions assembles RefineOptions from the active profile,
@@ -10,9 +11,9 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 	opts := ai.RefineOptions{}
 
 	if p := a.cfg.ActiveProfile(); p != nil {
-		opts.SystemPrompt = p.Prompt
+		opts.SystemPrompt = p.Prompt + config.BuiltInRules()
 		if a.cfg.GlobalRules != "" {
-			opts.SystemPrompt += "\n\nGlobal rules (always apply):\n" + a.cfg.GlobalRules
+			opts.SystemPrompt += "\n\nUser rules (always apply):\n" + a.cfg.GlobalRules
 		}
 		opts.Sampling = ai.SamplingParams{
 			Temperature: p.Temperature,
@@ -52,9 +53,9 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 
 func (a *App) TestPrompt(sampleText, systemPrompt string) ProcessResult {
 	proc := a.engine.GetProcessor()
-	prompt := systemPrompt
+	prompt := systemPrompt + config.BuiltInRules()
 	if a.cfg.GlobalRules != "" {
-		prompt += "\n\nGlobal rules (always apply):\n" + a.cfg.GlobalRules
+		prompt += "\n\nUser rules (always apply):\n" + a.cfg.GlobalRules
 	}
 	opts := ai.RefineOptions{SystemPrompt: prompt}
 	refined, err := proc.Refine(a.ctx, sampleText, opts)

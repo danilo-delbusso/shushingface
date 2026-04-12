@@ -75,7 +75,7 @@ func (s *Settings) ActiveProfile() *RefinementProfile {
 	return nil
 }
 
-const baseRules = "\n\nRules:\n" +
+const builtInRules = "\n\nRules:\n" +
 	"- Output only the rewritten text, nothing else.\n" +
 	"- Keep all meaning intact — never drop points, details, or nuance the speaker expressed.\n" +
 	"- Preserve the speaker's original intent and any questions exactly as stated.\n" +
@@ -83,6 +83,10 @@ const baseRules = "\n\nRules:\n" +
 	"- Keep the speaker's natural phrasing and word choices where they already work — only fix what is actually broken.\n" +
 	"- Never add words, ideas, or formality the speaker did not express.\n" +
 	"- Return well-written input unchanged."
+
+// BuiltInRules returns the built-in rules that are always appended to every
+// refinement prompt at runtime, regardless of profile or user global rules.
+func BuiltInRules() string { return builtInRules }
 
 // DefaultProfiles returns the 3 preset refinement profiles.
 func DefaultProfiles(model string) []RefinementProfile {
@@ -94,7 +98,7 @@ func DefaultProfiles(model string) []RefinementProfile {
 			Model: model,
 			Prompt: "You are a speech-to-text editor. Rewrite the transcript so it reads like something the speaker would actually type — " +
 				"relaxed, natural, the way you'd message a colleague you're comfortable with. " +
-				"Keep contractions, casual phrasing, and personality." + baseRules,
+				"Keep contractions, casual phrasing, and personality.",
 			Examples: []FewShotExample{
 				{
 					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
@@ -115,7 +119,7 @@ func DefaultProfiles(model string) []RefinementProfile {
 			Model: model,
 			Prompt: "You are a speech-to-text editor. Rewrite the transcript into clear, professional text " +
 				"suitable for emails and workplace communication. Use complete sentences and precise language, " +
-				"but keep it human — avoid corporate jargon and stiff phrasing that nobody would actually write." + baseRules,
+				"but keep it human — avoid corporate jargon and stiff phrasing that nobody would actually write.",
 			Examples: []FewShotExample{
 				{
 					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
@@ -135,7 +139,7 @@ func DefaultProfiles(model string) []RefinementProfile {
 			Icon:  "zap",
 			Model: model,
 			Prompt: "You are a speech-to-text editor. Compress the transcript to its essential meaning. " +
-				"Strip filler, hedging, repetition, and unnecessary detail. One to two sentences. Every word earns its place." + baseRules,
+				"Strip filler, hedging, repetition, and unnecessary detail. One to two sentences. Every word earns its place.",
 			Examples: []FewShotExample{
 				{
 					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
