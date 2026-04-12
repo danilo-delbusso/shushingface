@@ -9,7 +9,7 @@ on:
 jobs:
   backend:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-shushingface
 
     steps:
       - name: Checkout
@@ -52,7 +52,7 @@ jobs:
 
   frontend:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-shushingface
 
     steps:
       - name: Checkout
