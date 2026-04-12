@@ -150,7 +150,7 @@ func DefaultProfiles(model string) []RefinementProfile {
 	}
 }
 
-const defaultModel = "llama-3.3-70b-versatile"
+const defaultModel = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 // Load reads the settings from the OS user config directory.
 func Load() (*Settings, error) {

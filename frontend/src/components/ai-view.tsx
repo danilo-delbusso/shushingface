@@ -31,11 +31,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
+
+const refinementModels = [
+  { id: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout 17B", description: "Fast, best default" },
+  { id: "qwen/qwen3-32b", label: "Qwen 3 32B", description: "Strong instruction following" },
+  { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B", description: "Natural text output" },
+  { id: "moonshotai/kimi-k2-instruct", label: "Kimi K2", description: "Most capable" },
+  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", description: "Legacy, slower" },
+  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B", description: "Fastest, least capable" },
+];
 
 const iconMap: Record<string, React.FC<{ className?: string }>> = {
   coffee: Coffee,
@@ -356,12 +366,35 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                   </div>
                   <div className="space-y-1">
                     <Label>Model</Label>
-                    <Input
+                    <Select
                       value={profile.model}
-                      onChange={(e) =>
-                        updateDraftProfile(profile.id, { model: e.target.value })
-                      }
-                    />
+                      onValueChange={(v) => updateDraftProfile(profile.id, { model: v })}
+                    >
+                      <SelectTrigger className="text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Recommended</SelectLabel>
+                          {refinementModels.map((m) => (
+                            <SelectItem key={m.id} value={m.id} className="text-xs">
+                              {m.label} <span className="text-muted-foreground ml-1">— {m.description}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                        {!refinementModels.some((m) => m.id === profile.model) && (
+                          <>
+                            <SelectSeparator />
+                            <SelectGroup>
+                              <SelectLabel>Current</SelectLabel>
+                              <SelectItem value={profile.model} className="text-xs">
+                                {profile.model}
+                              </SelectItem>
+                            </SelectGroup>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
                     <Label>Prompt</Label>
