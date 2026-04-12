@@ -93,15 +93,15 @@ func DefaultProfiles(model string) []RefinementProfile {
 			Model: model,
 			Prompt: "You are a speech-to-text editor. Rewrite the transcript so it reads like something the speaker would actually type — " +
 				"relaxed, natural, the way you'd message a colleague you're comfortable with. " +
-				"Keep contractions, casual phrasing, and personality. Shorter is better." + baseRules,
+				"Keep contractions, casual phrasing, and personality. Keep all the meaning intact — don't drop points or compress." + baseRules,
 			Examples: []FewShotExample{
 				{
 					Input:  "so um I was thinking we should we should probably move the meeting to thursday because like john can't make it on wednesday and I think it would be better if everyone was there you know",
-					Output: "I think we should move the meeting to Thursday — John can't make Wednesday and it'd be better if everyone's there",
+					Output: "I think we should move the meeting to Thursday, John can't make it on Wednesday and it'd be better if everyone was there",
 				},
 				{
 					Input:  "hey so the the deployment went fine but we noticed that the the login page is loading kind of slowly so we might want to look into that",
-					Output: "hey, deployment went fine but the login page is loading kinda slow — we should probably look into that",
+					Output: "hey so the deployment went fine but we noticed the login page is loading kind of slowly, so we might want to look into that",
 				},
 			},
 			Temperature: 0.4,
