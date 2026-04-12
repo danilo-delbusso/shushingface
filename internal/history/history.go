@@ -47,9 +47,6 @@ func NewManager() (*Manager, error) {
 		return nil, err
 	}
 
-	// Migrate from hand-rolled schema_migrations to goose (one-time bootstrap)
-	bootstrapGoose(db)
-
 	// Run pending migrations
 	goose.SetDialect("sqlite3")
 	if err := goose.UpContext(context.Background(), db, "."); err != nil {
@@ -58,61 +55,6 @@ func NewManager() (*Manager, error) {
 	}
 
 	return &Manager{db: db}, nil
-}
-
-// bootstrapGoose migrates from the old hand-rolled schema_migrations table
-// to goose's goose_db_version table. Only runs once for existing users.
-func bootstrapGoose(db *sql.DB) {
-	// If goose table already exists, nothing to do
-	var name string
-	if db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version'`).Scan(&name) == nil {
-		return
-	}
-
-	// Check if old schema_migrations table exists
-	if db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'`).Scan(&name) != nil {
-		// Also check if the transcriptions table exists without any migration tracking
-		if db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='transcriptions'`).Scan(&name) != nil {
-			return // Fresh database, goose will handle everything
-		}
-	}
-
-	// Old database exists — seed goose with already-applied migrations
-	db.Exec(`CREATE TABLE IF NOT EXISTS goose_db_version (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		version_id INTEGER NOT NULL,
-		is_applied INTEGER NOT NULL,
-		tstamp DATETIME DEFAULT CURRENT_TIMESTAMP
-	)`)
-	db.Exec(`INSERT INTO goose_db_version (version_id, is_applied) VALUES (0, 1)`)
-
-	// Check what's already applied
-	var tblExists bool
-	db.QueryRow(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='transcriptions'`).Scan(&tblExists)
-	if tblExists {
-		db.Exec(`INSERT INTO goose_db_version (version_id, is_applied) VALUES (1, 1)`)
-	}
-
-	// Check for error column
-	rows, err := db.Query(`PRAGMA table_info(transcriptions)`)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var cid int
-			var colName, colType string
-			var notnull int
-			var dflt sql.NullString
-			var pk int
-			rows.Scan(&cid, &colName, &colType, &notnull, &dflt, &pk)
-			if colName == "error" {
-				db.Exec(`INSERT INTO goose_db_version (version_id, is_applied) VALUES (2, 1)`)
-				break
-			}
-		}
-	}
-
-	// Clean up old table
-	db.Exec(`DROP TABLE IF EXISTS schema_migrations`)
 }
 
 // Insert adds a new transcription event to the local history database.
