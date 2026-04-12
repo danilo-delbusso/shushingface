@@ -50,6 +50,7 @@ GEMINI.md
 .claude/
 claude.json
 *.plan.md
+docs/
 
 # Build artifacts
 dist/
