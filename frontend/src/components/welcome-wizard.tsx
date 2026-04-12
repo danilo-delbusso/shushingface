@@ -121,7 +121,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
               {preset && (
                 <button
                   type="button"
-                  className="text-primary underline underline-offset-2 text-xs"
+                  className="cursor-pointer text-primary underline underline-offset-2 text-xs"
                   onClick={() => BrowserOpenURL(preset.keyUrl)}
                 >
                   {preset.keyUrlLabel}

@@ -154,7 +154,7 @@ export function ConnectionsView({
               {preset && (
                 <button
                   type="button"
-                  className="text-primary underline underline-offset-2 hover:text-primary/80 text-xs font-normal"
+                  className="cursor-pointer text-primary underline underline-offset-2 hover:text-primary/80 text-xs font-normal"
                   onClick={() => BrowserOpenURL(preset.keyUrl)}
                 >
                   {preset.keyUrlLabel}
