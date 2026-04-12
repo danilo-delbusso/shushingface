@@ -1,10 +1,22 @@
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, ArrowRight, Check, Plug, SkipForward } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Check,
+  Plug,
+  SkipForward,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { getProfileIcon } from "@/lib/icons";
 import { providerPresets } from "@/lib/providers";
 import { ExternalLink } from "@/components/ui/external-link";
+import { InfoTip } from "@/components/info-tip";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 import type { ai } from "../../wailsjs/go/models";
@@ -20,7 +32,10 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   const [providerId, setProviderId] = useState("groq");
   const [connName, setConnName] = useState("Groq");
   const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testOk, setTestOk] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState("professional");
 
   useEffect(() => {
@@ -28,6 +43,40 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   }, []);
 
   const preset = providerPresets[providerId];
+  const needsBaseUrl = preset?.requiresBaseUrl ?? false;
+
+  // Can proceed if: baked-in provider with API key, OR custom provider with base URL
+  const canProceed = needsBaseUrl ? !!baseUrl.trim() : !!apiKey.trim();
+
+  const testConnection = async () => {
+    // Save a temporary connection so the backend can test it
+    const connId = `test_${Date.now()}`;
+    const conn = config.Connection.createFrom({
+      id: connId,
+      name: "test",
+      providerId,
+      apiKey,
+      baseUrl: baseUrl || undefined,
+    });
+    // Temporarily save so ListModelsForConnection works
+    await AppBridge.SaveSettings(
+      config.Settings.createFrom({
+        ...settings,
+        connections: [conn],
+      }),
+    );
+    setTesting(true);
+    setTestOk(false);
+    try {
+      const models = await AppBridge.ListModelsForConnection(connId);
+      setTestOk(true);
+      toast.success(`Connected — ${models?.length ?? 0} models available`);
+    } catch (err) {
+      toast.error(`Connection failed: ${err}`);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const finishWithConnection = () => {
     const connId = `conn_${Date.now()}`;
@@ -36,6 +85,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
       name: connName || preset?.name || "Default",
       providerId,
       apiKey,
+      baseUrl: baseUrl || undefined,
     });
     onComplete(
       config.Settings.createFrom({
@@ -84,7 +134,8 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-bold">connect an AI provider</h2>
               <p className="text-sm text-muted-foreground">
-                add a connection for transcription and refinement. you can add more later.
+                add a connection for transcription and refinement. you can add
+                more later.
               </p>
             </div>
 
@@ -100,6 +151,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                     onClick={() => {
                       setProviderId(p.id);
                       setConnName(meta?.name ?? p.displayName);
+                      setTestOk(false);
                     }}
                     className={`flex items-center gap-3 overflow-hidden rounded-lg border-2 p-3 text-left transition-colors ${
                       active
@@ -136,51 +188,107 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
               })}
             </div>
 
-            {/* API key */}
-            <div className="space-y-2">
-              {preset && (
-                <ExternalLink href={preset.keyUrl} className="text-xs">
-                  {preset.keyUrlLabel}
-                </ExternalLink>
+            {/* Connection fields — adapts to provider type */}
+            <div className="space-y-3">
+              {/* Base URL — shown for providers that need it */}
+              {needsBaseUrl && (
+                <div className="space-y-1">
+                  <Label>
+                    Base URL{" "}
+                    <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
+                  </Label>
+                  <Input
+                    value={baseUrl}
+                    placeholder="http://localhost:11434/v1"
+                    onChange={(e) => {
+                      setBaseUrl(e.target.value);
+                      setTestOk(false);
+                    }}
+                  />
+                </div>
               )}
-              <div className="flex">
-                <Input
-                  type={showKey ? "text" : "password"}
-                  value={apiKey}
-                  placeholder={preset?.keyPlaceholder ?? "API key..."}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="rounded-r-none"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowKey(!showKey)}
-                  className="rounded-l-none border-l-0"
-                >
-                  {showKey ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
+
+              {/* API key */}
+              <div className="space-y-1">
+                <Label className="flex items-center gap-2">
+                  API Key
+                  {needsBaseUrl && (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      optional for local
+                    </span>
                   )}
-                </Button>
+                  {preset?.keyUrl && (
+                    <ExternalLink
+                      href={preset.keyUrl}
+                      className="text-xs font-normal"
+                    >
+                      {preset.keyUrlLabel}
+                    </ExternalLink>
+                  )}
+                </Label>
+                <div className="flex">
+                  <Input
+                    type={showKey ? "text" : "password"}
+                    value={apiKey}
+                    placeholder={preset?.keyPlaceholder ?? "API key..."}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      setTestOk(false);
+                    }}
+                    className="rounded-r-none"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowKey(!showKey)}
+                    className="rounded-l-none border-l-0"
+                  >
+                    {showKey ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
+
+              {/* Test connection */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={testing || !canProceed}
+                onClick={testConnection}
+              >
+                {testing ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" /> Testing...
+                  </>
+                ) : testOk ? (
+                  <>
+                    <Check className="size-3.5" /> Connected
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="size-3.5" /> Test Connection
+                  </>
+                )}
+              </Button>
             </div>
 
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => {
-                  setStep(2);
-                }}
+                onClick={() => setStep(2)}
               >
                 <SkipForward className="size-4" /> skip for now
               </Button>
               <Button
                 className="flex-1"
                 onClick={() => setStep(2)}
-                disabled={!apiKey.trim()}
+                disabled={!canProceed}
               >
                 next <ArrowRight className="size-4" />
               </Button>
@@ -236,7 +344,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
             </div>
             <Button
               className="w-full"
-              onClick={apiKey.trim() ? finishWithConnection : finishSkip}
+              onClick={canProceed ? finishWithConnection : finishSkip}
             >
               finish <Check className="size-4" />
             </Button>
