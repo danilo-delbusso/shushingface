@@ -3,106 +3,57 @@ package factory
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"codeberg.org/dbus/shushingface/internal/ai"
-	"codeberg.org/dbus/shushingface/internal/ai/groq"
 	"codeberg.org/dbus/shushingface/internal/config"
+
+	// Register providers — each init() calls ai.RegisterProvider.
+	_ "codeberg.org/dbus/shushingface/internal/ai/groq"
 )
 
-// Router combines multiple Processors to handle Transcription and Refinement separately.
-// It implements ai.Processor, making it a drop-in replacement for the core.Engine.
-type Router struct {
-	transcriber ai.Processor
-	refiner     ai.Processor
-}
-
-func (r *Router) Transcribe(ctx context.Context, wavData []byte) (string, error) {
-	return r.transcriber.Transcribe(ctx, wavData)
-}
-
-func (r *Router) Refine(ctx context.Context, transcript string, opts ai.RefineOptions) (string, error) {
-	return r.refiner.Refine(ctx, transcript, opts)
-}
-
-// NewFromConfig builds the AI Dependency Graph (the Router) based on current settings.
+// NewFromConfig builds a Processor using the provider registry.
 func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
-	// Resolve Transcriber
-	transProvider, ok := cfg.Providers[cfg.TranscriptionProviderID]
-	if !ok {
-		return nil, fmt.Errorf("transcription provider '%s' not found", cfg.TranscriptionProviderID)
-	}
-
-	var transcriber ai.Processor
-	var err error
-	apiKey := resolveAPIKey(transProvider.APIKey, "GROQ_API_KEY")
-	if apiKey == "" && transProvider.Name != "ollama" {
-		transcriber = &PlaceholderProcessor{Reason: "Transcription API key is missing. Please configure it in Settings."}
-	} else {
-		switch transProvider.Name {
-		case "groq":
-			transcriber, err = groq.NewProcessor(apiKey, cfg.TranscriptionModel, "")
-		default:
-			return nil, fmt.Errorf("unsupported transcription provider: %s", transProvider.Name)
-		}
-	}
+	provider, err := ai.GetProvider(cfg.ProviderID)
 	if err != nil {
-		return nil, fmt.Errorf("error initializing transcriber: %w", err)
+		return nil, err
 	}
 
-	// Resolve Refiner
-	refineProvider, ok := cfg.Providers[cfg.RefinementProviderID]
-	if !ok {
-		return nil, fmt.Errorf("refinement provider '%s' not found", cfg.RefinementProviderID)
+	apiKey := resolveAPIKey(cfg.ProviderAPIKey, envKeyForProvider(cfg.ProviderID))
+	if apiKey == "" {
+		return &PlaceholderProcessor{Reason: "API key is missing. Please configure it in Settings."}, nil
 	}
 
-	var refiner ai.Processor
-	apiKey = resolveAPIKey(refineProvider.APIKey, "GROQ_API_KEY")
-	if apiKey == "" && refineProvider.Name != "ollama" {
-		refiner = &PlaceholderProcessor{Reason: "Refinement API key is missing. Please configure it in Settings."}
-	} else {
-		switch refineProvider.Name {
-		case "groq":
-			refinementModel := cfg.RefinementModel
-			if refinementModel == "" {
-				if p := cfg.ActiveProfile(); p != nil {
-					refinementModel = p.Model
-				}
-			}
-			refiner, err = groq.NewProcessor(apiKey, "", refinementModel)
-		default:
-			return nil, fmt.Errorf("unsupported refinement provider: %s", refineProvider.Name)
-		}
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error initializing refiner: %w", err)
-	}
+	refinementModel := cfg.EffectiveRefinementModel()
 
-	return &Router{
-		transcriber: transcriber,
-		refiner:     refiner,
-	}, nil
+	return provider.NewProcessor(apiKey, cfg.ProviderBaseURL, cfg.TranscriptionModel, refinementModel)
 }
 
-// PlaceholderProcessor is used when a provider is not yet fully configured (e.g., missing API key).
-// It allows the application to start so the user can reach the Settings screen.
+// PlaceholderProcessor is used when a provider is not yet fully configured.
 type PlaceholderProcessor struct {
 	Reason string
 }
 
-func (p *PlaceholderProcessor) Transcribe(ctx context.Context, wavData []byte) (string, error) {
+func (p *PlaceholderProcessor) Transcribe(_ context.Context, _ []byte) (string, error) {
 	return "", errors.New(p.Reason)
 }
 
-func (p *PlaceholderProcessor) Refine(ctx context.Context, transcript string, opts ai.RefineOptions) (string, error) {
+func (p *PlaceholderProcessor) Refine(_ context.Context, _ string, _ ai.RefineOptions) (string, error) {
 	return "", errors.New(p.Reason)
 }
 
-// resolveAPIKey falls back to environment variables for backward compatibility
 func resolveAPIKey(configuredKey, envVar string) string {
 	if configuredKey != "" {
 		return configuredKey
 	}
 	return os.Getenv(envVar)
+}
+
+func envKeyForProvider(providerID string) string {
+	switch providerID {
+	case "groq":
+		return "GROQ_API_KEY"
+	default:
+		return ""
+	}
 }

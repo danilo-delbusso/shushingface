@@ -7,6 +7,7 @@ import (
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"codeberg.org/dbus/shushingface/internal/ai"
 	"codeberg.org/dbus/shushingface/internal/ai/factory"
 	"codeberg.org/dbus/shushingface/internal/config"
 	"codeberg.org/dbus/shushingface/internal/core"
@@ -160,6 +161,25 @@ func (a *App) GetDefaultProfiles() []config.RefinementProfile {
 
 func (a *App) GetDefaultSettings() *config.Settings {
 	return config.DefaultSettings()
+}
+
+func (a *App) ListProviders() []ai.ProviderInfo {
+	return ai.ListProviders()
+}
+
+func (a *App) ListModels() ([]ai.ModelInfo, error) {
+	provider, err := ai.GetProvider(a.cfg.ProviderID)
+	if err != nil {
+		return nil, err
+	}
+	if a.cfg.ProviderAPIKey == "" {
+		return nil, fmt.Errorf("API key not configured")
+	}
+	return provider.ListModels(a.ctx, a.cfg.ProviderAPIKey, a.cfg.ProviderBaseURL)
+}
+
+func (a *App) GetDefaultBuiltInRules() string {
+	return config.DefaultBuiltInRules()
 }
 
 func (a *App) GetHistory(limit, offset int) ([]history.Record, error) {

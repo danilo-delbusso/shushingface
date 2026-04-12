@@ -8,11 +8,9 @@ import (
 	"path/filepath"
 )
 
-type ProviderConfig struct {
-	Name    string `json:"name"`
-	APIKey  string `json:"apiKey"`
-	BaseURL string `json:"baseUrl"`
-}
+// ──────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────
 
 type FewShotExample struct {
 	Input  string `json:"input"`
@@ -23,7 +21,7 @@ type RefinementProfile struct {
 	ID          string           `json:"id"`
 	Name        string           `json:"name"`
 	Icon        string           `json:"icon"`   // lucide icon name
-	Model       string           `json:"model"`
+	Model       string           `json:"model"`  // override; empty = use global RefinementModel
 	Prompt      string           `json:"prompt"`
 	Examples    []FewShotExample `json:"examples,omitempty"`
 	Temperature float32          `json:"temperature,omitempty"`
@@ -31,19 +29,20 @@ type RefinementProfile struct {
 }
 
 type Settings struct {
-	Providers               map[string]ProviderConfig `json:"providers"`
-	TranscriptionProviderID string                    `json:"transcriptionProviderId"`
-	TranscriptionModel      string                    `json:"transcriptionModel"`
-	RefinementProviderID    string                    `json:"refinementProviderId"`
+	// Provider — one active AI service
+	ProviderID      string `json:"providerId"`
+	ProviderAPIKey  string `json:"providerApiKey"`
+	ProviderBaseURL string `json:"providerBaseUrl,omitempty"`
+
+	// Models
+	TranscriptionModel string `json:"transcriptionModel"`
+	RefinementModel    string `json:"refinementModel"`
 
 	// Refinement profiles
 	RefinementProfiles []RefinementProfile `json:"refinementProfiles"`
 	ActiveProfileID    string              `json:"activeProfileId"`
 	GlobalRules        string              `json:"globalRules,omitempty"`
-
-	// Legacy (kept for migration, omitted if empty)
-	SystemPrompt    string `json:"systemPrompt,omitempty"`
-	RefinementModel string `json:"refinementModel,omitempty"`
+	BuiltInRules       string              `json:"builtInRules,omitempty"`
 
 	// Setup
 	SetupComplete bool `json:"setupComplete"`
@@ -60,6 +59,18 @@ type Settings struct {
 
 	// Audio
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
+
+	// Legacy fields — kept only for migration, cleared on load
+	LegacyProviders               map[string]legacyProviderConfig `json:"providers,omitempty"`
+	LegacyTranscriptionProviderID string                          `json:"transcriptionProviderId,omitempty"`
+	LegacyRefinementProviderID    string                          `json:"refinementProviderId,omitempty"`
+	LegacySystemPrompt            string                          `json:"systemPrompt,omitempty"`
+}
+
+type legacyProviderConfig struct {
+	Name    string `json:"name"`
+	APIKey  string `json:"apiKey"`
+	BaseURL string `json:"baseUrl"`
 }
 
 // ActiveProfile returns the currently active refinement profile.
@@ -75,8 +86,20 @@ func (s *Settings) ActiveProfile() *RefinementProfile {
 	return nil
 }
 
-const builtInRules = "\n\nRules:\n" +
-	"- Output only the rewritten text, nothing else.\n" +
+// EffectiveRefinementModel returns the model to use for refinement,
+// checking the active profile override first, then the global default.
+func (s *Settings) EffectiveRefinementModel() string {
+	if p := s.ActiveProfile(); p != nil && p.Model != "" {
+		return p.Model
+	}
+	return s.RefinementModel
+}
+
+// ──────────────────────────────────────────────────
+// Built-in rules
+// ──────────────────────────────────────────────────
+
+const defaultBuiltInRules = "- Output only the rewritten text, nothing else.\n" +
 	"- Keep all meaning intact — never drop points, details, or nuance the speaker expressed.\n" +
 	"- Preserve the speaker's original intent and any questions exactly as stated.\n" +
 	"- Clean up speech artifacts: filler words (um, uh, like, you know), false starts, and repetitions.\n" +
@@ -84,18 +107,32 @@ const builtInRules = "\n\nRules:\n" +
 	"- Never add words, ideas, or formality the speaker did not express.\n" +
 	"- Return well-written input unchanged."
 
-// BuiltInRules returns the built-in rules that are always appended to every
-// refinement prompt at runtime, regardless of profile or user global rules.
-func BuiltInRules() string { return builtInRules }
+// DefaultBuiltInRules returns the factory-default built-in rules string.
+func DefaultBuiltInRules() string { return defaultBuiltInRules }
+
+// GetBuiltInRules returns the active built-in rules (user-customised or default).
+func (s *Settings) GetBuiltInRules() string {
+	if s.BuiltInRules != "" {
+		return s.BuiltInRules
+	}
+	return defaultBuiltInRules
+}
+
+// ──────────────────────────────────────────────────
+// Default profiles & settings
+// ──────────────────────────────────────────────────
+
+const DefaultRefinementModel = "meta-llama/llama-4-scout-17b-16e-instruct"
+const DefaultTranscriptionModel = "whisper-large-v3"
 
 // DefaultProfiles returns the 3 preset refinement profiles.
-func DefaultProfiles(model string) []RefinementProfile {
+// The model field is left empty so the global RefinementModel is used.
+func DefaultProfiles() []RefinementProfile {
 	return []RefinementProfile{
 		{
-			ID:    "casual",
-			Name:  "Casual",
-			Icon:  "coffee",
-			Model: model,
+			ID:   "casual",
+			Name: "Casual",
+			Icon: "coffee",
 			Prompt: "You are a speech-to-text editor. Rewrite the transcript so it reads like something the speaker would actually type — " +
 				"relaxed, natural, the way you'd message a colleague you're comfortable with. " +
 				"Keep contractions, casual phrasing, and personality.",
@@ -113,10 +150,9 @@ func DefaultProfiles(model string) []RefinementProfile {
 			TopP:        0.9,
 		},
 		{
-			ID:    "professional",
-			Name:  "Professional",
-			Icon:  "briefcase",
-			Model: model,
+			ID:   "professional",
+			Name: "Professional",
+			Icon: "briefcase",
 			Prompt: "You are a speech-to-text editor. Rewrite the transcript into clear, professional text " +
 				"suitable for emails and workplace communication. Use complete sentences and precise language, " +
 				"but keep it human — avoid corporate jargon and stiff phrasing that nobody would actually write.",
@@ -134,10 +170,9 @@ func DefaultProfiles(model string) []RefinementProfile {
 			TopP:        0.9,
 		},
 		{
-			ID:    "concise",
-			Name:  "Concise",
-			Icon:  "zap",
-			Model: model,
+			ID:   "concise",
+			Name: "Concise",
+			Icon: "zap",
 			Prompt: "You are a speech-to-text editor. Compress the transcript to its essential meaning. " +
 				"Strip filler, hedging, repetition, and unnecessary detail. One to two sentences. Every word earns its place.",
 			Examples: []FewShotExample{
@@ -156,7 +191,27 @@ func DefaultProfiles(model string) []RefinementProfile {
 	}
 }
 
-const defaultModel = "meta-llama/llama-4-scout-17b-16e-instruct"
+// DefaultSettings returns a sensible baseline configuration.
+func DefaultSettings() *Settings {
+	return &Settings{
+		ProviderID:         "groq",
+		TranscriptionModel: DefaultTranscriptionModel,
+		RefinementModel:    DefaultRefinementModel,
+		RefinementProfiles: DefaultProfiles(),
+		ActiveProfileID:    "professional",
+		SetupComplete:      false,
+		Theme:              "dark",
+		AutoPaste:          true,
+		AutoCopy:           false,
+		EnableHistory:      true,
+		EnableIndicator:    true,
+		EnableNotifications: false,
+	}
+}
+
+// ──────────────────────────────────────────────────
+// Load / Save / Migration
+// ──────────────────────────────────────────────────
 
 // Load reads the settings from the OS user config directory.
 func Load() (*Settings, error) {
@@ -190,28 +245,69 @@ func Load() (*Settings, error) {
 		return nil, err
 	}
 
-	// Migrate: old single prompt → profile
-	if len(settings.RefinementProfiles) == 0 {
-		model := settings.RefinementModel
-		if model == "" {
-			model = defaultModel
+	migrated := false
+
+	// Migrate: old multi-provider map → single provider
+	if settings.ProviderID == "" && len(settings.LegacyProviders) > 0 {
+		provID := settings.LegacyTranscriptionProviderID
+		if provID == "" {
+			provID = settings.LegacyRefinementProviderID
 		}
-		if settings.SystemPrompt != "" {
-			// User had a custom prompt — preserve it
-			settings.RefinementProfiles = append(DefaultProfiles(model), RefinementProfile{
+		if old, ok := settings.LegacyProviders[provID]; ok {
+			settings.ProviderID = old.Name // "groq"
+			if settings.ProviderID == "" {
+				settings.ProviderID = "groq"
+			}
+			settings.ProviderAPIKey = old.APIKey
+			settings.ProviderBaseURL = old.BaseURL
+		}
+		settings.LegacyProviders = nil
+		settings.LegacyTranscriptionProviderID = ""
+		settings.LegacyRefinementProviderID = ""
+		migrated = true
+	}
+
+	// Migrate: old single prompt → profiles
+	if len(settings.RefinementProfiles) == 0 {
+		if settings.LegacySystemPrompt != "" {
+			settings.RefinementProfiles = append(DefaultProfiles(), RefinementProfile{
 				ID:     "custom",
 				Name:   "Custom",
 				Icon:   "pen-tool",
-				Model:  model,
-				Prompt: settings.SystemPrompt,
+				Prompt: settings.LegacySystemPrompt,
 			})
 			settings.ActiveProfileID = "custom"
 		} else {
-			settings.RefinementProfiles = DefaultProfiles(model)
+			settings.RefinementProfiles = DefaultProfiles()
 			settings.ActiveProfileID = "professional"
 		}
-		settings.SystemPrompt = ""
-		settings.RefinementModel = ""
+		settings.LegacySystemPrompt = ""
+		migrated = true
+	}
+
+	// Migrate: ensure RefinementModel is set
+	if settings.RefinementModel == "" {
+		if p := settings.ActiveProfile(); p != nil && p.Model != "" {
+			settings.RefinementModel = p.Model
+		} else {
+			settings.RefinementModel = DefaultRefinementModel
+		}
+		migrated = true
+	}
+
+	// Migrate: ensure TranscriptionModel is set
+	if settings.TranscriptionModel == "" {
+		settings.TranscriptionModel = DefaultTranscriptionModel
+		migrated = true
+	}
+
+	// Migrate: ensure ProviderID is set for old configs that had no provider map
+	if settings.ProviderID == "" {
+		settings.ProviderID = "groq"
+		migrated = true
+	}
+
+	if migrated {
 		Save(&settings)
 	}
 
@@ -235,6 +331,10 @@ func Save(settings *Settings) error {
 
 	return os.WriteFile(configFile, data, 0600)
 }
+
+// ──────────────────────────────────────────────────
+// Utility
+// ──────────────────────────────────────────────────
 
 // GetLogPath returns the path for the application log file.
 func GetLogPath() (string, error) {
@@ -268,28 +368,4 @@ func InitLogger() func() {
 	slog.SetDefault(slog.New(handler))
 
 	return func() { f.Close() }
-}
-
-// DefaultSettings returns a sensible baseline configuration.
-func DefaultSettings() *Settings {
-	return &Settings{
-		Providers: map[string]ProviderConfig{
-			"groq-default": {
-				Name:   "groq",
-				APIKey: "",
-			},
-		},
-		TranscriptionProviderID: "groq-default",
-		TranscriptionModel:      "whisper-large-v3",
-		RefinementProviderID:    "groq-default",
-		RefinementProfiles:      DefaultProfiles(defaultModel),
-		ActiveProfileID:         "professional",
-		SetupComplete:           false,
-		Theme:                   "dark",
-		AutoPaste:               true,
-		AutoCopy:                false,
-		EnableHistory:           true,
-		EnableIndicator:         true,
-		EnableNotifications:     false,
-	}
 }
