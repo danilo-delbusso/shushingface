@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   modelsSchema,
   globalRulesSchema,
+  profileSchema,
   type ModelsFormData,
   type GlobalRulesFormData,
+  type ProfileFormData,
 } from "@/lib/schemas";
 import { FormField } from "@/components/ui/form-field";
 import {
@@ -279,20 +281,15 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     );
   };
 
-  const updateDraftProfile = (
-    id: string,
-    patch: Partial<config.RefinementProfile>,
-  ) => {
-    setDraftProfiles((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? config.RefinementProfile.createFrom({ ...p, ...patch })
-          : p,
-      ),
+  const saveProfile = (id: string, data: ProfileFormData) => {
+    const updated = draftProfiles.map((p) =>
+      p.id === id
+        ? config.RefinementProfile.createFrom({ ...p, ...data, connectionId: data.connectionId || undefined })
+        : p,
     );
+    setDraftProfiles(updated);
+    saveProfiles(updated);
   };
-
-  const saveProfile = (_id: string) => saveProfiles(draftProfiles);
 
   const deleteProfile = (id: string) => {
     const updated = draftProfiles.filter((p) => p.id !== id);
@@ -388,10 +385,6 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
   };
 
   const presetIds = new Set(["casual", "professional", "concise"]);
-
-  // Helper: get the connection name for display
-  const connName = (id: string) =>
-    connections.find((c) => c.id === id)?.name ?? "Not set";
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -556,11 +549,6 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
           const isActive = profile.id === activeId;
           const isExpanded = expandedProfile === profile.id;
           const isPreset = presetIds.has(profile.id);
-          const displayModel =
-            profile.model || settings.refinementModel || "default";
-          const displayConn = profile.connectionId
-            ? connName(profile.connectionId)
-            : "default";
 
           return (
             <ProfileCard
@@ -570,8 +558,6 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               isActive={isActive}
               isExpanded={isExpanded}
               isPreset={isPreset}
-              displayModel={displayModel}
-              displayConn={displayConn}
               connections={connections}
               defaultRefConnId={refConnId}
               defaultRefModel={refModel}
@@ -583,8 +569,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                 setAdvancedOpen(v ? profile.id : null)
               }
               onActivate={() => setActive(profile.id)}
-              onUpdate={(patch) => updateDraftProfile(profile.id, patch)}
-              onSave={() => saveProfile(profile.id)}
+              onSave={(data) => saveProfile(profile.id, data)}
               onRestore={() => restoreProfile(profile.id)}
               onDelete={() => deleteProfile(profile.id)}
             />
@@ -650,8 +635,6 @@ function ProfileCard({
   isActive,
   isExpanded,
   isPreset,
-  displayModel,
-  displayConn,
   connections,
   defaultRefConnId,
   defaultRefModel,
@@ -659,7 +642,6 @@ function ProfileCard({
   onToggleExpand,
   onToggleAdvanced,
   onActivate,
-  onUpdate,
   onSave,
   onRestore,
   onDelete,
@@ -669,8 +651,6 @@ function ProfileCard({
   isActive: boolean;
   isExpanded: boolean;
   isPreset: boolean;
-  displayModel: string;
-  displayConn: string;
   connections: config.Connection[];
   defaultRefConnId: string;
   defaultRefModel: string;
@@ -678,18 +658,59 @@ function ProfileCard({
   onToggleExpand: () => void;
   onToggleAdvanced: (v: boolean) => void;
   onActivate: () => void;
-  onUpdate: (patch: Partial<config.RefinementProfile>) => void;
-  onSave: () => void;
+  onSave: (data: ProfileFormData) => void;
   onRestore: () => void;
   onDelete: () => void;
 }) {
-  // Fetch models for this profile's connection (or default)
-  const effectiveConnId = profile.connectionId || defaultRefConnId;
-  const { chatModels: profileModels } =
-    useModelsForConnection(effectiveConnId);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    control,
+    formState: { errors, isDirty },
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: profile.name,
+      connectionId: profile.connectionId ?? "",
+      model: profile.model,
+      prompt: profile.prompt,
+      temperature: profile.temperature ?? 0.3,
+      topP: profile.topP ?? 0.9,
+      examples: profile.examples ?? [],
+    },
+  });
+
+  const { fields: exampleFields, append: appendExample, remove: removeExample } =
+    useFieldArray({ control, name: "examples" });
+
+  // Reset when profile changes externally (restore default, etc.)
+  useEffect(() => {
+    reset({
+      name: profile.name,
+      connectionId: profile.connectionId ?? "",
+      model: profile.model,
+      prompt: profile.prompt,
+      temperature: profile.temperature ?? 0.3,
+      topP: profile.topP ?? 0.9,
+      examples: profile.examples ?? [],
+    });
+  }, [profile, reset]);
+
+  const watchedName = watch("name");
+  const watchedConnId = watch("connectionId");
+  const watchedModel = watch("model");
+
+  const effectiveConnId = watchedConnId || defaultRefConnId;
+  const { chatModels: profileModels } = useModelsForConnection(effectiveConnId);
 
   const defaultConnName =
     connections.find((c) => c.id === defaultRefConnId)?.name ?? "default";
+  const displayModel = watchedModel || defaultRefModel || "default";
+  const displayConn = watchedConnId
+    ? connections.find((c) => c.id === watchedConnId)?.name ?? "custom"
+    : "default";
 
   return (
     <Card className={isActive ? "border-primary" : ""}>
@@ -706,7 +727,7 @@ function ProfileCard({
           </div>
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2 text-sm">
-              {profile.name}
+              {watchedName || "Untitled"}
             </CardTitle>
             <CardDescription className="text-xs">
               {displayConn} / {displayModel}
@@ -738,168 +759,107 @@ function ProfileCard({
       </CardHeader>
       {isExpanded && (
         <CardContent className="space-y-3 pt-0">
-          <div className="space-y-1">
-            <Label>Name</Label>
-            <Input
-              value={profile.name}
-              onChange={(e) => onUpdate({ name: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>
-              Connection override{" "}
-              <InfoTip text="Use a different AI connection for this style. Leave on default to inherit." />
-            </Label>
-            <ConnectionSelect
-              value={profile.connectionId ?? ""}
-              onChange={(v) => onUpdate({ connectionId: v || undefined })}
-              connections={connections}
-              allowDefault
-              defaultLabel={`Use default (${defaultConnName})`}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>
-              Model override{" "}
-              <InfoTip text="Override the refinement model for this style." />
-            </Label>
-            <ModelSelect
-              value={profile.model}
-              onChange={(v) => onUpdate({ model: v })}
-              models={profileModels}
-              allowDefault
-              defaultLabel={`Use default (${defaultRefModel})`}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Prompt</Label>
+          <FormField label="Name" error={errors.name?.message}>
+            <Input {...register("name")} />
+          </FormField>
+
+          <FormField
+            label={<>Connection override <InfoTip text="Use a different AI connection for this style. Leave on default to inherit." /></>}
+          >
+            <Controller name="connectionId" control={control} render={({ field }) => (
+              <ConnectionSelect
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                connections={connections}
+                allowDefault
+                defaultLabel={`Use default (${defaultConnName})`}
+              />
+            )} />
+          </FormField>
+
+          <FormField
+            label={<>Model override <InfoTip text="Override the refinement model for this style." /></>}
+          >
+            <Controller name="model" control={control} render={({ field }) => (
+              <ModelSelect
+                value={field.value}
+                onChange={field.onChange}
+                models={profileModels}
+                allowDefault
+                defaultLabel={`Use default (${defaultRefModel})`}
+              />
+            )} />
+          </FormField>
+
+          <FormField label="Prompt" error={errors.prompt?.message}>
             <textarea
-              value={profile.prompt}
-              onChange={(e) => onUpdate({ prompt: e.target.value })}
+              {...register("prompt")}
               rows={6}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
             />
-          </div>
+          </FormField>
 
-          <AdvancedToggle
-            open={advancedOpen}
-            onToggle={onToggleAdvanced}
-          >
+          <AdvancedToggle open={advancedOpen} onToggle={onToggleAdvanced}>
             <div className="space-y-4">
               {/* Temperature */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs flex items-center gap-1">
-                    Temperature{" "}
-                    <InfoTip text="Lower = consistent, higher = creative." />
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={profile.temperature ?? 0.3}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      if (!isNaN(v) && v >= 0 && v <= 1)
-                        onUpdate({ temperature: v });
-                    }}
-                    className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
-                  />
+              <Controller name="temperature" control={control} render={({ field }) => (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs flex items-center gap-1">
+                      Temperature <InfoTip text="Lower = consistent, higher = creative." />
+                    </Label>
+                    <Input
+                      type="number" min={0} max={1} step={0.05}
+                      value={field.value ?? 0.3}
+                      onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) field.onChange(v); }}
+                      className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                    />
+                  </div>
+                  <Slider min={0} max={1} step={0.05} value={[field.value ?? 0.3]} onValueChange={([v]) => field.onChange(v)} />
+                  <div className="flex justify-between text-[10px] text-muted-foreground"><span>Consistent</span><span>Creative</span></div>
                 </div>
-                <Slider
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={[profile.temperature ?? 0.3]}
-                  onValueChange={([v]) => onUpdate({ temperature: v })}
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Consistent</span>
-                  <span>Creative</span>
-                </div>
-              </div>
+              )} />
 
               {/* Top P */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs flex items-center gap-1">
-                    Top P{" "}
-                    <InfoTip text="Nucleus sampling threshold." />
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0.1}
-                    max={1}
-                    step={0.05}
-                    value={profile.topP ?? 0.9}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      if (!isNaN(v) && v >= 0.1 && v <= 1)
-                        onUpdate({ topP: v });
-                    }}
-                    className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
-                  />
+              <Controller name="topP" control={control} render={({ field }) => (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs flex items-center gap-1">
+                      Top P <InfoTip text="Nucleus sampling threshold." />
+                    </Label>
+                    <Input
+                      type="number" min={0.1} max={1} step={0.05}
+                      value={field.value ?? 0.9}
+                      onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0.1 && v <= 1) field.onChange(v); }}
+                      className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                    />
+                  </div>
+                  <Slider min={0.1} max={1} step={0.05} value={[field.value ?? 0.9]} onValueChange={([v]) => field.onChange(v)} />
+                  <div className="flex justify-between text-[10px] text-muted-foreground"><span>Focused</span><span>Diverse</span></div>
                 </div>
-                <Slider
-                  min={0.1}
-                  max={1}
-                  step={0.05}
-                  value={[profile.topP ?? 0.9]}
-                  onValueChange={([v]) => onUpdate({ topP: v })}
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Focused</span>
-                  <span>Diverse</span>
-                </div>
-              </div>
+              )} />
 
               {/* Examples */}
               <div className="space-y-2">
                 <Label className="text-xs flex items-center gap-1">
-                  Examples{" "}
-                  <InfoTip text="Before/after pairs that anchor the model's style." />
+                  Examples <InfoTip text="Before/after pairs that anchor the model's style." />
                 </Label>
-                {(profile.examples ?? []).map((ex, i) => (
-                  <div
-                    key={i}
-                    className="space-y-1 rounded border border-border bg-background p-2"
-                  >
+                {exampleFields.map((field, i) => (
+                  <div key={field.id} className="space-y-1 rounded border border-border bg-background p-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium text-muted-foreground">
-                        Example {i + 1}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-5"
-                        onClick={() => {
-                          const updated = [...(profile.examples ?? [])];
-                          updated.splice(i, 1);
-                          onUpdate({ examples: updated });
-                        }}
-                      >
+                      <span className="text-[10px] font-medium text-muted-foreground">Example {i + 1}</span>
+                      <Button variant="ghost" size="icon" className="size-5" onClick={() => removeExample(i)}>
                         <Trash2 className="size-2.5" />
                       </Button>
                     </div>
                     <textarea
-                      value={ex.input}
-                      onChange={(e) => {
-                        const updated = [...(profile.examples ?? [])];
-                        updated[i] = { ...updated[i], input: e.target.value };
-                        onUpdate({ examples: updated });
-                      }}
+                      {...register(`examples.${i}.input`)}
                       rows={2}
                       placeholder="Speech transcript (before)..."
                       className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                     />
                     <textarea
-                      value={ex.output}
-                      onChange={(e) => {
-                        const updated = [...(profile.examples ?? [])];
-                        updated[i] = { ...updated[i], output: e.target.value };
-                        onUpdate({ examples: updated });
-                      }}
+                      {...register(`examples.${i}.output`)}
                       rows={2}
                       placeholder="Desired output (after)..."
                       className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
@@ -907,16 +867,8 @@ function ProfileCard({
                   </div>
                 ))}
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={() => {
-                    const updated = [
-                      ...(profile.examples ?? []),
-                      { input: "", output: "" },
-                    ];
-                    onUpdate({ examples: updated });
-                  }}
+                  variant="outline" size="sm" className="w-full text-xs"
+                  onClick={() => appendExample({ input: "", output: "" })}
                 >
                   <Plus className="size-3" /> Add Example
                 </Button>
@@ -925,17 +877,13 @@ function ProfileCard({
           </AdvancedToggle>
 
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={onSave}>
+            <Button size="sm" onClick={handleSubmit(onSave)} disabled={!isDirty}>
               Save
             </Button>
             {isPreset && (
               <ConfirmDialog
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <RotateCcw className="size-3.5" /> Restore Default
-                  </Button>
-                }
-                title={`Restore "${profile.name}" to default?`}
+                trigger={<Button variant="outline" size="sm"><RotateCcw className="size-3.5" /> Restore Default</Button>}
+                title={`Restore "${watchedName}" to default?`}
                 description="This will reset the prompt, examples, and sampling parameters."
                 confirmLabel="Restore"
                 onConfirm={onRestore}
@@ -943,12 +891,8 @@ function ProfileCard({
             )}
             {!isPreset && (
               <ConfirmDialog
-                trigger={
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="size-3.5" /> Delete
-                  </Button>
-                }
-                title={`Delete "${profile.name}"?`}
+                trigger={<Button variant="destructive" size="sm"><Trash2 className="size-3.5" /> Delete</Button>}
+                title={`Delete "${watchedName}"?`}
                 description="This style will be permanently removed."
                 confirmLabel="Delete"
                 onConfirm={onDelete}
