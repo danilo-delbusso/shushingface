@@ -134,7 +134,7 @@ export function ConnectionsView({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{p.displayName}</p>
                     {meta && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground">
                         {meta.description}
                       </p>
                     )}
