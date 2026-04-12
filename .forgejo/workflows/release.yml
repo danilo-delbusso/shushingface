@@ -60,4 +60,3 @@ jobs:
           title: ${{ github.ref_name }}
           release-dir: dist
           release-notes-file: CHANGELOG.md
-          prerelease: ${{ contains(github.ref_name, 'rc') }}
