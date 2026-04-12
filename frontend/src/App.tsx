@@ -97,6 +97,7 @@ function App() {
               isRecording={isRecording}
               isProcessing={isProcessing}
               results={results}
+              profiles={settings.refinementProfiles ?? []}
               activeProfile={
                 settings.refinementProfiles?.find(
                   (p) => p.id === settings.activeProfileId,
@@ -104,6 +105,14 @@ function App() {
               }
               onToggle={toggle}
               onGoToSettings={() => setView("connections")}
+              onSwitchProfile={(id) =>
+                saveSettings(
+                  config.Settings.createFrom({
+                    ...settings,
+                    activeProfileId: id,
+                  }),
+                )
+              }
             />
           )}
           {view === "history" && (

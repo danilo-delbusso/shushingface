@@ -1,5 +1,6 @@
-import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp } from "lucide-react";
+import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { useState } from "react";
+import { Popover } from "radix-ui";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,9 +12,11 @@ interface RecordViewProps {
   isRecording: boolean;
   isProcessing: boolean;
   results: desktop.ProcessResult[];
+  profiles: config.RefinementProfile[];
   activeProfile: config.RefinementProfile | null;
   onToggle: () => void;
   onGoToSettings: () => void;
+  onSwitchProfile: (id: string) => void;
 }
 
 export function RecordView({
@@ -21,9 +24,11 @@ export function RecordView({
   isRecording,
   isProcessing,
   results,
+  profiles,
   activeProfile,
   onToggle,
   onGoToSettings,
+  onSwitchProfile,
 }: RecordViewProps) {
   if (!configured) {
     return (
@@ -49,10 +54,11 @@ export function RecordView({
       {/* Mic section */}
       <div className={`flex flex-col items-center gap-3 py-6 shrink-0 ${hasResults ? "" : "flex-1 justify-center"}`}>
         {activeProfile && ProfileIcon && (
-          <div className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 text-xs text-muted-foreground">
-            <ProfileIcon className="size-3" />
-            {activeProfile.name}
-          </div>
+          <ProfileSwitcher
+            profiles={profiles}
+            activeProfile={activeProfile}
+            onSwitch={onSwitchProfile}
+          />
         )}
         <button
           type="button"
@@ -95,6 +101,64 @@ export function RecordView({
         </div>
       )}
     </div>
+  );
+}
+
+function ProfileSwitcher({
+  profiles,
+  activeProfile,
+  onSwitch,
+}: {
+  profiles: config.RefinementProfile[];
+  activeProfile: config.RefinementProfile;
+  onSwitch: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ActiveIcon = getProfileIcon(activeProfile.icon);
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+        >
+          <ActiveIcon className="size-3 shrink-0" />
+          {activeProfile.name}
+          <ChevronDown className="size-3 opacity-50" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          sideOffset={4}
+          className="z-50 w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+        >
+          {profiles.map((p) => {
+            const Icon = getProfileIcon(p.icon);
+            const isActive = p.id === activeProfile.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onSwitch(p.id);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                <Icon className="size-3.5 shrink-0" />
+                <span className="flex-1 text-left">{p.name}</span>
+                {isActive && <Check className="size-3 shrink-0 opacity-50" />}
+              </button>
+            );
+          })}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
