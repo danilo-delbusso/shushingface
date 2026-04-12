@@ -7,8 +7,6 @@ import {
 } from "@/lib/schemas";
 import { FormField } from "@/components/ui/form-field";
 import {
-  Eye,
-  EyeOff,
   ArrowRight,
   Check,
   Plug,
@@ -19,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { getProfileIcon } from "@/lib/icons";
 import { providerPresets } from "@/lib/providers";
 import { ExternalLink } from "@/components/ui/external-link";
@@ -37,7 +36,6 @@ interface WelcomeWizardProps {
 export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   const [step, setStep] = useState(0);
   const [providers, setProviders] = useState<ai.ProviderInfo[]>([]);
-  const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testOk, setTestOk] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState("professional");
@@ -243,27 +241,10 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                 }
                 error={errors.apiKey?.message}
               >
-                <div className="flex">
-                  <Input
-                    type={showKey ? "text" : "password"}
-                    {...register("apiKey", { onChange: () => setTestOk(false) })}
-                    placeholder={preset?.keyPlaceholder ?? "API key..."}
-                    className="rounded-r-none"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowKey(!showKey)}
-                    className="rounded-l-none border-l-0"
-                  >
-                    {showKey ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </Button>
-                </div>
+                <PasswordInput
+                  {...register("apiKey", { onChange: () => setTestOk(false) })}
+                  placeholder={preset?.keyPlaceholder ?? "API key..."}
+                />
               </FormField>
 
               {/* Test connection */}

@@ -7,8 +7,6 @@ import {
 } from "@/lib/schemas";
 import { FormField } from "@/components/ui/form-field";
 import {
-  Eye,
-  EyeOff,
   Plug,
   Loader2,
   RefreshCw,
@@ -28,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -208,7 +207,6 @@ function ConnectionCard({
     },
   });
 
-  const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
 
   const watchedName = watch("name");
@@ -238,6 +236,7 @@ function ConnectionCard({
         baseUrl: data.baseUrl || undefined,
       }),
     );
+    reset(data);
   };
 
   const testConnection = async () => {
@@ -362,27 +361,10 @@ function ConnectionCard({
             }
             error={errors.apiKey?.message}
           >
-            <div className="flex">
-              <Input
-                type={showKey ? "text" : "password"}
-                {...register("apiKey")}
-                placeholder={preset?.keyPlaceholder ?? "API key..."}
-                className="rounded-r-none"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowKey(!showKey)}
-                className="rounded-l-none border-l-0"
-              >
-                {showKey ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </Button>
-            </div>
+            <PasswordInput
+              {...register("apiKey")}
+              placeholder={preset?.keyPlaceholder ?? "API key..."}
+            />
           </FormField>
 
           {/* Base URL override for known providers (hidden behind Advanced) */}

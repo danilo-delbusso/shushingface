@@ -49,6 +49,7 @@ import { AdvancedToggle } from "@/components/ui/advanced-toggle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import { getProfileIcon } from "@/lib/icons";
+import { cn, textareaClass, textareaCompactClass } from "@/lib/utils";
 import { useModelsForConnection } from "@/lib/hooks";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
@@ -223,6 +224,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
 
   const saveModels = (data: ModelsFormData) => {
     onSave(config.Settings.createFrom({ ...settings, ...data }));
+    modelsForm.reset(data);
   };
 
   // ── Global rules form ──
@@ -251,6 +253,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
         builtInRules: data.builtInRules || undefined,
       }),
     );
+    rulesForm.reset(data);
   };
 
   // ── Profiles (list-level state, per-card forms in Phase 4) ──
@@ -463,7 +466,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
             <textarea
               {...rulesForm.register("globalRules")}
               rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+              className={textareaClass}
               placeholder={
                 "- Don't use em dashes\n- Use British English spelling\n- Keep sentences under 20 words"
               }
@@ -480,7 +483,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               <textarea
                 {...rulesForm.register("builtInRules")}
                 rows={6}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                className={cn(textareaCompactClass, "font-mono")}
                 placeholder="Built-in rules (leave empty for defaults)"
               />
               <ConfirmDialog
@@ -592,7 +595,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               value={sampleText}
               onChange={(e) => setSampleText(e.target.value)}
               rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+              className={textareaClass}
               placeholder={placeholderText}
             />
             <Button
@@ -795,7 +798,7 @@ function ProfileCard({
             <textarea
               {...register("prompt")}
               rows={6}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+              className={textareaClass}
             />
           </FormField>
 
@@ -856,13 +859,13 @@ function ProfileCard({
                       {...register(`examples.${i}.input`)}
                       rows={2}
                       placeholder="Speech transcript (before)..."
-                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                      className={textareaCompactClass}
                     />
                     <textarea
                       {...register(`examples.${i}.output`)}
                       rows={2}
                       placeholder="Desired output (after)..."
-                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                      className={textareaCompactClass}
                     />
                   </div>
                 ))}
@@ -877,7 +880,7 @@ function ProfileCard({
           </AdvancedToggle>
 
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={handleSubmit(onSave)} disabled={!isDirty}>
+            <Button size="sm" onClick={handleSubmit((data) => { onSave(data); reset(data); })} disabled={!isDirty}>
               Save
             </Button>
             {isPreset && (
