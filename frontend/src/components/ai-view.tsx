@@ -3,7 +3,6 @@ import {
   Play,
   Loader2,
   Bot,
-  AlertTriangle,
   Check,
   Trash2,
   Plus,
@@ -39,12 +38,63 @@ import { AdvancedToggle } from "@/components/ui/advanced-toggle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import { getProfileIcon } from "@/lib/icons";
+import { useModelsForConnection } from "@/lib/hooks";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 import type { ai } from "../../wailsjs/go/models";
 
 // ──────────────────────────────────────────────────
-// Model selector shared by transcription, refinement, and per-profile
+// Connection selector (shared)
+// ──────────────────────────────────────────────────
+
+function ConnectionSelect({
+  value,
+  onChange,
+  connections,
+  allowDefault,
+  defaultLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  connections: config.Connection[];
+  allowDefault?: boolean;
+  defaultLabel?: string;
+}) {
+  return (
+    <Select
+      value={value || "__default__"}
+      onValueChange={(v) => onChange(v === "__default__" ? "" : v)}
+    >
+      <SelectTrigger className="text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {allowDefault && (
+          <>
+            <SelectItem value="__default__" className="text-xs">
+              {defaultLabel ?? "Use global default"}
+            </SelectItem>
+            <SelectSeparator />
+          </>
+        )}
+        {connections.length > 0 ? (
+          connections.map((c) => (
+            <SelectItem key={c.id} value={c.id} className="text-xs">
+              {c.name}
+            </SelectItem>
+          ))
+        ) : (
+          <SelectGroup>
+            <SelectLabel>No connections configured</SelectLabel>
+          </SelectGroup>
+        )}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// ──────────────────────────────────────────────────
+// Model selector with custom option
 // ──────────────────────────────────────────────────
 
 function ModelSelect({
@@ -62,9 +112,9 @@ function ModelSelect({
 }) {
   const [custom, setCustom] = useState(false);
   const knownIds = new Set(models.map((m) => m.id));
-  const isCustomValue = value && !knownIds.has(value) && value !== "";
+  const isCustomValue = value && !knownIds.has(value);
 
-  if (custom || (isCustomValue && value !== "")) {
+  if (custom || isCustomValue) {
     return (
       <div className="flex gap-1.5">
         <Input
@@ -87,7 +137,10 @@ function ModelSelect({
 
   return (
     <div className="flex gap-1.5">
-      <Select value={value || "__default__"} onValueChange={(v) => onChange(v === "__default__" ? "" : v)}>
+      <Select
+        value={value || "__default__"}
+        onValueChange={(v) => onChange(v === "__default__" ? "" : v)}
+      >
         <SelectTrigger className="text-xs">
           <SelectValue />
         </SelectTrigger>
@@ -136,18 +189,16 @@ interface AiViewProps {
   settings: config.Settings;
   configured: boolean;
   onSave: (settings: config.Settings) => void;
-  transcriptionModels: ai.ModelInfo[];
-  chatModels: ai.ModelInfo[];
 }
 
-export function AiView({
-  settings,
-  configured,
-  onSave,
-  transcriptionModels,
-  chatModels,
-}: AiViewProps) {
+export function AiView({ settings, configured, onSave }: AiViewProps) {
+  const connections = settings.connections ?? [];
+
+  const [transConnId, setTransConnId] = useState(
+    settings.transcriptionConnectionId,
+  );
   const [transModel, setTransModel] = useState(settings.transcriptionModel);
+  const [refConnId, setRefConnId] = useState(settings.refinementConnectionId);
   const [refModel, setRefModel] = useState(settings.refinementModel);
   const [sampleText, setSampleText] = useState("");
   const [testResult, setTestResult] = useState("");
@@ -162,7 +213,10 @@ export function AiView({
   const [globalRules, setGlobalRules] = useState(settings.globalRules ?? "");
   const [builtInRules, setBuiltInRules] = useState(settings.builtInRules ?? "");
 
-  // Show the effective built-in rules when the stored value is empty
+  // Fetch models per-connection
+  const { transcriptionModels } = useModelsForConnection(transConnId);
+  const { chatModels: refChatModels } = useModelsForConnection(refConnId);
+
   useEffect(() => {
     if (!settings.builtInRules) {
       AppBridge.GetDefaultBuiltInRules().then(setBuiltInRules);
@@ -178,7 +232,9 @@ export function AiView({
     onSave(
       config.Settings.createFrom({
         ...settings,
+        transcriptionConnectionId: transConnId,
         transcriptionModel: transModel,
+        refinementConnectionId: refConnId,
         refinementModel: refModel,
         refinementProfiles: p,
         activeProfileId: a,
@@ -201,9 +257,7 @@ export function AiView({
     );
   };
 
-  const saveProfile = (_id: string) => {
-    saveAll(draftProfiles);
-  };
+  const saveProfile = (_id: string) => saveAll(draftProfiles);
 
   const deleteProfile = (id: string) => {
     const updated = draftProfiles.filter((p) => p.id !== id);
@@ -287,62 +341,71 @@ export function AiView({
 
   const presetIds = new Set(["casual", "professional", "concise"]);
 
-  // Check for broken model references
-  const allModelIds = new Set([
-    ...transcriptionModels.map((m) => m.id),
-    ...chatModels.map((m) => m.id),
-  ]);
-  const hasModels = allModelIds.size > 0;
-
-  const isModelBroken = (modelId: string) => {
-    if (!hasModels || !modelId) return false;
-    return !allModelIds.has(modelId);
-  };
+  // Helper: get the connection name for display
+  const connName = (id: string) =>
+    connections.find((c) => c.id === id)?.name ?? "Not set";
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         {!configured && (
-          <WarningBanner>Set up your AI connection first.</WarningBanner>
+          <WarningBanner>
+            Set up an AI connection first.
+          </WarningBanner>
         )}
 
         {/* Models */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Bot className="size-4" /> Models{" "}
-              <InfoTip text="Select which models to use for transcription and refinement. Models are fetched from your configured AI provider." />
+              <Bot className="size-4" /> Default Models{" "}
+              <InfoTip text="Global defaults for transcription and refinement. Styles can override the refinement connection and model." />
             </CardTitle>
             <CardDescription>
-              Global defaults — profiles can override the refinement model.
+              Used unless a style overrides them.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-1">
-              <Label>Transcription model</Label>
-              <ModelSelect
-                value={transModel}
-                onChange={setTransModel}
-                models={transcriptionModels}
-              />
-              {isModelBroken(transModel) && (
-                <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
-                  <AlertTriangle className="size-3" /> Model not found in provider
-                </p>
-              )}
+            {/* Transcription */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Transcription</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Connection</Label>
+                <ConnectionSelect
+                  value={transConnId}
+                  onChange={setTransConnId}
+                  connections={connections}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Model</Label>
+                <ModelSelect
+                  value={transModel}
+                  onChange={setTransModel}
+                  models={transcriptionModels}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Refinement model</Label>
-              <ModelSelect
-                value={refModel}
-                onChange={setRefModel}
-                models={chatModels}
-              />
-              {isModelBroken(refModel) && (
-                <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
-                  <AlertTriangle className="size-3" /> Model not found in provider
-                </p>
-              )}
+            <Separator />
+            {/* Refinement */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Refinement</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Connection</Label>
+                <ConnectionSelect
+                  value={refConnId}
+                  onChange={setRefConnId}
+                  connections={connections}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Model</Label>
+                <ModelSelect
+                  value={refModel}
+                  onChange={setRefModel}
+                  models={refChatModels}
+                />
+              </div>
             </div>
             <Button size="sm" onClick={() => saveAll()}>
               Save
@@ -357,10 +420,10 @@ export function AiView({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               Global Rules{" "}
-              <InfoTip text="Rules applied to every refinement style. Use this for preferences like 'don't use em dashes' or 'use British English' so you don't have to repeat them in each profile." />
+              <InfoTip text="Rules applied to every refinement style. Use for preferences like 'don't use em dashes' or 'use British English'." />
             </CardTitle>
             <CardDescription>
-              Applied to all styles, appended after the style prompt.
+              Applied to all styles, after the style prompt.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -374,15 +437,13 @@ export function AiView({
               }
             />
 
-            {/* Built-in rules (advanced) */}
             <AdvancedToggle
               label="Built-in rules"
               open={globalAdvancedOpen}
               onToggle={setGlobalAdvancedOpen}
             >
               <p className="text-xs text-muted-foreground">
-                These core rules are always applied. Edit with care — they
-                prevent the model from adding content or dropping meaning.
+                Core rules always applied. Edit with care.
               </p>
               <textarea
                 value={builtInRules}
@@ -416,7 +477,7 @@ export function AiView({
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             Refinement Styles{" "}
-            <InfoTip text="Each style defines how your speech gets rewritten. Choose a style before recording, or set one as active." />
+            <InfoTip text="Each style defines how your speech gets rewritten. Styles can override the connection and model." />
           </h3>
           <div className="flex items-center gap-1.5">
             <ConfirmDialog
@@ -426,7 +487,7 @@ export function AiView({
                 </Button>
               }
               title="Restore default styles?"
-              description="This will replace the built-in styles (Casual, Professional, Concise) with their defaults. Custom styles will be kept."
+              description="This will replace the built-in styles with their defaults. Custom styles will be kept."
               confirmLabel="Restore"
               onConfirm={restoreDefaultProfiles}
             />
@@ -441,323 +502,38 @@ export function AiView({
           const isActive = profile.id === activeId;
           const isExpanded = expandedProfile === profile.id;
           const isPreset = presetIds.has(profile.id);
-          const profileModelBroken = isModelBroken(profile.model);
-          const displayModel = profile.model || settings.refinementModel || "default";
+          const displayModel =
+            profile.model || settings.refinementModel || "default";
+          const displayConn = profile.connectionId
+            ? connName(profile.connectionId)
+            : "default";
 
           return (
-            <Card
+            <ProfileCard
               key={profile.id}
-              className={isActive ? "border-primary" : ""}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex size-8 items-center justify-center rounded-md ${
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      {profile.name}
-                      {profileModelBroken && (
-                        <AlertTriangle className="size-3 text-amber-500" />
-                      )}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {displayModel}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {!isActive && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActive(profile.id)}
-                      >
-                        <Check className="size-3.5" /> Use
-                      </Button>
-                    )}
-                    {isActive && (
-                      <span className="text-xs font-medium text-primary">
-                        active
-                      </span>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      onClick={() =>
-                        setExpandedProfile(isExpanded ? null : profile.id)
-                      }
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="size-3.5" />
-                      ) : (
-                        <ChevronDown className="size-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              {isExpanded && (
-                <CardContent className="space-y-3 pt-0">
-                  <div className="space-y-1">
-                    <Label>Name</Label>
-                    <Input
-                      value={profile.name}
-                      onChange={(e) =>
-                        updateDraftProfile(profile.id, {
-                          name: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>
-                      Model override{" "}
-                      <InfoTip text="Override the global refinement model for this style. Leave on 'Use global default' to inherit." />
-                    </Label>
-                    <ModelSelect
-                      value={profile.model}
-                      onChange={(v) =>
-                        updateDraftProfile(profile.id, { model: v })
-                      }
-                      models={chatModels}
-                      allowDefault
-                      defaultLabel={`Use global default (${settings.refinementModel})`}
-                    />
-                    {profileModelBroken && (
-                      <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
-                        <AlertTriangle className="size-3" /> Model not found in
-                        provider
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Prompt</Label>
-                    <textarea
-                      value={profile.prompt}
-                      onChange={(e) =>
-                        updateDraftProfile(profile.id, {
-                          prompt: e.target.value,
-                        })
-                      }
-                      rows={6}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-                    />
-                  </div>
-
-                  {/* Advanced Options */}
-                  <AdvancedToggle
-                    open={advancedOpen === profile.id}
-                    onToggle={(v) => setAdvancedOpen(v ? profile.id : null)}
-                  >
-                    <div className="space-y-4">
-                      {/* Temperature */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs flex items-center gap-1">
-                            Temperature{" "}
-                            <InfoTip text="Controls randomness. Lower values produce more consistent output; higher values add variety." />
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={1}
-                            step={0.05}
-                            value={profile.temperature ?? 0.3}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              if (!isNaN(v) && v >= 0 && v <= 1)
-                                updateDraftProfile(profile.id, {
-                                  temperature: v,
-                                });
-                            }}
-                            className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
-                          />
-                        </div>
-                        <Slider
-                          min={0}
-                          max={1}
-                          step={0.05}
-                          value={[profile.temperature ?? 0.3]}
-                          onValueChange={([v]) =>
-                            updateDraftProfile(profile.id, { temperature: v })
-                          }
-                        />
-                        <div className="flex justify-between text-[10px] text-muted-foreground">
-                          <span>Consistent</span>
-                          <span>Creative</span>
-                        </div>
-                      </div>
-
-                      {/* Top P */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs flex items-center gap-1">
-                            Top P{" "}
-                            <InfoTip text="Nucleus sampling. Limits token selection to the most probable tokens whose cumulative probability reaches this threshold." />
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0.1}
-                            max={1}
-                            step={0.05}
-                            value={profile.topP ?? 0.9}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              if (!isNaN(v) && v >= 0.1 && v <= 1)
-                                updateDraftProfile(profile.id, { topP: v });
-                            }}
-                            className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
-                          />
-                        </div>
-                        <Slider
-                          min={0.1}
-                          max={1}
-                          step={0.05}
-                          value={[profile.topP ?? 0.9]}
-                          onValueChange={([v]) =>
-                            updateDraftProfile(profile.id, { topP: v })
-                          }
-                        />
-                        <div className="flex justify-between text-[10px] text-muted-foreground">
-                          <span>Focused</span>
-                          <span>Diverse</span>
-                        </div>
-                      </div>
-
-                      {/* Few-shot Examples */}
-                      <div className="space-y-2">
-                        <Label className="text-xs flex items-center gap-1">
-                          Examples{" "}
-                          <InfoTip text="Before/after pairs that teach the model your preferred style. These are sent as conversation history before your transcript." />
-                        </Label>
-                        {(profile.examples ?? []).map((ex, i) => (
-                          <div
-                            key={i}
-                            className="space-y-1 rounded border border-border bg-background p-2"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-medium text-muted-foreground">
-                                Example {i + 1}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-5"
-                                onClick={() => {
-                                  const updated = [
-                                    ...(profile.examples ?? []),
-                                  ];
-                                  updated.splice(i, 1);
-                                  updateDraftProfile(profile.id, {
-                                    examples: updated,
-                                  });
-                                }}
-                              >
-                                <Trash2 className="size-2.5" />
-                              </Button>
-                            </div>
-                            <textarea
-                              value={ex.input}
-                              onChange={(e) => {
-                                const updated = [
-                                  ...(profile.examples ?? []),
-                                ];
-                                updated[i] = {
-                                  ...updated[i],
-                                  input: e.target.value,
-                                };
-                                updateDraftProfile(profile.id, {
-                                  examples: updated,
-                                });
-                              }}
-                              rows={2}
-                              placeholder="Speech transcript (before)..."
-                              className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-                            />
-                            <textarea
-                              value={ex.output}
-                              onChange={(e) => {
-                                const updated = [
-                                  ...(profile.examples ?? []),
-                                ];
-                                updated[i] = {
-                                  ...updated[i],
-                                  output: e.target.value,
-                                };
-                                updateDraftProfile(profile.id, {
-                                  examples: updated,
-                                });
-                              }}
-                              rows={2}
-                              placeholder="Desired output (after)..."
-                              className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-                            />
-                          </div>
-                        ))}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-xs"
-                          onClick={() => {
-                            const updated = [
-                              ...(profile.examples ?? []),
-                              { input: "", output: "" },
-                            ];
-                            updateDraftProfile(profile.id, {
-                              examples: updated,
-                            });
-                          }}
-                        >
-                          <Plus className="size-3" /> Add Example
-                        </Button>
-                      </div>
-                    </div>
-                  </AdvancedToggle>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => saveProfile(profile.id)}
-                    >
-                      Save
-                    </Button>
-                    {isPreset && (
-                      <ConfirmDialog
-                        trigger={
-                          <Button variant="outline" size="sm">
-                            <RotateCcw className="size-3.5" /> Restore Default
-                          </Button>
-                        }
-                        title={`Restore "${profile.name}" to default?`}
-                        description="This will reset the prompt, examples, and sampling parameters to their defaults."
-                        confirmLabel="Restore"
-                        onConfirm={() => restoreProfile(profile.id)}
-                      />
-                    )}
-                    {!isPreset && (
-                      <ConfirmDialog
-                        trigger={
-                          <Button variant="destructive" size="sm">
-                            <Trash2 className="size-3.5" /> Delete
-                          </Button>
-                        }
-                        title={`Delete "${profile.name}"?`}
-                        description="This style will be permanently removed."
-                        confirmLabel="Delete"
-                        onConfirm={() => deleteProfile(profile.id)}
-                      />
-                    )}
-                  </div>
-                </CardContent>
-              )}
-            </Card>
+              profile={profile}
+              Icon={Icon}
+              isActive={isActive}
+              isExpanded={isExpanded}
+              isPreset={isPreset}
+              displayModel={displayModel}
+              displayConn={displayConn}
+              connections={connections}
+              defaultRefConnId={refConnId}
+              defaultRefModel={refModel}
+              advancedOpen={advancedOpen === profile.id}
+              onToggleExpand={() =>
+                setExpandedProfile(isExpanded ? null : profile.id)
+              }
+              onToggleAdvanced={(v) =>
+                setAdvancedOpen(v ? profile.id : null)
+              }
+              onActivate={() => setActive(profile.id)}
+              onUpdate={(patch) => updateDraftProfile(profile.id, patch)}
+              onSave={() => saveProfile(profile.id)}
+              onRestore={() => restoreProfile(profile.id)}
+              onDelete={() => deleteProfile(profile.id)}
+            />
           );
         })}
 
@@ -768,7 +544,7 @@ export function AiView({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               Test Playground{" "}
-              <InfoTip text="Paste sample text to preview how the active style transforms it, without recording audio." />
+              <InfoTip text="Paste sample text to preview how the active style transforms it." />
             </CardTitle>
             <CardDescription>Tests with the active style.</CardDescription>
           </CardHeader>
@@ -807,5 +583,326 @@ export function AiView({
         </Card>
       </div>
     </div>
+  );
+}
+
+// ──────────────────────────────────────────────────
+// Profile card (extracted for readability)
+// ──────────────────────────────────────────────────
+
+function ProfileCard({
+  profile,
+  Icon,
+  isActive,
+  isExpanded,
+  isPreset,
+  displayModel,
+  displayConn,
+  connections,
+  defaultRefConnId,
+  defaultRefModel,
+  advancedOpen,
+  onToggleExpand,
+  onToggleAdvanced,
+  onActivate,
+  onUpdate,
+  onSave,
+  onRestore,
+  onDelete,
+}: {
+  profile: config.RefinementProfile;
+  Icon: React.FC<{ className?: string }>;
+  isActive: boolean;
+  isExpanded: boolean;
+  isPreset: boolean;
+  displayModel: string;
+  displayConn: string;
+  connections: config.Connection[];
+  defaultRefConnId: string;
+  defaultRefModel: string;
+  advancedOpen: boolean;
+  onToggleExpand: () => void;
+  onToggleAdvanced: (v: boolean) => void;
+  onActivate: () => void;
+  onUpdate: (patch: Partial<config.RefinementProfile>) => void;
+  onSave: () => void;
+  onRestore: () => void;
+  onDelete: () => void;
+}) {
+  // Fetch models for this profile's connection (or default)
+  const effectiveConnId = profile.connectionId || defaultRefConnId;
+  const { chatModels: profileModels } =
+    useModelsForConnection(effectiveConnId);
+
+  const defaultConnName =
+    connections.find((c) => c.id === defaultRefConnId)?.name ?? "default";
+
+  return (
+    <Card className={isActive ? "border-primary" : ""}>
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex size-8 items-center justify-center rounded-md ${
+              isActive
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            <Icon className="size-4" />
+          </div>
+          <div className="flex-1">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              {profile.name}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {displayConn} / {displayModel}
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-1">
+            {!isActive && (
+              <Button variant="ghost" size="sm" onClick={onActivate}>
+                <Check className="size-3.5" /> Use
+              </Button>
+            )}
+            {isActive && (
+              <span className="text-xs font-medium text-primary">active</span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              onClick={onToggleExpand}
+            >
+              {isExpanded ? (
+                <ChevronUp className="size-3.5" />
+              ) : (
+                <ChevronDown className="size-3.5" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      {isExpanded && (
+        <CardContent className="space-y-3 pt-0">
+          <div className="space-y-1">
+            <Label>Name</Label>
+            <Input
+              value={profile.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>
+              Connection override{" "}
+              <InfoTip text="Use a different AI connection for this style. Leave on default to inherit." />
+            </Label>
+            <ConnectionSelect
+              value={profile.connectionId ?? ""}
+              onChange={(v) => onUpdate({ connectionId: v || undefined })}
+              connections={connections}
+              allowDefault
+              defaultLabel={`Use default (${defaultConnName})`}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>
+              Model override{" "}
+              <InfoTip text="Override the refinement model for this style." />
+            </Label>
+            <ModelSelect
+              value={profile.model}
+              onChange={(v) => onUpdate({ model: v })}
+              models={profileModels}
+              allowDefault
+              defaultLabel={`Use default (${defaultRefModel})`}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Prompt</Label>
+            <textarea
+              value={profile.prompt}
+              onChange={(e) => onUpdate({ prompt: e.target.value })}
+              rows={6}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+            />
+          </div>
+
+          <AdvancedToggle
+            open={advancedOpen}
+            onToggle={onToggleAdvanced}
+          >
+            <div className="space-y-4">
+              {/* Temperature */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs flex items-center gap-1">
+                    Temperature{" "}
+                    <InfoTip text="Lower = consistent, higher = creative." />
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={profile.temperature ?? 0.3}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v) && v >= 0 && v <= 1)
+                        onUpdate({ temperature: v });
+                    }}
+                    className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                  />
+                </div>
+                <Slider
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={[profile.temperature ?? 0.3]}
+                  onValueChange={([v]) => onUpdate({ temperature: v })}
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Consistent</span>
+                  <span>Creative</span>
+                </div>
+              </div>
+
+              {/* Top P */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs flex items-center gap-1">
+                    Top P{" "}
+                    <InfoTip text="Nucleus sampling threshold." />
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0.1}
+                    max={1}
+                    step={0.05}
+                    value={profile.topP ?? 0.9}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v) && v >= 0.1 && v <= 1)
+                        onUpdate({ topP: v });
+                    }}
+                    className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                  />
+                </div>
+                <Slider
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={[profile.topP ?? 0.9]}
+                  onValueChange={([v]) => onUpdate({ topP: v })}
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Focused</span>
+                  <span>Diverse</span>
+                </div>
+              </div>
+
+              {/* Examples */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1">
+                  Examples{" "}
+                  <InfoTip text="Before/after pairs that anchor the model's style." />
+                </Label>
+                {(profile.examples ?? []).map((ex, i) => (
+                  <div
+                    key={i}
+                    className="space-y-1 rounded border border-border bg-background p-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-muted-foreground">
+                        Example {i + 1}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-5"
+                        onClick={() => {
+                          const updated = [...(profile.examples ?? [])];
+                          updated.splice(i, 1);
+                          onUpdate({ examples: updated });
+                        }}
+                      >
+                        <Trash2 className="size-2.5" />
+                      </Button>
+                    </div>
+                    <textarea
+                      value={ex.input}
+                      onChange={(e) => {
+                        const updated = [...(profile.examples ?? [])];
+                        updated[i] = { ...updated[i], input: e.target.value };
+                        onUpdate({ examples: updated });
+                      }}
+                      rows={2}
+                      placeholder="Speech transcript (before)..."
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                    />
+                    <textarea
+                      value={ex.output}
+                      onChange={(e) => {
+                        const updated = [...(profile.examples ?? [])];
+                        updated[i] = { ...updated[i], output: e.target.value };
+                        onUpdate({ examples: updated });
+                      }}
+                      rows={2}
+                      placeholder="Desired output (after)..."
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => {
+                    const updated = [
+                      ...(profile.examples ?? []),
+                      { input: "", output: "" },
+                    ];
+                    onUpdate({ examples: updated });
+                  }}
+                >
+                  <Plus className="size-3" /> Add Example
+                </Button>
+              </div>
+            </div>
+          </AdvancedToggle>
+
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={onSave}>
+              Save
+            </Button>
+            {isPreset && (
+              <ConfirmDialog
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <RotateCcw className="size-3.5" /> Restore Default
+                  </Button>
+                }
+                title={`Restore "${profile.name}" to default?`}
+                description="This will reset the prompt, examples, and sampling parameters."
+                confirmLabel="Restore"
+                onConfirm={onRestore}
+              />
+            )}
+            {!isPreset && (
+              <ConfirmDialog
+                trigger={
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="size-3.5" /> Delete
+                  </Button>
+                }
+                title={`Delete "${profile.name}"?`}
+                description="This style will be permanently removed."
+                confirmLabel="Delete"
+                onConfirm={onDelete}
+              />
+            )}
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }

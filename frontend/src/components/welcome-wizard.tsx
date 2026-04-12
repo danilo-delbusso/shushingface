@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, ArrowRight, Check, Plug } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Check, Plug, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getProfileIcon } from "@/lib/icons";
@@ -17,8 +17,9 @@ interface WelcomeWizardProps {
 export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   const [step, setStep] = useState(0);
   const [providers, setProviders] = useState<ai.ProviderInfo[]>([]);
-  const [providerId, setProviderId] = useState(settings.providerId || "groq");
-  const [apiKey, setApiKey] = useState(settings.providerApiKey ?? "");
+  const [providerId, setProviderId] = useState("groq");
+  const [connName, setConnName] = useState("Groq");
+  const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState("professional");
 
@@ -28,19 +29,35 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
 
   const preset = providerPresets[providerId];
 
-  const finish = () => {
+  const finishWithConnection = () => {
+    const connId = `conn_${Date.now()}`;
+    const conn = config.Connection.createFrom({
+      id: connId,
+      name: connName || preset?.name || "Default",
+      providerId,
+      apiKey,
+    });
     onComplete(
       config.Settings.createFrom({
         ...settings,
-        providerId,
-        providerApiKey: apiKey,
+        connections: [conn],
+        transcriptionConnectionId: connId,
+        refinementConnectionId: connId,
         activeProfileId: selectedProfile,
         setupComplete: true,
       }),
     );
   };
 
-  const totalSteps = 3;
+  const finishSkip = () => {
+    onComplete(
+      config.Settings.createFrom({
+        ...settings,
+        activeProfileId: selectedProfile,
+        setupComplete: true,
+      }),
+    );
+  };
 
   return (
     <div className="flex h-screen w-screen flex-col justify-center bg-background">
@@ -61,13 +78,13 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
           </div>
         )}
 
-        {/* Step 1: Choose provider + API key */}
+        {/* Step 1: Add connection or skip */}
         {step === 1 && (
           <div className="space-y-6">
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-bold">connect an AI provider</h2>
               <p className="text-sm text-muted-foreground">
-                choose a provider for transcription and refinement.
+                add a connection for transcription and refinement. you can add more later.
               </p>
             </div>
 
@@ -80,7 +97,10 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setProviderId(p.id)}
+                    onClick={() => {
+                      setProviderId(p.id);
+                      setConnName(meta?.name ?? p.displayName);
+                    }}
                     className={`flex items-center gap-3 overflow-hidden rounded-lg border-2 p-3 text-left transition-colors ${
                       active
                         ? "border-primary bg-primary/5"
@@ -147,13 +167,24 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
               </div>
             </div>
 
-            <Button
-              className="w-full"
-              onClick={() => setStep(2)}
-              disabled={!apiKey.trim()}
-            >
-              next <ArrowRight className="size-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setStep(2);
+                }}
+              >
+                <SkipForward className="size-4" /> skip for now
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => setStep(2)}
+                disabled={!apiKey.trim()}
+              >
+                next <ArrowRight className="size-4" />
+              </Button>
+            </div>
           </div>
         )}
 
@@ -203,7 +234,10 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                 );
               })}
             </div>
-            <Button className="w-full" onClick={finish}>
+            <Button
+              className="w-full"
+              onClick={apiKey.trim() ? finishWithConnection : finishSkip}
+            >
               finish <Check className="size-4" />
             </Button>
           </div>
@@ -211,7 +245,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
 
         {/* Step indicators */}
         <div className="flex justify-center gap-2">
-          {Array.from({ length: totalSteps + 1 }, (_, i) => (
+          {[0, 1, 2].map((i) => (
             <div
               key={i}
               className={`size-1.5 rounded-full transition-colors ${

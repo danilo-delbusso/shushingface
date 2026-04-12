@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -17,7 +17,6 @@ import {
   useTheme,
   usePlatform,
   usePasteStatus,
-  useModels,
   isConfigured,
 } from "@/lib/hooks";
 import * as AppBridge from "../wailsjs/go/desktop/App";
@@ -36,30 +35,10 @@ function App() {
   const configured = isConfigured(settings);
   useTheme(settings?.theme);
 
-  const { transcriptionModels, chatModels, refresh: refreshModels } =
-    useModels(settings);
-
   const { isRecording, isProcessing, results, toggle } = useRecording(
     configured,
     refreshHistory,
   );
-
-  // Detect broken model references for warning icons
-  const hasWarnings = useMemo(() => {
-    if (!settings || chatModels.length === 0) return false;
-    const allIds = new Set([
-      ...transcriptionModels.map((m) => m.id),
-      ...chatModels.map((m) => m.id),
-    ]);
-    if (settings.transcriptionModel && !allIds.has(settings.transcriptionModel))
-      return true;
-    if (settings.refinementModel && !allIds.has(settings.refinementModel))
-      return true;
-    for (const p of settings.refinementProfiles ?? []) {
-      if (p.model && !allIds.has(p.model)) return true;
-    }
-    return false;
-  }, [settings, transcriptionModels, chatModels]);
 
   useEffect(() => {
     if (settings && !settings.setupComplete) return;
@@ -88,7 +67,6 @@ function App() {
           onNavigate={setView}
           configured={configured}
           historyEnabled={settings.enableHistory}
-          hasWarnings={hasWarnings}
         />
         <SidebarInset className="flex flex-col h-screen overflow-hidden">
           {view === "home" && (
@@ -123,7 +101,6 @@ function App() {
               settings={settings}
               configured={configured}
               onSave={saveSettings}
-              onModelsRefreshed={refreshModels}
             />
           )}
           {view === "ai" && (
@@ -131,8 +108,6 @@ function App() {
               settings={settings}
               configured={configured}
               onSave={saveSettings}
-              transcriptionModels={transcriptionModels}
-              chatModels={chatModels}
             />
           )}
           {view === "appearance" && (
@@ -147,11 +122,14 @@ function App() {
               onSave={saveSettings}
               onRunSetup={async () => {
                 const defaults = await AppBridge.GetDefaultSettings();
-                const apiKey = settings.providerApiKey ?? "";
+                // Keep existing connections but reset everything else
                 saveSettings(
                   config.Settings.createFrom({
                     ...defaults,
-                    providerApiKey: apiKey,
+                    connections: settings.connections,
+                    transcriptionConnectionId:
+                      settings.transcriptionConnectionId,
+                    refinementConnectionId: settings.refinementConnectionId,
                     setupComplete: false,
                   }),
                 );

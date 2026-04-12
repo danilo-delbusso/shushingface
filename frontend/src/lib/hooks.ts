@@ -19,7 +19,10 @@ export function useTheme(theme: string | undefined) {
 
 export function isConfigured(settings: config.Settings | null): boolean {
   if (!settings) return false;
-  return Boolean(settings.providerApiKey);
+  return (
+    (settings.connections?.length ?? 0) > 0 &&
+    Boolean(settings.transcriptionConnectionId)
+  );
 }
 
 export function usePlatform() {
@@ -61,25 +64,26 @@ export function useSettings() {
   return { settings, setSettings, saveSettings };
 }
 
-export function useModels(settings: config.Settings | null) {
+/** Fetch models for a specific connection ID. */
+export function useModelsForConnection(connectionId: string | undefined) {
   const [models, setModels] = useState<ai.ModelInfo[]>([]);
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!settings || !isConfigured(settings)) {
+    if (!connectionId) {
       setModels([]);
       return;
     }
     setLoading(true);
     try {
-      const result = await AppBridge.ListModels();
+      const result = await AppBridge.ListModelsForConnection(connectionId);
       setModels(result ?? []);
     } catch {
       setModels([]);
     } finally {
       setLoading(false);
     }
-  }, [settings?.providerId, settings?.providerApiKey]);
+  }, [connectionId]);
 
   useEffect(() => {
     refresh();

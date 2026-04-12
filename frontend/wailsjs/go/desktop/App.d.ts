@@ -24,7 +24,7 @@ export function GetPlatform():Promise<platform.Info>;
 
 export function GetSettings():Promise<config.Settings>;
 
-export function ListModels():Promise<Array<ai.ModelInfo>>;
+export function ListModelsForConnection(arg1:string):Promise<Array<ai.ModelInfo>>;
 
 export function ListProviders():Promise<Array<ai.ProviderInfo>>;
 

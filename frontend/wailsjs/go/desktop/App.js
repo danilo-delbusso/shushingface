@@ -38,8 +38,8 @@ export function GetSettings() {
   return window['go']['desktop']['App']['GetSettings']();
 }
 
-export function ListModels() {
-  return window['go']['desktop']['App']['ListModels']();
+export function ListModelsForConnection(arg1) {
+  return window['go']['desktop']['App']['ListModelsForConnection'](arg1);
 }
 
 export function ListProviders() {

@@ -5,12 +5,14 @@ import {
   Plug,
   Loader2,
   RefreshCw,
-  Check,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { WarningBanner } from "@/components/ui/warning-banner";
-import { AdvancedToggle } from "@/components/ui/advanced-toggle";
 import {
   Card,
   CardContent,
@@ -20,6 +22,16 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { WarningBanner } from "@/components/ui/warning-banner";
+import { AdvancedToggle } from "@/components/ui/advanced-toggle";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import { providerPresets } from "@/lib/providers";
 import { ExternalLink } from "@/components/ui/external-link";
@@ -31,62 +43,94 @@ interface ConnectionsViewProps {
   settings: config.Settings;
   configured: boolean;
   onSave: (settings: config.Settings) => void;
-  onModelsRefreshed?: () => void;
 }
 
 export function ConnectionsView({
   settings,
   configured,
   onSave,
-  onModelsRefreshed,
 }: ConnectionsViewProps) {
   const [providers, setProviders] = useState<ai.ProviderInfo[]>([]);
-  const [providerId, setProviderId] = useState(settings.providerId);
-  const [apiKey, setApiKey] = useState(settings.providerApiKey ?? "");
-  const [baseUrl, setBaseUrl] = useState(settings.providerBaseUrl ?? "");
-  const [showKey, setShowKey] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(!!settings.providerBaseUrl);
-  const [testing, setTesting] = useState(false);
-  const [modelCount, setModelCount] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [connections, setConnections] = useState(settings.connections ?? []);
 
   useEffect(() => {
     AppBridge.ListProviders().then(setProviders);
   }, []);
 
-  const preset = providerPresets[providerId];
-
-  const save = () => {
+  const save = (updated: config.Connection[]) => {
+    setConnections(updated);
     onSave(
       config.Settings.createFrom({
         ...settings,
-        providerId,
-        providerApiKey: apiKey,
-        providerBaseUrl: baseUrl || undefined,
+        connections: updated,
       }),
     );
   };
 
-  const testConnection = async () => {
-    onSave(
-      config.Settings.createFrom({
-        ...settings,
-        providerId,
-        providerApiKey: apiKey,
-        providerBaseUrl: baseUrl || undefined,
-      }),
+  const updateConnection = (id: string, patch: Partial<config.Connection>) => {
+    const updated = connections.map((c) =>
+      c.id === id ? config.Connection.createFrom({ ...c, ...patch }) : c,
     );
-    setTesting(true);
-    setModelCount(null);
+    save(updated);
+  };
+
+  const addConnection = () => {
+    const id = `conn_${Date.now()}`;
+    const provId = providers[0]?.id ?? "groq";
+    const preset = providerPresets[provId];
+    const conn = config.Connection.createFrom({
+      id,
+      name: preset?.name ?? "New Connection",
+      providerId: provId,
+      apiKey: "",
+    });
+    const updated = [...connections, conn];
+    setConnections(updated);
+    setExpandedId(id);
+
+    // If this is the first connection, auto-assign as default for both
+    if (connections.length === 0) {
+      onSave(
+        config.Settings.createFrom({
+          ...settings,
+          connections: updated,
+          transcriptionConnectionId: id,
+          refinementConnectionId: id,
+        }),
+      );
+    } else {
+      save(updated);
+    }
+  };
+
+  const deleteConnection = (id: string) => {
+    const updated = connections.filter((c) => c.id !== id);
+    const patch: Partial<config.Settings> = { connections: updated };
+    // Clear references if this connection was the default
+    if (settings.transcriptionConnectionId === id) {
+      patch.transcriptionConnectionId = updated[0]?.id ?? "";
+    }
+    if (settings.refinementConnectionId === id) {
+      patch.refinementConnectionId = updated[0]?.id ?? "";
+    }
+    setConnections(updated);
+    onSave(config.Settings.createFrom({ ...settings, ...patch }));
+  };
+
+  const testConnection = async (id: string) => {
     try {
-      const models = await AppBridge.ListModels();
-      setModelCount(models?.length ?? 0);
+      const models = await AppBridge.ListModelsForConnection(id);
       toast.success(`Connected — ${models?.length ?? 0} models available`);
-      onModelsRefreshed?.();
     } catch (err) {
       toast.error(`Connection failed: ${err}`);
-    } finally {
-      setTesting(false);
     }
+  };
+
+  const isInUse = (id: string) => {
+    if (settings.transcriptionConnectionId === id) return true;
+    if (settings.refinementConnectionId === id) return true;
+    return (settings.refinementProfiles ?? []).some((p) => p.connectionId === id);
   };
 
   return (
@@ -94,141 +138,203 @@ export function ConnectionsView({
       <div className="space-y-4 p-6 max-w-2xl">
         {!configured && (
           <WarningBanner>
-            Choose a provider and add your API key to get started.
+            Add a connection and configure your API key to get started.
           </WarningBanner>
         )}
 
-        {/* Provider picker — card per provider */}
-        <div className="space-y-2">
+        <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Plug className="size-4" /> AI Provider
+            <Plug className="size-4" /> Connections{" "}
+            <InfoTip text="Named AI provider connections. You can add multiple and assign them independently to transcription, refinement, or individual styles." />
           </h3>
-          <div className="grid gap-2">
-            {providers.map((p) => {
-              const meta = providerPresets[p.id];
-              const active = p.id === providerId;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setProviderId(p.id)}
-                  className={`flex items-center gap-3 overflow-hidden rounded-lg border-2 p-3 text-left transition-colors ${
-                    active
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/30"
-                  }`}
-                >
-                  <div
-                    className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {meta?.icon ? (
-                      <img src={meta.icon} alt="" className="size-4" />
+          <Button variant="outline" size="sm" onClick={addConnection}>
+            <Plus className="size-3.5" /> Add
+          </Button>
+        </div>
+
+        {connections.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No connections yet. Add one to get started.
+            </CardContent>
+          </Card>
+        )}
+
+        {connections.map((conn) => {
+          const preset = providerPresets[conn.providerId];
+          const isExpanded = expandedId === conn.id;
+          const [showKey, setShowKey] = useState(false);
+          const [testing, setTesting] = useState(false);
+          const [advOpen, setAdvOpen] = useState(!!conn.baseUrl);
+
+          return (
+            <Card key={conn.id}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    {preset?.icon ? (
+                      <img src={preset.icon} alt="" className="size-4" />
                     ) : (
-                      <span className="text-sm font-bold">{p.displayName[0]}</span>
+                      <span className="text-xs font-bold">{conn.name[0]}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{p.displayName}</p>
-                    {meta && (
-                      <p className="text-xs text-muted-foreground">
-                        {meta.description}
-                      </p>
-                    )}
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      {conn.name}
+                      {!conn.apiKey && (
+                        <AlertTriangle className="size-3 text-amber-500 shrink-0" />
+                      )}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {preset?.name ?? conn.providerId}
+                      {conn.apiKey ? " — connected" : " — needs API key"}
+                    </CardDescription>
                   </div>
-                  {active && <Check className="size-4 text-primary shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    onClick={() => setExpandedId(isExpanded ? null : conn.id)}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="size-3.5" />
+                    ) : (
+                      <ChevronDown className="size-3.5" />
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              {isExpanded && (
+                <CardContent className="space-y-4 pt-0">
+                  <div className="space-y-1">
+                    <Label>Name</Label>
+                    <Input
+                      value={conn.name}
+                      onChange={(e) =>
+                        updateConnection(conn.id, { name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Provider</Label>
+                    <Select
+                      value={conn.providerId}
+                      onValueChange={(v) =>
+                        updateConnection(conn.id, { providerId: v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providers.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="flex items-center gap-2">
+                      API Key
+                      {preset && (
+                        <ExternalLink
+                          href={preset.keyUrl}
+                          className="text-xs font-normal"
+                        >
+                          {preset.keyUrlLabel}
+                        </ExternalLink>
+                      )}
+                    </Label>
+                    <div className="flex">
+                      <Input
+                        type={showKey ? "text" : "password"}
+                        value={conn.apiKey}
+                        placeholder={preset?.keyPlaceholder ?? "API key..."}
+                        onChange={(e) =>
+                          updateConnection(conn.id, { apiKey: e.target.value })
+                        }
+                        className="rounded-r-none"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowKey(!showKey)}
+                        className="rounded-l-none border-l-0"
+                      >
+                        {showKey ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
 
-        {/* API key + connection */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              API Key
-              {preset && (
-                <ExternalLink href={preset.keyUrl} className="text-xs">
-                  {preset.keyUrlLabel}
-                </ExternalLink>
+                  <AdvancedToggle open={advOpen} onToggle={setAdvOpen}>
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1">
+                        Base URL{" "}
+                        <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
+                      </Label>
+                      <Input
+                        value={conn.baseUrl ?? ""}
+                        placeholder="Leave empty for default"
+                        onChange={(e) =>
+                          updateConnection(conn.id, {
+                            baseUrl: e.target.value || undefined,
+                          })
+                        }
+                        className="text-xs"
+                      />
+                    </div>
+                  </AdvancedToggle>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={testing || !conn.apiKey}
+                      onClick={async () => {
+                        setTesting(true);
+                        await testConnection(conn.id);
+                        setTesting(false);
+                      }}
+                    >
+                      {testing ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin" />{" "}
+                          Testing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="size-3.5" /> Test
+                        </>
+                      )}
+                    </Button>
+                    <ConfirmDialog
+                      trigger={
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="size-3.5" /> Delete
+                        </Button>
+                      }
+                      title={`Delete "${conn.name}"?`}
+                      description={
+                        isInUse(conn.id)
+                          ? "This connection is currently in use by transcription, refinement, or a style. Deleting it may break things."
+                          : "This connection will be permanently removed."
+                      }
+                      confirmLabel="Delete"
+                      onConfirm={() => deleteConnection(conn.id)}
+                    />
+                  </div>
+                </CardContent>
               )}
-            </CardTitle>
-            <CardDescription>
-              All transcription and refinement use this connection.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex">
-              <Input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                placeholder={preset?.keyPlaceholder ?? "API key..."}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="rounded-r-none"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowKey(!showKey)}
-                className="rounded-l-none border-l-0"
-              >
-                {showKey ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </Button>
-            </div>
-
-            {/* Advanced — base URL (only needed for self-hosted / proxies) */}
-            <AdvancedToggle open={showAdvanced} onToggle={setShowAdvanced}>
-              <div className="space-y-1">
-                <Label className="text-xs flex items-center gap-1">
-                  Base URL{" "}
-                  <InfoTip text="Override the default API endpoint for self-hosted or proxy setups. Leave empty to use the provider's default." />
-                </Label>
-                <Input
-                  value={baseUrl}
-                  placeholder="Leave empty for default"
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
-            </AdvancedToggle>
-
-            <div className="flex items-center gap-2">
-              <Button size="sm" onClick={save}>
-                Save
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={testConnection}
-                disabled={testing || !apiKey.trim()}
-              >
-                {testing ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" /> Testing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="size-3.5" /> Test Connection
-                  </>
-                )}
-              </Button>
-              {modelCount !== null && (
-                <span className="text-xs text-muted-foreground">
-                  {modelCount} models found
-                </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
