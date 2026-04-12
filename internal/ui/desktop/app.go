@@ -154,7 +154,8 @@ func (a *App) GetPasteStatus() PasteStatus {
 }
 
 func (a *App) GetDefaultProfiles() []config.RefinementProfile {
-	return config.DefaultProfiles(config.DefaultSettings().TranscriptionModel)
+	defaults := config.DefaultSettings()
+	return defaults.RefinementProfiles
 }
 
 func (a *App) GetDefaultSettings() *config.Settings {
