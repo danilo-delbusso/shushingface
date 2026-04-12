@@ -52,27 +52,34 @@ export function ConnectionsView({
 }: ConnectionsViewProps) {
   const [providers, setProviders] = useState<ai.ProviderInfo[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [connections, setConnections] = useState(settings.connections ?? []);
 
   useEffect(() => {
     AppBridge.ListProviders().then(setProviders);
   }, []);
 
-  const save = (updated: config.Connection[]) => {
-    setConnections(updated);
-    onSave(
-      config.Settings.createFrom({
-        ...settings,
-        connections: updated,
-      }),
-    );
+  const connections = settings.connections ?? [];
+
+  const saveConnections = (updated: config.Connection[]) => {
+    const patch: Partial<config.Settings> = { connections: updated };
+    // Auto-assign first connection as default if none set
+    if (
+      updated.length > 0 &&
+      !updated.some((c) => c.id === settings.transcriptionConnectionId)
+    ) {
+      patch.transcriptionConnectionId = updated[0].id;
+    }
+    if (
+      updated.length > 0 &&
+      !updated.some((c) => c.id === settings.refinementConnectionId)
+    ) {
+      patch.refinementConnectionId = updated[0].id;
+    }
+    onSave(config.Settings.createFrom({ ...settings, ...patch }));
   };
 
-  const updateConnection = (id: string, patch: Partial<config.Connection>) => {
-    const updated = connections.map((c) =>
-      c.id === id ? config.Connection.createFrom({ ...c, ...patch }) : c,
-    );
-    save(updated);
+  const saveConnection = (updated: config.Connection) => {
+    const list = connections.map((c) => (c.id === updated.id ? updated : c));
+    saveConnections(list);
   };
 
   const addConnection = () => {
@@ -86,21 +93,13 @@ export function ConnectionsView({
       apiKey: "",
     });
     const updated = [...connections, conn];
-    setConnections(updated);
-    setExpandedId(id);
-
+    const patch: Partial<config.Settings> = { connections: updated };
     if (connections.length === 0) {
-      onSave(
-        config.Settings.createFrom({
-          ...settings,
-          connections: updated,
-          transcriptionConnectionId: id,
-          refinementConnectionId: id,
-        }),
-      );
-    } else {
-      save(updated);
+      patch.transcriptionConnectionId = id;
+      patch.refinementConnectionId = id;
     }
+    onSave(config.Settings.createFrom({ ...settings, ...patch }));
+    setExpandedId(id);
   };
 
   const deleteConnection = (id: string) => {
@@ -112,14 +111,15 @@ export function ConnectionsView({
     if (settings.refinementConnectionId === id) {
       patch.refinementConnectionId = updated[0]?.id ?? "";
     }
-    setConnections(updated);
     onSave(config.Settings.createFrom({ ...settings, ...patch }));
   };
 
   const isInUse = (id: string) => {
     if (settings.transcriptionConnectionId === id) return true;
     if (settings.refinementConnectionId === id) return true;
-    return (settings.refinementProfiles ?? []).some((p) => p.connectionId === id);
+    return (settings.refinementProfiles ?? []).some(
+      (p) => p.connectionId === id,
+    );
   };
 
   return (
@@ -158,7 +158,7 @@ export function ConnectionsView({
             onToggleExpand={() =>
               setExpandedId(expandedId === conn.id ? null : conn.id)
             }
-            onUpdate={(patch) => updateConnection(conn.id, patch)}
+            onSave={saveConnection}
             onDelete={() => deleteConnection(conn.id)}
             inUse={isInUse(conn.id)}
           />
@@ -173,7 +173,7 @@ function ConnectionCard({
   providers,
   isExpanded,
   onToggleExpand,
-  onUpdate,
+  onSave,
   onDelete,
   inUse,
 }: {
@@ -181,16 +181,45 @@ function ConnectionCard({
   providers: ai.ProviderInfo[];
   isExpanded: boolean;
   onToggleExpand: () => void;
-  onUpdate: (patch: Partial<config.Connection>) => void;
+  onSave: (updated: config.Connection) => void;
   onDelete: () => void;
   inUse: boolean;
 }) {
-  const preset = providerPresets[conn.providerId];
+  // Draft state — only saved on explicit Save
+  const [name, setName] = useState(conn.name);
+  const [providerId, setProviderId] = useState(conn.providerId);
+  const [apiKey, setApiKey] = useState(conn.apiKey);
+  const [baseUrl, setBaseUrl] = useState(conn.baseUrl ?? "");
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [advOpen, setAdvOpen] = useState(!!conn.baseUrl || !!preset?.requiresBaseUrl);
+
+  const preset = providerPresets[providerId];
+  const needsBaseUrl = preset?.requiresBaseUrl ?? false;
+  const [advOpen, setAdvOpen] = useState(!!baseUrl || needsBaseUrl);
+
+  // Sync draft when the saved connection changes (e.g. after add)
+  useEffect(() => {
+    setName(conn.name);
+    setProviderId(conn.providerId);
+    setApiKey(conn.apiKey);
+    setBaseUrl(conn.baseUrl ?? "");
+  }, [conn.id, conn.name, conn.providerId, conn.apiKey, conn.baseUrl]);
+
+  const save = () => {
+    onSave(
+      config.Connection.createFrom({
+        id: conn.id,
+        name,
+        providerId,
+        apiKey,
+        baseUrl: baseUrl || undefined,
+      }),
+    );
+  };
 
   const testConnection = async () => {
+    // Save first so backend has the latest credentials
+    save();
     setTesting(true);
     try {
       const models = await AppBridge.ListModelsForConnection(conn.id);
@@ -210,19 +239,19 @@ function ConnectionCard({
             {preset?.icon ? (
               <img src={preset.icon} alt="" className="size-4" />
             ) : (
-              <span className="text-xs font-bold">{conn.name[0]}</span>
+              <span className="text-xs font-bold">{name[0]}</span>
             )}
           </div>
           <div className="flex-1 min-w-0">
             <CardTitle className="flex items-center gap-2 text-sm">
-              {conn.name}
-              {!conn.apiKey && (
+              {name}
+              {!apiKey && !needsBaseUrl && (
                 <AlertTriangle className="size-3 text-amber-500 shrink-0" />
               )}
             </CardTitle>
             <CardDescription className="text-xs">
-              {preset?.name ?? conn.providerId}
-              {conn.apiKey ? " — connected" : " — needs API key"}
+              {preset?.name ?? providerId}
+              {apiKey ? " — connected" : needsBaseUrl ? "" : " — needs API key"}
             </CardDescription>
           </div>
           <Button
@@ -243,17 +272,11 @@ function ConnectionCard({
         <CardContent className="space-y-4 pt-0">
           <div className="space-y-1">
             <Label>Name</Label>
-            <Input
-              value={conn.name}
-              onChange={(e) => onUpdate({ name: e.target.value })}
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1">
             <Label>Provider</Label>
-            <Select
-              value={conn.providerId}
-              onValueChange={(v) => onUpdate({ providerId: v })}
-            >
+            <Select value={providerId} onValueChange={setProviderId}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -266,19 +289,18 @@ function ConnectionCard({
               </SelectContent>
             </Select>
           </div>
+
           {/* Base URL — shown inline for providers that need it */}
-          {preset?.requiresBaseUrl && (
+          {needsBaseUrl && (
             <div className="space-y-1">
               <Label>
                 Base URL{" "}
                 <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
               </Label>
               <Input
-                value={conn.baseUrl ?? ""}
+                value={baseUrl}
                 placeholder="http://localhost:11434/v1"
-                onChange={(e) =>
-                  onUpdate({ baseUrl: e.target.value || undefined })
-                }
+                onChange={(e) => setBaseUrl(e.target.value)}
               />
             </div>
           )}
@@ -286,6 +308,11 @@ function ConnectionCard({
           <div className="space-y-1">
             <Label className="flex items-center gap-2">
               API Key
+              {needsBaseUrl && (
+                <span className="text-xs text-muted-foreground font-normal">
+                  optional for local
+                </span>
+              )}
               {preset?.keyUrl && (
                 <ExternalLink
                   href={preset.keyUrl}
@@ -298,9 +325,9 @@ function ConnectionCard({
             <div className="flex">
               <Input
                 type={showKey ? "text" : "password"}
-                value={conn.apiKey}
+                value={apiKey}
                 placeholder={preset?.keyPlaceholder ?? "API key..."}
-                onChange={(e) => onUpdate({ apiKey: e.target.value })}
+                onChange={(e) => setApiKey(e.target.value)}
                 className="rounded-r-none"
               />
               <Button
@@ -317,15 +344,10 @@ function ConnectionCard({
                 )}
               </Button>
             </div>
-            {preset?.requiresBaseUrl && (
-              <p className="text-xs text-muted-foreground">
-                Optional for local providers like Ollama.
-              </p>
-            )}
           </div>
 
           {/* Base URL override for known providers (hidden behind Advanced) */}
-          {!preset?.requiresBaseUrl && (
+          {!needsBaseUrl && (
             <AdvancedToggle open={advOpen} onToggle={setAdvOpen}>
               <div className="space-y-1">
                 <Label className="text-xs flex items-center gap-1">
@@ -333,11 +355,9 @@ function ConnectionCard({
                   <InfoTip text="Override the default API endpoint for self-hosted or proxy setups." />
                 </Label>
                 <Input
-                  value={conn.baseUrl ?? ""}
+                  value={baseUrl}
                   placeholder="Leave empty for default"
-                  onChange={(e) =>
-                    onUpdate({ baseUrl: e.target.value || undefined })
-                  }
+                  onChange={(e) => setBaseUrl(e.target.value)}
                   className="text-xs"
                 />
               </div>
@@ -345,6 +365,9 @@ function ConnectionCard({
           )}
 
           <div className="flex items-center gap-2">
+            <Button size="sm" onClick={save}>
+              Save
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -367,7 +390,7 @@ function ConnectionCard({
                   <Trash2 className="size-3.5" /> Delete
                 </Button>
               }
-              title={`Delete "${conn.name}"?`}
+              title={`Delete "${name}"?`}
               description={
                 inUse
                   ? "This connection is currently in use by transcription, refinement, or a style. Deleting it may break things."
