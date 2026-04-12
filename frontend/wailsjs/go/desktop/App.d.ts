@@ -16,8 +16,6 @@ export function GetDefaultProfiles():Promise<Array<config.RefinementProfile>>;
 
 export function GetDefaultSettings():Promise<config.Settings>;
 
-export function GetVersion():Promise<string>;
-
 export function GetHistory(arg1:number,arg2:number):Promise<Array<history.Record>>;
 
 export function GetPasteStatus():Promise<desktop.PasteStatus>;
@@ -26,11 +24,15 @@ export function GetPlatform():Promise<platform.Info>;
 
 export function GetSettings():Promise<config.Settings>;
 
+export function GetVersion():Promise<string>;
+
 export function ListModelsForConnection(arg1:string):Promise<Array<ai.ModelInfo>>;
 
 export function ListProviders():Promise<Array<ai.ProviderInfo>>;
 
 export function SaveSettings(arg1:config.Settings):Promise<void>;
+
+export function SimulateUpdate():Promise<void>;
 
 export function StartRecording():Promise<void>;
 

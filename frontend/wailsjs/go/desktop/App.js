@@ -22,10 +22,6 @@ export function GetDefaultSettings() {
   return window['go']['desktop']['App']['GetDefaultSettings']();
 }
 
-export function GetVersion() {
-  return window['go']['desktop']['App']['GetVersion']();
-}
-
 export function GetHistory(arg1, arg2) {
   return window['go']['desktop']['App']['GetHistory'](arg1, arg2);
 }
@@ -42,6 +38,10 @@ export function GetSettings() {
   return window['go']['desktop']['App']['GetSettings']();
 }
 
+export function GetVersion() {
+  return window['go']['desktop']['App']['GetVersion']();
+}
+
 export function ListModelsForConnection(arg1) {
   return window['go']['desktop']['App']['ListModelsForConnection'](arg1);
 }
@@ -52,6 +52,10 @@ export function ListProviders() {
 
 export function SaveSettings(arg1) {
   return window['go']['desktop']['App']['SaveSettings'](arg1);
+}
+
+export function SimulateUpdate() {
+  return window['go']['desktop']['App']['SimulateUpdate']();
 }
 
 export function StartRecording() {

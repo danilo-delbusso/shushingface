@@ -186,9 +186,6 @@ export function AppSidebar({
             {updateAvailable.version} available
           </ExternalLink>
         )}
-        {version && (
-          <p className="px-3 pb-1 text-[10px] text-muted-foreground/50">{version}</p>
-        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <ConfirmDialog
@@ -205,6 +202,9 @@ export function AppSidebar({
             />
           </SidebarMenuItem>
         </SidebarMenu>
+        {version && (
+          <p className="px-3 text-[10px] text-muted-foreground/50">{version}</p>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
