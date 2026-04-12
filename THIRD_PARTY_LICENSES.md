@@ -7,8 +7,6 @@
 
 ## Go Dependencies
 
-- **github.com/buger/jsonparser** — MIT
-- **github.com/conneroisu/groq-go** — MIT
 - **github.com/dustin/go-humanize** — MIT
 - **github.com/gen2brain/malgo** — Unlicense
 - **github.com/go-audio/audio** — Apache-2.0
@@ -41,6 +39,7 @@
 - **@floating-ui/react-dom@2.1.8** — MIT
 - **@floating-ui/utils@0.2.11** — MIT
 - **get-nonce@1.0.1** — MIT
+- **@hookform/resolvers@5.2.2** — MIT
 - **lucide-react@1.8.0** — ISC
 - **radix-ui@1.4.3** — MIT
 - **@radix-ui/number@1.1.1** — MIT
@@ -105,11 +104,13 @@
 - **@radix-ui/rect@1.1.1** — MIT
 - **react@19.2.5** — MIT
 - **react-dom@19.2.5** — MIT
+- **react-hook-form@7.72.1** — MIT
 - **react-remove-scroll@2.7.2** — MIT
 - **react-remove-scroll-bar@2.3.8** — MIT
 - **react-style-singleton@2.2.3** — MIT
 - **scheduler@0.27.0** — MIT
 - **sonner@2.0.7** — MIT
+- **@standard-schema/utils@0.3.0** — MIT
 - **tailwind-merge@3.5.0** — MIT
 - **tslib@2.8.1** — 0BSD
 - **@types/react@19.2.14** — MIT
@@ -117,3 +118,4 @@
 - **use-callback-ref@1.3.3** — MIT
 - **use-sidecar@1.1.3** — MIT
 - **use-sync-external-store@1.6.0** — MIT
+- **zod@4.3.6** — MIT
