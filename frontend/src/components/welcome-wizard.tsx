@@ -1,4 +1,11 @@
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  wizardConnectionSchema,
+  type WizardConnectionFormData,
+} from "@/lib/schemas";
+import { FormField } from "@/components/ui/form-field";
 import {
   Eye,
   EyeOff,
@@ -12,7 +19,6 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getProfileIcon } from "@/lib/icons";
 import { providerPresets } from "@/lib/providers";
 import { ExternalLink } from "@/components/ui/external-link";
@@ -31,15 +37,27 @@ interface WelcomeWizardProps {
 export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   const [step, setStep] = useState(0);
   const [providers, setProviders] = useState<ai.ProviderInfo[]>([]);
-  const [providerId, setProviderId] = useState("groq");
-  const [connName, setConnName] = useState("Groq");
-  const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testOk, setTestOk] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState("professional");
   const platformInfo = usePlatform();
+
+  const {
+    register,
+    watch,
+    setValue,
+    trigger,
+    getValues,
+    formState: { errors },
+  } = useForm<WizardConnectionFormData>({
+    resolver: zodResolver(wizardConnectionSchema),
+    defaultValues: { providerId: "groq", apiKey: "", baseUrl: "" },
+  });
+
+  const providerId = watch("providerId");
+  const apiKey = watch("apiKey");
+  const baseUrl = watch("baseUrl");
 
   useEffect(() => {
     AppBridge.ListProviders().then(setProviders);
@@ -47,26 +65,25 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
 
   const preset = providerPresets[providerId];
   const needsBaseUrl = preset?.requiresBaseUrl ?? false;
+  const canProceed = needsBaseUrl ? !!baseUrl?.trim() : !!apiKey?.trim();
 
-  // Can proceed if: baked-in provider with API key, OR custom provider with base URL
-  const canProceed = needsBaseUrl ? !!baseUrl.trim() : !!apiKey.trim();
+  const advanceStep1 = async () => {
+    const valid = await trigger();
+    if (valid) setStep(2);
+  };
 
   const testConnection = async () => {
-    // Save a temporary connection so the backend can test it
+    const { providerId: pId, apiKey: key, baseUrl: url } = getValues();
     const connId = `test_${Date.now()}`;
     const conn = config.Connection.createFrom({
       id: connId,
       name: "test",
-      providerId,
-      apiKey,
-      baseUrl: baseUrl || undefined,
+      providerId: pId,
+      apiKey: key,
+      baseUrl: url || undefined,
     });
-    // Temporarily save so ListModelsForConnection works
     await AppBridge.SaveSettings(
-      config.Settings.createFrom({
-        ...settings,
-        connections: [conn],
-      }),
+      config.Settings.createFrom({ ...settings, connections: [conn] }),
     );
     setTesting(true);
     setTestOk(false);
@@ -82,13 +99,15 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
   };
 
   const finishWithConnection = () => {
+    const { providerId: pId, apiKey: key, baseUrl: url } = getValues();
     const connId = `conn_${Date.now()}`;
+    const connName = providerPresets[pId]?.name ?? "Default";
     const conn = config.Connection.createFrom({
       id: connId,
-      name: connName || preset?.name || "Default",
-      providerId,
-      apiKey,
-      baseUrl: baseUrl || undefined,
+      name: connName,
+      providerId: pId,
+      apiKey: key,
+      baseUrl: url || undefined,
     });
     onComplete(
       config.Settings.createFrom({
@@ -152,8 +171,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                     key={p.id}
                     type="button"
                     onClick={() => {
-                      setProviderId(p.id);
-                      setConnName(meta?.name ?? p.displayName);
+                      setValue("providerId", p.id);
                       setTestOk(false);
                     }}
                     className={`flex items-center gap-3 overflow-hidden rounded-lg border-2 p-3 text-left transition-colors ${
@@ -195,49 +213,41 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
             <div className="space-y-3">
               {/* Base URL — shown for providers that need it */}
               {needsBaseUrl && (
-                <div className="space-y-1">
-                  <Label>
-                    Base URL{" "}
-                    <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
-                  </Label>
+                <FormField
+                  label={<>Base URL <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." /></>}
+                  error={errors.baseUrl?.message}
+                >
                   <Input
-                    value={baseUrl}
+                    {...register("baseUrl", { onChange: () => setTestOk(false) })}
                     placeholder="http://localhost:11434/v1"
-                    onChange={(e) => {
-                      setBaseUrl(e.target.value);
-                      setTestOk(false);
-                    }}
                   />
-                </div>
+                </FormField>
               )}
 
               {/* API key */}
-              <div className="space-y-1">
-                <Label className="flex items-center gap-2">
-                  API Key
-                  {needsBaseUrl && (
-                    <span className="text-xs text-muted-foreground font-normal">
-                      optional for local
-                    </span>
-                  )}
-                  {preset?.keyUrl && (
-                    <ExternalLink
-                      href={preset.keyUrl}
-                      className="text-xs font-normal"
-                    >
-                      {preset.keyUrlLabel}
-                    </ExternalLink>
-                  )}
-                </Label>
+              <FormField
+                label={
+                  <span className="flex items-center gap-2">
+                    API Key
+                    {needsBaseUrl && (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        optional for local
+                      </span>
+                    )}
+                    {preset?.keyUrl && (
+                      <ExternalLink href={preset.keyUrl} className="text-xs font-normal">
+                        {preset.keyUrlLabel}
+                      </ExternalLink>
+                    )}
+                  </span>
+                }
+                error={errors.apiKey?.message}
+              >
                 <div className="flex">
                   <Input
                     type={showKey ? "text" : "password"}
-                    value={apiKey}
+                    {...register("apiKey", { onChange: () => setTestOk(false) })}
                     placeholder={preset?.keyPlaceholder ?? "API key..."}
-                    onChange={(e) => {
-                      setApiKey(e.target.value);
-                      setTestOk(false);
-                    }}
                     className="rounded-r-none"
                   />
                   <Button
@@ -254,7 +264,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                     )}
                   </Button>
                 </div>
-              </div>
+              </FormField>
 
               {/* Test connection */}
               <Button
@@ -290,7 +300,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
               </Button>
               <Button
                 className="flex-1"
-                onClick={() => setStep(2)}
+                onClick={advanceStep1}
                 disabled={!canProceed}
               >
                 next <ArrowRight className="size-4" />
