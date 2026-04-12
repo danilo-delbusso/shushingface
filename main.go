@@ -15,6 +15,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/audio/malgo"
 	"codeberg.org/dbus/shushingface/internal/config"
 	"codeberg.org/dbus/shushingface/internal/core"
+	"codeberg.org/dbus/shushingface/internal/db"
 	"codeberg.org/dbus/shushingface/internal/history"
 	"codeberg.org/dbus/shushingface/internal/ipc"
 	"codeberg.org/dbus/shushingface/internal/ui/desktop"
@@ -61,12 +62,14 @@ func main() {
 		return
 	}
 
-	hist, err := history.NewManager()
+	database, err := db.Open()
 	if err != nil {
-		slog.Warn("failed to initialize history", "error", err)
-	} else {
-		defer hist.Close()
+		slog.Error("failed to open database", "error", err)
+		return
 	}
+	defer database.Close()
+
+	hist := history.NewRepository(database)
 
 	recorder, err := malgo.NewRecorder(16000)
 	if err != nil {

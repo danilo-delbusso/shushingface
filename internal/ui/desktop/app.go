@@ -27,11 +27,11 @@ type App struct {
 	ctx      context.Context
 	engine   *core.Engine
 	cfg      *config.Settings
-	history  *history.Manager
+	history  *history.Repository
 	cleanIPC func()
 }
 
-func NewApp(engine *core.Engine, cfg *config.Settings, hist *history.Manager) *App {
+func NewApp(engine *core.Engine, cfg *config.Settings, hist *history.Repository) *App {
 	return &App{engine: engine, cfg: cfg, history: hist}
 }
 
@@ -133,13 +133,13 @@ func (a *App) StopAndProcess() ProcessResult {
 			notify.Error("Transcription failed", err.Error())
 		}
 		// Record the failure in history
-		if a.cfg.EnableHistory && a.history != nil {
+		if a.cfg.EnableHistory {
 			a.history.Insert("", "", activeApp, err.Error())
 		}
 		return ProcessResult{Error: err.Error()}
 	}
 
-	if a.cfg.EnableHistory && a.history != nil && transcript != "" {
+	if a.cfg.EnableHistory && transcript != "" {
 		if _, histErr := a.history.Insert(transcript, refined, activeApp, ""); histErr != nil {
 			slog.Error("failed to insert history", "error", histErr)
 		}
@@ -243,25 +243,17 @@ func (a *App) GetDefaultBuiltInRules() string {
 }
 
 func (a *App) GetHistory(limit, offset int) ([]history.Record, error) {
-	if a.history == nil {
-		return nil, fmt.Errorf("history is disabled")
-	}
 	return a.history.GetHistory(limit, offset)
 }
 
 func (a *App) ClearHistory() error {
-	if a.history == nil {
-		return fmt.Errorf("history is disabled")
-	}
-	return a.history.ClearHistory()
+	return a.history.Clear()
 }
 
 // DeleteAllData clears history and resets settings to factory defaults.
 func (a *App) DeleteAllData() error {
-	if a.history != nil {
-		if err := a.history.ClearHistory(); err != nil {
-			return fmt.Errorf("failed to clear history: %w", err)
-		}
+	if err := a.history.Clear(); err != nil {
+		return fmt.Errorf("failed to clear history: %w", err)
 	}
 	defaults := config.DefaultSettings()
 	if err := config.Save(defaults); err != nil {

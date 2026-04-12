@@ -3,33 +3,26 @@ package config
 import (
 	"fmt"
 	"log/slog"
-
-	"codeberg.org/dbus/shushingface/internal/config/migrations"
 )
 
-// migration transforms raw config JSON from one version to the next.
-type migration struct {
+// currentConfigVersion is the version of the current config schema.
+// Bump this when adding a new migration.
+const currentConfigVersion = 1
+
+type configMigration struct {
 	version     int
 	description string
 	up          func(data map[string]any) error
 }
 
-// currentConfigVersion is the version after all migrations have run.
-// Increment this when adding a new migration.
-const currentConfigVersion = 2
-
-// Registry of config migrations. Each entry corresponds to a file in
-// internal/config/migrations/. Add new migrations by:
-// 1. Creating a new file in migrations/ with the migration function
-// 2. Adding an entry here with the next version number
-// 3. Incrementing currentConfigVersion
-var configMigrations = []migration{
-	{version: 1, description: "legacy providers to connections", up: migrations.V1LegacyToConnections},
-	{version: 2, description: "ensure profiles and default models", up: migrations.V2ProfilesAndModels},
+// Config migrations. Add new entries when the schema changes.
+// Each migration operates on raw JSON (map[string]any) so it's
+// decoupled from the current Settings struct.
+var configMigrations = []configMigration{
+	{version: 1, description: "initial schema", up: migrateInitial},
 }
 
 // migrateConfig runs all pending migrations on raw JSON data.
-// Returns true if any migrations were applied.
 func migrateConfig(data map[string]any) (bool, error) {
 	v, _ := data["configVersion"].(float64)
 	current := int(v)
@@ -56,4 +49,57 @@ func migrateConfig(data map[string]any) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// migrateInitial ensures a valid initial config structure.
+// Handles fresh configs and any legacy formats.
+func migrateInitial(data map[string]any) error {
+	// Ensure connections exist
+	if _, ok := data["connections"]; !ok {
+		data["connections"] = []any{}
+	}
+
+	// Ensure default models
+	if v, _ := data["refinementModel"].(string); v == "" {
+		data["refinementModel"] = DefaultRefinementModel
+	}
+	if v, _ := data["transcriptionModel"].(string); v == "" {
+		data["transcriptionModel"] = DefaultTranscriptionModel
+	}
+
+	// Ensure profiles exist
+	profiles, _ := data["refinementProfiles"].([]any)
+	if len(profiles) == 0 {
+		defaults := DefaultProfiles()
+		var profileMaps []any
+		for _, p := range defaults {
+			m := map[string]any{
+				"id":     p.ID,
+				"name":   p.Name,
+				"icon":   p.Icon,
+				"prompt": p.Prompt,
+			}
+			if p.Temperature != 0 {
+				m["temperature"] = p.Temperature
+			}
+			if p.TopP != 0 {
+				m["topP"] = p.TopP
+			}
+			profileMaps = append(profileMaps, m)
+		}
+		data["refinementProfiles"] = profileMaps
+	}
+	if v, _ := data["activeProfileId"].(string); v == "" {
+		data["activeProfileId"] = "professional"
+	}
+
+	// Clean up any legacy fields
+	for _, key := range []string{
+		"providers", "providerId", "providerApiKey", "providerBaseUrl",
+		"transcriptionProviderId", "refinementProviderId", "systemPrompt",
+	} {
+		delete(data, key)
+	}
+
+	return nil
 }
