@@ -41,13 +41,21 @@ type RefineOptions struct {
 	Sampling     SamplingParams // generation parameters
 }
 
+// TranscribeOptions holds parameters for transcription.
+type TranscribeOptions struct {
+	// Language hint in ISO 639-1 format (e.g. "en", "fr").
+	// Empty means auto-detect. When multiple are set, the first is used
+	// as the primary hint (Whisper only accepts one).
+	Language string
+}
+
 // ──────────────────────────────────────────────────
 // Transcriber / Refiner / Processor interfaces
 // ──────────────────────────────────────────────────
 
 // Transcriber can transcribe audio to text.
 type Transcriber interface {
-	Transcribe(ctx context.Context, wavData []byte) (transcript string, err error)
+	Transcribe(ctx context.Context, wavData []byte, opts TranscribeOptions) (transcript string, err error)
 }
 
 // Refiner can refine a transcript into polished text.

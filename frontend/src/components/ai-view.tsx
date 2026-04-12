@@ -49,6 +49,7 @@ import { AdvancedToggle } from "@/components/ui/advanced-toggle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import { getProfileIcon } from "@/lib/icons";
+import { whisperLanguages } from "@/lib/languages";
 import { cn, textareaClass, textareaCompactClass } from "@/lib/utils";
 import { useModelsForConnection } from "@/lib/hooks";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
@@ -212,6 +213,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     defaultValues: {
       transcriptionConnectionId: settings.transcriptionConnectionId,
       transcriptionModel: settings.transcriptionModel,
+      transcriptionLanguage: settings.transcriptionLanguage ?? "",
       refinementConnectionId: settings.refinementConnectionId,
       refinementModel: settings.refinementModel,
     },
@@ -421,6 +423,33 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               <FormField label={<span className="text-xs">Model</span>}>
                 <Controller name="transcriptionModel" control={modelsForm.control} render={({ field }) => (
                   <ModelSelect value={field.value} onChange={field.onChange} models={transcriptionModels} />
+                )} />
+              </FormField>
+              <FormField
+                label={
+                  <span className="text-xs">
+                    Language{" "}
+                    <InfoTip text="Hint the transcription model about what language you speak. Auto-detect works well for most cases." />
+                  </span>
+                }
+              >
+                <Controller name="transcriptionLanguage" control={modelsForm.control} render={({ field }) => (
+                  <Select value={field.value || "__auto__"} onValueChange={(v) => field.onChange(v === "__auto__" ? "" : v)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__auto__" className="text-xs">
+                        Auto-detect
+                      </SelectItem>
+                      <SelectSeparator />
+                      {whisperLanguages.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                          {lang.flag} {lang.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )} />
               </FormField>
             </div>

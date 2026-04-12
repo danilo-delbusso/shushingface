@@ -36,7 +36,7 @@ func NewProcessor(baseURL, apiKey, transcriptionModel, refinementModel string) *
 	}
 }
 
-func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, error) {
+func (p *processor) Transcribe(ctx context.Context, wavData []byte, opts ai.TranscribeOptions) (string, error) {
 	url := p.baseURL + "/audio/transcriptions"
 
 	// Build multipart form
@@ -44,6 +44,11 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, err
 	writer := multipart.NewWriter(&body)
 	if err := writer.WriteField("model", p.transcriptionModel); err != nil {
 		return "", err
+	}
+	if opts.Language != "" {
+		if err := writer.WriteField("language", opts.Language); err != nil {
+			return "", err
+		}
 	}
 	part, err := writer.CreateFormFile("file", "audio.wav")
 	if err != nil {

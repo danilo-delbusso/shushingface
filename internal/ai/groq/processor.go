@@ -37,7 +37,7 @@ func NewProcessor(apiKey, transcriptionModel, refinementModel string) (ai.Proces
 	}, nil
 }
 
-func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, error) {
+func (p *processor) Transcribe(ctx context.Context, wavData []byte, opts ai.TranscribeOptions) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -45,6 +45,7 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte) (string, err
 		FilePath: "audio.wav",
 		Reader:   bytes.NewReader(wavData),
 		Model:    groqclient.AudioModel(p.transcriptionModel),
+		Language: opts.Language,
 	}
 
 	transcription, err := p.client.Transcribe(ctx, transReq)

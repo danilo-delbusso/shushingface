@@ -79,7 +79,7 @@ type PlaceholderProcessor struct {
 	Reason string
 }
 
-func (p *PlaceholderProcessor) Transcribe(_ context.Context, _ []byte) (string, error) {
+func (p *PlaceholderProcessor) Transcribe(_ context.Context, _ []byte, _ ai.TranscribeOptions) (string, error) {
 	return "", errors.New(p.Reason)
 }
 

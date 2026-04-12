@@ -85,8 +85,9 @@ func (a *App) StopAndProcess() ProcessResult {
 	}
 	activeApp := osutil.GetActiveWindowName()
 
-	opts := a.buildRefineOptions(activeApp)
-	slog.Info("using refinement profile", "id", opts.SystemPrompt[:min(30, len(opts.SystemPrompt))], "examples", len(opts.Examples))
+	tOpts := ai.TranscribeOptions{Language: a.cfg.TranscriptionLanguage}
+	rOpts := a.buildRefineOptions(activeApp)
+	slog.Info("using refinement profile", "id", rOpts.SystemPrompt[:min(30, len(rOpts.SystemPrompt))], "examples", len(rOpts.Examples))
 
 	// Build per-profile refiner override if the profile specifies a different connection/model.
 	var refinerOverride ai.Refiner
@@ -99,7 +100,7 @@ func (a *App) StopAndProcess() ProcessResult {
 		}
 	}
 
-	transcript, refined, err := a.engine.StopAndProcess(a.ctx, opts, refinerOverride)
+	transcript, refined, err := a.engine.StopAndProcess(a.ctx, tOpts, rOpts, refinerOverride)
 	if a.cfg.EnableNotifications {
 		notify.RecordingDone()
 	}

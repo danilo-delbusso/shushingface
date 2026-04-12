@@ -49,7 +49,7 @@ func (e *Engine) StartRecording() error {
 // StopAndProcess stops recording, transcribes, and refines.
 // If refinerOverride is non-nil it is used instead of the default refiner
 // (for per-profile connection overrides).
-func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions, refinerOverride ai.Refiner) (transcript string, refined string, err error) {
+func (e *Engine) StopAndProcess(ctx context.Context, tOpts ai.TranscribeOptions, rOpts ai.RefineOptions, refinerOverride ai.Refiner) (transcript string, refined string, err error) {
 	samples, err := e.recorder.Stop()
 	if err != nil {
 		return "", "", err
@@ -69,7 +69,7 @@ func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions, refi
 		r = refinerOverride
 	}
 
-	transcript, err = t.Transcribe(ctx, wavData)
+	transcript, err = t.Transcribe(ctx, wavData, tOpts)
 	if err != nil {
 		return "", "", err
 	}
@@ -78,7 +78,7 @@ func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions, refi
 		return "", "", nil
 	}
 
-	refined, err = r.Refine(ctx, transcript, opts)
+	refined, err = r.Refine(ctx, transcript, rOpts)
 	if err != nil {
 		return transcript, "", err
 	}
