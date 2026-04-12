@@ -57,5 +57,7 @@ jobs:
           url: https://codeberg.org
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
+          title: ${{ github.ref_name }}
           release-dir: dist
           release-notes-file: CHANGELOG.md
+          prerelease: ${{ contains(github.ref_name, 'rc') }}
