@@ -199,6 +199,17 @@ func (a *App) hydrateSecrets() {
 }
 
 func (a *App) SaveSettings(newSettings config.Settings) error {
+	// Clean up secrets for deleted connections
+	newIDs := make(map[string]bool)
+	for _, conn := range newSettings.Connections {
+		newIDs[conn.ID] = true
+	}
+	for _, conn := range a.cfg.Connections {
+		if !newIDs[conn.ID] {
+			a.secrets.Delete("apikey:" + conn.ID)
+		}
+	}
+
 	// Store API keys in the secret store
 	for i := range newSettings.Connections {
 		conn := &newSettings.Connections[i]
@@ -296,6 +307,10 @@ func (a *App) ClearHistory() error {
 func (a *App) DeleteAllData() error {
 	if err := a.history.Clear(); err != nil {
 		return fmt.Errorf("failed to clear history: %w", err)
+	}
+	// Remove all API keys from the secret store
+	for _, conn := range a.cfg.Connections {
+		a.secrets.Delete("apikey:" + conn.ID)
 	}
 	defaults := config.DefaultSettings()
 	if err := config.Save(defaults); err != nil {
