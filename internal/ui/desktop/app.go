@@ -228,15 +228,22 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 		return fmt.Errorf("failed to reload AI processors: %w", err)
 	}
 
-	// Strip API keys from config file when keyring is available
-	configToSave := newSettings
+	// Strip API keys from the on-disk config when keyring is available.
+	// Deep-copy connections to avoid mutating newSettings (shared slice).
 	if a.secrets.IsSecure() {
-		for i := range configToSave.Connections {
-			configToSave.Connections[i].APIKey = ""
+		stripped := newSettings
+		stripped.Connections = make([]config.Connection, len(newSettings.Connections))
+		copy(stripped.Connections, newSettings.Connections)
+		for i := range stripped.Connections {
+			stripped.Connections[i].APIKey = ""
 		}
-	}
-	if err := config.Save(&configToSave); err != nil {
-		return err
+		if err := config.Save(&stripped); err != nil {
+			return err
+		}
+	} else {
+		if err := config.Save(&newSettings); err != nil {
+			return err
+		}
 	}
 
 	a.engine.SetTranscriber(pair.Transcriber)
