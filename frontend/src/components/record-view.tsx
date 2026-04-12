@@ -1,16 +1,10 @@
-import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp, Coffee, Briefcase, Zap, PenTool } from "lucide-react";
+import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getProfileIcon } from "@/lib/icons";
 import type { desktop, config } from "../../wailsjs/go/models";
-
-const profileIcons: Record<string, React.FC<{ className?: string }>> = {
-  coffee: Coffee,
-  briefcase: Briefcase,
-  zap: Zap,
-  "pen-tool": PenTool,
-};
 
 interface RecordViewProps {
   configured: boolean;
@@ -47,7 +41,7 @@ export function RecordView({
     );
   }
 
-  const ProfileIcon = activeProfile ? profileIcons[activeProfile.icon] || PenTool : null;
+  const ProfileIcon = activeProfile ? getProfileIcon(activeProfile.icon) : null;
   const hasResults = results.length > 0;
 
   return (

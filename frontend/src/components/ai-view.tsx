@@ -4,16 +4,11 @@ import {
   Loader2,
   Bot,
   AlertTriangle,
-  Coffee,
-  Briefcase,
-  Zap,
-  PenTool,
   Check,
   Trash2,
   Plus,
   ChevronDown,
   ChevronUp,
-  Settings2,
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,18 +34,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { WarningBanner } from "@/components/ui/warning-banner";
+import { AdvancedToggle } from "@/components/ui/advanced-toggle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
+import { getProfileIcon } from "@/lib/icons";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
 import type { ai } from "../../wailsjs/go/models";
-
-const iconMap: Record<string, React.FC<{ className?: string }>> = {
-  coffee: Coffee,
-  briefcase: Briefcase,
-  zap: Zap,
-  "pen-tool": PenTool,
-};
 
 // ──────────────────────────────────────────────────
 // Model selector shared by transcription, refinement, and per-profile
@@ -305,10 +296,7 @@ export function AiView({
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         {!configured && (
-          <div className="flex items-center gap-3 rounded-lg border border-amber-600/30 bg-amber-600/10 p-3 text-sm text-amber-500">
-            <AlertTriangle className="size-4 shrink-0" />
-            Set up your AI connection first.
-          </div>
+          <WarningBanner>Set up your AI connection first.</WarningBanner>
         )}
 
         {/* Models */}
@@ -380,45 +368,34 @@ export function AiView({
             />
 
             {/* Built-in rules (advanced) */}
-            <button
-              type="button"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setGlobalAdvancedOpen(!globalAdvancedOpen)}
+            <AdvancedToggle
+              label="Built-in rules"
+              open={globalAdvancedOpen}
+              onToggle={setGlobalAdvancedOpen}
             >
-              <Settings2 className="size-3" />
-              Built-in rules
-              {globalAdvancedOpen ? (
-                <ChevronUp className="size-3" />
-              ) : (
-                <ChevronDown className="size-3" />
-              )}
-            </button>
-            {globalAdvancedOpen && (
-              <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">
-                  These core rules are always applied. Edit with care — they
-                  prevent the model from adding content or dropping meaning.
-                </p>
-                <textarea
-                  value={builtInRules}
-                  onChange={(e) => setBuiltInRules(e.target.value)}
-                  rows={6}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-                  placeholder="Built-in rules (leave empty for defaults)"
-                />
-                <ConfirmDialog
-                  trigger={
-                    <Button variant="outline" size="sm" className="text-xs">
-                      <RotateCcw className="size-3" /> Restore Default Rules
-                    </Button>
-                  }
-                  title="Restore built-in rules?"
-                  description="This will reset the built-in rules to their factory defaults."
-                  confirmLabel="Restore"
-                  onConfirm={restoreBuiltInRules}
-                />
-              </div>
-            )}
+              <p className="text-xs text-muted-foreground">
+                These core rules are always applied. Edit with care — they
+                prevent the model from adding content or dropping meaning.
+              </p>
+              <textarea
+                value={builtInRules}
+                onChange={(e) => setBuiltInRules(e.target.value)}
+                rows={6}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                placeholder="Built-in rules (leave empty for defaults)"
+              />
+              <ConfirmDialog
+                trigger={
+                  <Button variant="outline" size="sm" className="text-xs">
+                    <RotateCcw className="size-3" /> Restore Default Rules
+                  </Button>
+                }
+                title="Restore built-in rules?"
+                description="This will reset the built-in rules to their factory defaults."
+                confirmLabel="Restore"
+                onConfirm={restoreBuiltInRules}
+              />
+            </AdvancedToggle>
 
             <Button size="sm" onClick={() => saveAll()}>
               Save
@@ -430,7 +407,7 @@ export function AiView({
 
         {/* Profiles */}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
             Refinement Styles{" "}
             <InfoTip text="Each style defines how your speech gets rewritten. Choose a style before recording, or set one as active." />
           </h3>
@@ -453,7 +430,7 @@ export function AiView({
         </div>
 
         {draftProfiles.map((profile) => {
-          const Icon = iconMap[profile.icon] || PenTool;
+          const Icon = getProfileIcon(profile.icon);
           const isActive = profile.id === activeId;
           const isExpanded = expandedProfile === profile.id;
           const isPreset = presetIds.has(profile.id);
@@ -568,26 +545,11 @@ export function AiView({
                   </div>
 
                   {/* Advanced Options */}
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() =>
-                      setAdvancedOpen(
-                        advancedOpen === profile.id ? null : profile.id,
-                      )
-                    }
+                  <AdvancedToggle
+                    open={advancedOpen === profile.id}
+                    onToggle={(v) => setAdvancedOpen(v ? profile.id : null)}
                   >
-                    <Settings2 className="size-3" />
-                    Advanced
-                    {advancedOpen === profile.id ? (
-                      <ChevronUp className="size-3" />
-                    ) : (
-                      <ChevronDown className="size-3" />
-                    )}
-                  </button>
-
-                  {advancedOpen === profile.id && (
-                    <div className="space-y-4 rounded-md border border-border bg-muted/30 p-3">
+                    <div className="space-y-4">
                       {/* Temperature */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -750,7 +712,7 @@ export function AiView({
                         </Button>
                       </div>
                     </div>
-                  )}
+                  </AdvancedToggle>
 
                   <div className="flex items-center gap-2">
                     <Button

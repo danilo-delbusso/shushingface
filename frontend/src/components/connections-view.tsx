@@ -2,17 +2,15 @@ import { useState, useEffect } from "react";
 import {
   Eye,
   EyeOff,
-  AlertTriangle,
   Plug,
   Loader2,
   RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Settings2,
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { WarningBanner } from "@/components/ui/warning-banner";
+import { AdvancedToggle } from "@/components/ui/advanced-toggle";
 import {
   Card,
   CardContent,
@@ -114,10 +112,9 @@ export function ConnectionsView({
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         {!configured && (
-          <div className="flex items-center gap-3 rounded-lg border border-amber-600/30 bg-amber-600/10 p-3 text-sm text-amber-500">
-            <AlertTriangle className="size-4 shrink-0" />
+          <WarningBanner>
             Choose a provider and add your API key to get started.
-          </div>
+          </WarningBanner>
         )}
 
         {/* Provider picker — card per provider */}
@@ -208,21 +205,8 @@ export function ConnectionsView({
             </div>
 
             {/* Advanced — base URL (only needed for self-hosted / proxies) */}
-            <button
-              type="button"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              <Settings2 className="size-3" />
-              Advanced
-              {showAdvanced ? (
-                <ChevronUp className="size-3" />
-              ) : (
-                <ChevronDown className="size-3" />
-              )}
-            </button>
-            {showAdvanced && (
-              <div className="space-y-1 rounded-md border border-border bg-muted/30 p-3">
+            <AdvancedToggle open={showAdvanced} onToggle={setShowAdvanced}>
+              <div className="space-y-1">
                 <Label className="text-xs flex items-center gap-1">
                   Base URL{" "}
                   <InfoTip text="Override the default API endpoint for self-hosted or proxy setups. Leave empty to use the provider's default." />
@@ -234,7 +218,7 @@ export function ConnectionsView({
                   className="text-xs"
                 />
               </div>
-            )}
+            </AdvancedToggle>
 
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={save}>

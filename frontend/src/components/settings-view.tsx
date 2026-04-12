@@ -1,4 +1,4 @@
-import { Keyboard, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { Keyboard, SlidersHorizontal, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
@@ -84,7 +84,7 @@ export function SettingsView({
             </div>
             {settings.autoPaste && !pasteAvailable && pasteInstallCmd && (
               <div className="flex items-start gap-2 rounded-md border border-amber-600/30 bg-amber-600/10 px-3 py-2 text-xs text-amber-500">
-                <TriangleAlert className="size-3.5 mt-0.5 shrink-0" />
+                <AlertTriangle className="size-3.5 mt-0.5 shrink-0" />
                 <div>
                   <p>Auto-paste requires an external tool. Run:</p>
                   <code className="mt-1 block rounded bg-muted px-2 py-1 font-mono text-foreground">
@@ -157,7 +157,7 @@ export function SettingsView({
         <Card className="border-destructive/30">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm text-destructive">
-              <TriangleAlert className="size-4" /> Danger Zone
+              <AlertTriangle className="size-4 shrink-0" /> Danger Zone
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
