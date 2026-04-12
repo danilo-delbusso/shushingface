@@ -9,7 +9,6 @@ import (
 
 const serviceName = "shushingface"
 
-// keyringStore uses the OS keyring (GNOME Keyring, macOS Keychain, Windows Credential Manager).
 type keyringStore struct{}
 
 func (k *keyringStore) Get(key string) (string, error) {
@@ -34,8 +33,6 @@ func (k *keyringStore) Delete(key string) error {
 
 func (k *keyringStore) IsSecure() bool { return true }
 
-// NewKeyringStore creates a Store backed by the OS keyring.
-// Returns nil if the keyring is not available.
 func NewKeyringStore() Store {
 	// Test if the keyring is usable by writing and deleting a probe key
 	if err := keyring.Set(serviceName, "__probe__", "test"); err != nil {
