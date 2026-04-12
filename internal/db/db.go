@@ -1,5 +1,3 @@
-// Package db manages the shared SQLite database connection and migrations.
-// All repositories (history, future caches, etc.) receive *sql.DB from here.
 package db
 
 import (
@@ -16,14 +14,13 @@ import (
 	_ "codeberg.org/dbus/shushingface/internal/db/migrations"
 )
 
-// Open opens the SQLite database and runs all pending migrations.
 func Open() (*sql.DB, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, err
 	}
 	appDir := filepath.Join(configDir, "shushingface")
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0700); err != nil {
 		return nil, err
 	}
 	dbPath := filepath.Join(appDir, "shushingface.db")
@@ -34,7 +31,10 @@ func Open() (*sql.DB, error) {
 	}
 
 	// Enable WAL mode for better concurrent read/write
-	db.Exec("PRAGMA journal_mode=WAL")
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("enabling WAL mode: %w", err)
+	}
 
 	goose.SetDialect("sqlite3")
 	if err := goose.UpContext(context.Background(), db, "."); err != nil {
