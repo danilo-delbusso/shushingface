@@ -19,15 +19,20 @@ export function AppearanceView({ settings, onSave }: AppearanceViewProps) {
       <div className="space-y-4 p-6 max-w-2xl">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-1.5">Theme <InfoTip text="System follows your OS dark/light preference." /></CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              Theme{" "}
+              <InfoTip text="System follows your OS dark/light preference." />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
-              {([
-                { value: "light", icon: Sun, label: "Light" },
-                { value: "dark", icon: Moon, label: "Dark" },
-                { value: "system", icon: Monitor, label: "System" },
-              ] as const).map(({ value, icon: Icon, label }) => (
+              {(
+                [
+                  { value: "light", icon: Sun, label: "Light" },
+                  { value: "dark", icon: Moon, label: "Dark" },
+                  { value: "system", icon: Monitor, label: "System" },
+                ] as const
+              ).map(({ value, icon: Icon, label }) => (
                 <Button
                   key={value}
                   variant={settings.theme === value ? "default" : "outline"}

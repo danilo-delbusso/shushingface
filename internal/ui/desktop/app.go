@@ -195,3 +195,24 @@ func (a *App) ClearHistory() error {
 	}
 	return a.history.ClearHistory()
 }
+
+// DeleteAllData clears history and resets settings to factory defaults.
+func (a *App) DeleteAllData() error {
+	if a.history != nil {
+		if err := a.history.ClearHistory(); err != nil {
+			return fmt.Errorf("failed to clear history: %w", err)
+		}
+	}
+	defaults := config.DefaultSettings()
+	if err := config.Save(defaults); err != nil {
+		return fmt.Errorf("failed to reset config: %w", err)
+	}
+
+	newProcessor, err := factory.NewFromConfig(defaults)
+	if err != nil {
+		return fmt.Errorf("failed to reload AI processor: %w", err)
+	}
+	a.engine.SetProcessor(newProcessor)
+	*a.cfg = *defaults
+	return nil
+}

@@ -8,6 +8,8 @@ import {ai} from '../models';
 
 export function ClearHistory():Promise<void>;
 
+export function DeleteAllData():Promise<void>;
+
 export function GetDefaultBuiltInRules():Promise<string>;
 
 export function GetDefaultProfiles():Promise<Array<config.RefinementProfile>>;

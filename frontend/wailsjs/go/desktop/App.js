@@ -6,6 +6,10 @@ export function ClearHistory() {
   return window['go']['desktop']['App']['ClearHistory']();
 }
 
+export function DeleteAllData() {
+  return window['go']['desktop']['App']['DeleteAllData']();
+}
+
 export function GetDefaultBuiltInRules() {
   return window['go']['desktop']['App']['GetDefaultBuiltInRules']();
 }

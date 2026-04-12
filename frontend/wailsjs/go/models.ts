@@ -1,14 +1,14 @@
 export namespace ai {
-
+	
 	export class ModelInfo {
 	    id: string;
 	    name: string;
 	    category: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ModelInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -19,11 +19,11 @@ export namespace ai {
 	export class ProviderInfo {
 	    id: string;
 	    displayName: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ProviderInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -34,15 +34,15 @@ export namespace ai {
 }
 
 export namespace config {
-
+	
 	export class FewShotExample {
 	    input: string;
 	    output: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FewShotExample(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.input = source["input"];
@@ -58,11 +58,11 @@ export namespace config {
 	    examples?: FewShotExample[];
 	    temperature?: number;
 	    topP?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new RefinementProfile(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -74,7 +74,7 @@ export namespace config {
 	        this.temperature = source["temperature"];
 	        this.topP = source["topP"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -92,6 +92,22 @@ export namespace config {
 		    }
 		    return a;
 		}
+	}
+	export class legacyProviderConfig {
+	    name: string;
+	    apiKey: string;
+	    baseUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new legacyProviderConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.apiKey = source["apiKey"];
+	        this.baseUrl = source["baseUrl"];
+	    }
 	}
 	export class Settings {
 	    providerId: string;
@@ -111,11 +127,15 @@ export namespace config {
 	    enableIndicator: boolean;
 	    enableNotifications: boolean;
 	    inputDeviceId?: string;
-
+	    providers?: Record<string, legacyProviderConfig>;
+	    transcriptionProviderId?: string;
+	    refinementProviderId?: string;
+	    systemPrompt?: string;
+	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.providerId = source["providerId"];
@@ -135,8 +155,12 @@ export namespace config {
 	        this.enableIndicator = source["enableIndicator"];
 	        this.enableNotifications = source["enableNotifications"];
 	        this.inputDeviceId = source["inputDeviceId"];
+	        this.providers = this.convertValues(source["providers"], legacyProviderConfig, true);
+	        this.transcriptionProviderId = source["transcriptionProviderId"];
+	        this.refinementProviderId = source["refinementProviderId"];
+	        this.systemPrompt = source["systemPrompt"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -159,15 +183,15 @@ export namespace config {
 }
 
 export namespace desktop {
-
+	
 	export class PasteStatus {
 	    available: boolean;
 	    installCmd: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PasteStatus(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.available = source["available"];
@@ -178,11 +202,11 @@ export namespace desktop {
 	    transcript: string;
 	    refined: string;
 	    error?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ProcessResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.transcript = source["transcript"];
@@ -194,7 +218,7 @@ export namespace desktop {
 }
 
 export namespace history {
-
+	
 	export class Record {
 	    id: number;
 	    // Go type: time
@@ -202,11 +226,11 @@ export namespace history {
 	    rawTranscript: string;
 	    refinedMessage: string;
 	    activeApp: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Record(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -215,7 +239,7 @@ export namespace history {
 	        this.refinedMessage = source["refinedMessage"];
 	        this.activeApp = source["activeApp"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -238,17 +262,17 @@ export namespace history {
 }
 
 export namespace platform {
-
+	
 	export class Info {
 	    os: string;
 	    displayServer: string;
 	    desktop: string;
 	    packageManager: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Info(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.os = source["os"];
@@ -259,3 +283,4 @@ export namespace platform {
 	}
 
 }
+

@@ -1,4 +1,5 @@
 import { Keyboard, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import * as AppBridge from "../../wailsjs/go/desktop/App";
 import type { config, platform } from "../../wailsjs/go/models";
 
 interface SettingsViewProps {
@@ -35,13 +37,25 @@ export function SettingsView({
     onSave({ ...settings, ...patch } as config.Settings);
   };
 
+  const deleteAllData = async () => {
+    try {
+      await AppBridge.DeleteAllData();
+      toast.success("All data deleted. Restarting setup...");
+      // Reload to trigger wizard since setupComplete is now false
+      window.location.reload();
+    } catch (err) {
+      toast.error(`Failed to delete data: ${err}`);
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Keyboard className="size-4" /> Shortcuts <InfoTip text="Configure a system keyboard shortcut to toggle recording from any app without opening the window." />
+              <Keyboard className="size-4" /> Shortcuts{" "}
+              <InfoTip text="Configure a system keyboard shortcut to toggle recording from any app without opening the window." />
             </CardTitle>
             <ShortcutGuide platform={platform} />
           </CardHeader>
@@ -50,7 +64,8 @@ export function SettingsView({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <SlidersHorizontal className="size-4" /> Preferences <InfoTip text="Control clipboard behavior, history storage, and system integrations." />
+              <SlidersHorizontal className="size-4" /> Preferences{" "}
+              <InfoTip text="Control clipboard behavior, history storage, and system integrations." />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -145,18 +160,49 @@ export function SettingsView({
               <TriangleAlert className="size-4" /> Danger Zone
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ConfirmDialog
-              trigger={
-                <Button variant="destructive" size="sm">
-                  Reset & Run Setup
-                </Button>
-              }
-              title="Reset and run setup?"
-              description="This resets all settings to defaults and re-runs the setup wizard. Your API key will be kept."
-              confirmLabel="Reset"
-              onConfirm={onRunSetup}
-            />
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Reset & run setup</p>
+                <p className="text-xs text-muted-foreground">
+                  Resets settings to defaults and re-runs the wizard. API key is
+                  kept.
+                </p>
+              </div>
+              <ConfirmDialog
+                trigger={
+                  <Button variant="destructive" size="sm">
+                    Reset
+                  </Button>
+                }
+                title="Reset and run setup?"
+                description="This resets all settings to defaults and re-runs the setup wizard. Your API key will be kept."
+                confirmLabel="Reset"
+                onConfirm={onRunSetup}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Delete all data</p>
+                <p className="text-xs text-muted-foreground">
+                  Erases history, settings, API keys, and profiles. Cannot be
+                  undone.
+                </p>
+              </div>
+              <ConfirmDialog
+                trigger={
+                  <Button variant="destructive" size="sm">
+                    Delete All
+                  </Button>
+                }
+                title="Delete all data?"
+                description="This permanently erases your history, settings, API keys, and all custom profiles. The app will restart as if freshly installed. This cannot be undone."
+                confirmLabel="Delete Everything"
+                variant="destructive"
+                onConfirm={deleteAllData}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -164,9 +210,7 @@ export function SettingsView({
   );
 }
 
-function ShortcutGuide({
-  platform,
-}: { platform: platform.Info | null }) {
+function ShortcutGuide({ platform }: { platform: platform.Info | null }) {
   if (!platform) return null;
 
   const command = (
@@ -176,13 +220,16 @@ function ShortcutGuide({
   );
 
   if (platform.os === "darwin" || platform.os === "windows") {
-    return <CardDescription>Global shortcut support coming soon.</CardDescription>;
+    return (
+      <CardDescription>Global shortcut support coming soon.</CardDescription>
+    );
   }
 
   const de = platform.desktop?.toUpperCase() || "";
-  const path = de.includes("KDE") || de.includes("PLASMA")
-    ? "System Settings → Shortcuts → Custom Shortcuts"
-    : "Settings → Keyboard → Custom Shortcuts";
+  const path =
+    de.includes("KDE") || de.includes("PLASMA")
+      ? "System Settings → Shortcuts → Custom Shortcuts"
+      : "Settings → Keyboard → Custom Shortcuts";
 
   return (
     <CardDescription>

@@ -477,7 +477,7 @@ export function AiView({
                     <Icon className="size-4" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle className="text-sm flex items-center gap-1.5">
+                    <CardTitle className="flex items-center gap-2 text-sm">
                       {profile.name}
                       {profileModelBroken && (
                         <AlertTriangle className="size-3 text-amber-500" />
@@ -797,7 +797,7 @@ export function AiView({
         {/* Test */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-1.5">
+            <CardTitle className="flex items-center gap-2 text-sm">
               Test Playground{" "}
               <InfoTip text="Paste sample text to preview how the active style transforms it, without recording audio." />
             </CardTitle>
