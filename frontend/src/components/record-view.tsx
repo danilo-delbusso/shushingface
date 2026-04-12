@@ -1,10 +1,11 @@
-import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp, Check, Globe } from "lucide-react";
 import { useState } from "react";
 import { Popover } from "radix-ui";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getProfileIcon } from "@/lib/icons";
+import { whisperLanguages, getLanguage } from "@/lib/languages";
 import type { desktop, config } from "../../wailsjs/go/models";
 
 interface RecordViewProps {
@@ -14,9 +15,11 @@ interface RecordViewProps {
   results: desktop.ProcessResult[];
   profiles: config.RefinementProfile[];
   activeProfile: config.RefinementProfile | null;
+  language: string;
   onToggle: () => void;
   onGoToSettings: () => void;
   onSwitchProfile: (id: string) => void;
+  onSwitchLanguage: (code: string) => void;
 }
 
 export function RecordView({
@@ -26,9 +29,11 @@ export function RecordView({
   results,
   profiles,
   activeProfile,
+  language,
   onToggle,
   onGoToSettings,
   onSwitchProfile,
+  onSwitchLanguage,
 }: RecordViewProps) {
   if (!configured) {
     return (
@@ -53,13 +58,19 @@ export function RecordView({
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Mic section */}
       <div className={`flex flex-col items-center gap-3 py-6 shrink-0 ${hasResults ? "" : "flex-1 justify-center"}`}>
-        {activeProfile && ProfileIcon && (
-          <ProfileSwitcher
-            profiles={profiles}
-            activeProfile={activeProfile}
-            onSwitch={onSwitchProfile}
+        <div className="flex items-center gap-2">
+          {activeProfile && ProfileIcon && (
+            <ProfileSwitcher
+              profiles={profiles}
+              activeProfile={activeProfile}
+              onSwitch={onSwitchProfile}
+            />
+          )}
+          <LanguageSwitcher
+            language={language}
+            onSwitch={onSwitchLanguage}
           />
-        )}
+        </div>
         <button
           type="button"
           onClick={onToggle}
@@ -152,6 +163,71 @@ function ProfileSwitcher({
               >
                 <Icon className="size-3.5 shrink-0" />
                 <span className="flex-1 text-left">{p.name}</span>
+                {isActive && <Check className="size-3 shrink-0 opacity-50" />}
+              </button>
+            );
+          })}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function LanguageSwitcher({
+  language,
+  onSwitch,
+}: {
+  language: string;
+  onSwitch: (code: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = getLanguage(language);
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+        >
+          {current ? (
+            <span>{current.flag}</span>
+          ) : (
+            <Globe className="size-3 shrink-0" />
+          )}
+          {current?.name ?? "Auto"}
+          <ChevronDown className="size-3 opacity-50" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          sideOffset={4}
+          className="z-50 max-h-60 w-48 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+        >
+          <button
+            type="button"
+            onClick={() => { onSwitch(""); setOpen(false); }}
+            className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
+              !language ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
+            }`}
+          >
+            <Globe className="size-3.5 shrink-0" />
+            <span className="flex-1 text-left">Auto-detect</span>
+            {!language && <Check className="size-3 shrink-0 opacity-50" />}
+          </button>
+          {whisperLanguages.map((lang) => {
+            const isActive = lang.code === language;
+            return (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => { onSwitch(lang.code); setOpen(false); }}
+                className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
+                  isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                <span className="shrink-0">{lang.flag}</span>
+                <span className="flex-1 text-left">{lang.name}</span>
                 {isActive && <Check className="size-3 shrink-0 opacity-50" />}
               </button>
             );
