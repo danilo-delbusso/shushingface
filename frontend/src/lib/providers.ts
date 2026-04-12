@@ -1,4 +1,5 @@
 import groqIcon from "@/assets/provider-icons/groq.svg";
+import openaiIcon from "@/assets/provider-icons/openai.svg";
 import openaiCompatIcon from "@/assets/provider-icons/openai-compatible.svg";
 
 export interface ProviderPreset {
@@ -22,10 +23,19 @@ export const providerPresets: Record<string, ProviderPreset> = {
     keyUrl: "https://console.groq.com/keys",
     keyUrlLabel: "Get a free key",
   },
+  openai: {
+    name: "OpenAI",
+    description:
+      "GPT models, Whisper, and DALL-E. Requires a paid API key.",
+    icon: openaiIcon,
+    keyPlaceholder: "sk-...",
+    keyUrl: "https://platform.openai.com/api-keys",
+    keyUrlLabel: "Get an API key",
+  },
   "openai-compatible": {
     name: "OpenAI-Compatible",
     description:
-      "Any service with an OpenAI-compatible API — OpenAI, Ollama, LM Studio, vLLM, Together, Fireworks, and more.",
+      "Any service with an OpenAI-compatible API — Ollama, LM Studio, vLLM, Together, Fireworks, and more.",
     icon: openaiCompatIcon,
     keyPlaceholder: "sk-... (optional for local)",
     keyUrl: "",

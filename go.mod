@@ -3,7 +3,6 @@ module codeberg.org/dbus/shushingface
 go 1.26.1
 
 require (
-	github.com/conneroisu/groq-go v0.9.5
 	github.com/gen2brain/malgo v0.11.24
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.1.0
@@ -15,7 +14,6 @@ require (
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect

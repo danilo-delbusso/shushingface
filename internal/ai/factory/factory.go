@@ -11,6 +11,7 @@ import (
 
 	// Register providers — each init() calls ai.RegisterProvider.
 	_ "codeberg.org/dbus/shushingface/internal/ai/groq"
+	_ "codeberg.org/dbus/shushingface/internal/ai/openai"
 	_ "codeberg.org/dbus/shushingface/internal/ai/openaicompat"
 )
 
