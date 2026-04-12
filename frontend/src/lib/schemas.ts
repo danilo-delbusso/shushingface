@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { providerPresets } from "@/lib/providers";
 
-// ──────────────────────────────────────────────────
-// Connection
-// ──────────────────────────────────────────────────
-
 export const connectionSchema = z
   .object({
     name: z.string().min(1, "Name is required"),
@@ -33,10 +29,6 @@ export const connectionSchema = z
 
 export type ConnectionFormData = z.infer<typeof connectionSchema>;
 
-// ──────────────────────────────────────────────────
-// Models (global defaults)
-// ──────────────────────────────────────────────────
-
 export const modelsSchema = z.object({
   transcriptionConnectionId: z.string().min(1, "Select a connection"),
   transcriptionModel: z.string(),
@@ -47,20 +39,12 @@ export const modelsSchema = z.object({
 
 export type ModelsFormData = z.infer<typeof modelsSchema>;
 
-// ──────────────────────────────────────────────────
-// Global rules
-// ──────────────────────────────────────────────────
-
 export const globalRulesSchema = z.object({
   globalRules: z.string(),
   builtInRules: z.string(),
 });
 
 export type GlobalRulesFormData = z.infer<typeof globalRulesSchema>;
-
-// ──────────────────────────────────────────────────
-// Refinement profile
-// ──────────────────────────────────────────────────
 
 export const fewShotExampleSchema = z.object({
   input: z.string(),
@@ -78,10 +62,6 @@ export const profileSchema = z.object({
 });
 
 export type ProfileFormData = z.infer<typeof profileSchema>;
-
-// ──────────────────────────────────────────────────
-// Wizard step 1
-// ──────────────────────────────────────────────────
 
 export const wizardConnectionSchema = z
   .object({
