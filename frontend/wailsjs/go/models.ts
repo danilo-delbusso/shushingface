@@ -134,6 +134,7 @@ export namespace config {
 	    enableHistory: boolean;
 	    enableIndicator: boolean;
 	    enableNotifications: boolean;
+	    checkForUpdates: boolean;
 	    inputDeviceId?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -160,6 +161,7 @@ export namespace config {
 	        this.enableHistory = source["enableHistory"];
 	        this.enableIndicator = source["enableIndicator"];
 	        this.enableNotifications = source["enableNotifications"];
+	        this.checkForUpdates = source["checkForUpdates"];
 	        this.inputDeviceId = source["inputDeviceId"];
 	    }
 	

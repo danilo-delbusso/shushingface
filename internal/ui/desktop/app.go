@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -18,6 +19,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/osutil"
 	"codeberg.org/dbus/shushingface/internal/paste"
 	"codeberg.org/dbus/shushingface/internal/platform"
+	"codeberg.org/dbus/shushingface/internal/update"
 	"codeberg.org/dbus/shushingface/internal/version"
 )
 
@@ -53,6 +55,25 @@ func (a *App) Startup(ctx context.Context) {
 		slog.Warn("failed to start IPC listener", "error", err)
 	} else {
 		a.cleanIPC = cleanup
+	}
+
+	// Check for updates in background
+	if a.cfg.CheckForUpdates {
+		go func() {
+			time.Sleep(5 * time.Second)
+			rel, err := update.Check(ctx, version.Version())
+			if err != nil {
+				slog.Debug("update check failed", "error", err)
+				return
+			}
+			if rel != nil {
+				slog.Info("update available", "version", rel.TagName)
+				wailsRuntime.EventsEmit(ctx, "update-available", map[string]string{
+					"version": rel.TagName,
+					"url":     rel.HTMLURL,
+				})
+			}
+		}()
 	}
 }
 

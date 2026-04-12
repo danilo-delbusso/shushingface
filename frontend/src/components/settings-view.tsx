@@ -148,6 +148,20 @@ export function SettingsView({
                 onCheckedChange={(v) => toggle({ enableNotifications: v })}
               />
             </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="update-toggle">Check for updates</Label>
+                <p className="text-xs text-muted-foreground">
+                  Check for new versions on startup
+                </p>
+              </div>
+              <Switch
+                id="update-toggle"
+                checked={settings.checkForUpdates}
+                onCheckedChange={(v) => toggle({ checkForUpdates: v })}
+              />
+            </div>
           </CardContent>
         </Card>
 

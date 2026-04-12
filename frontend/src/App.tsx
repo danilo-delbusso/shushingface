@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { EventsOn, BrowserOpenURL } from "../wailsjs/runtime/runtime";
+import { toast } from "sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -39,6 +41,16 @@ function App() {
 
   useEffect(() => {
     AppBridge.GetVersion().then(setAppVersion);
+    const cleanup = EventsOn("update-available", (data: { version: string; url: string }) => {
+      toast.info(`Version ${data.version} is available`, {
+        duration: 15000,
+        action: {
+          label: "Download",
+          onClick: () => BrowserOpenURL(data.url),
+        },
+      });
+    });
+    return cleanup;
   }, []);
 
   const { isRecording, isProcessing, results, toggle } = useRecording(

@@ -71,6 +71,7 @@ type Settings struct {
 	EnableHistory       bool `json:"enableHistory"`
 	EnableIndicator     bool `json:"enableIndicator"`
 	EnableNotifications bool `json:"enableNotifications"`
+	CheckForUpdates     bool `json:"checkForUpdates"`
 
 	// Audio
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
@@ -232,6 +233,7 @@ func DefaultSettings() *Settings {
 		EnableHistory:      true,
 		EnableIndicator:    true,
 		EnableNotifications: false,
+		CheckForUpdates:     true,
 	}
 }
 
