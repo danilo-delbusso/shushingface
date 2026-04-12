@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"codeberg.org/dbus/shushingface/internal/ai"
@@ -12,24 +13,67 @@ import (
 	_ "codeberg.org/dbus/shushingface/internal/ai/groq"
 )
 
-// NewFromConfig builds a Processor using the provider registry.
-func NewFromConfig(cfg *config.Settings) (ai.Processor, error) {
-	provider, err := ai.GetProvider(cfg.ProviderID)
+// ProcessorPair holds the default transcriber and refiner built from config.
+type ProcessorPair struct {
+	Transcriber ai.Transcriber
+	Refiner     ai.Refiner
+}
+
+// NewFromConfig builds a Transcriber and Refiner from the settings.
+func NewFromConfig(cfg *config.Settings) (*ProcessorPair, error) {
+	transcriber, err := BuildTranscriber(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("transcription: %w", err)
+	}
+
+	refiner, err := BuildRefiner(cfg, "", "")
+	if err != nil {
+		return nil, fmt.Errorf("refinement: %w", err)
+	}
+
+	return &ProcessorPair{Transcriber: transcriber, Refiner: refiner}, nil
+}
+
+// BuildTranscriber creates a Transcriber from the default transcription connection.
+func BuildTranscriber(cfg *config.Settings) (ai.Transcriber, error) {
+	conn := cfg.GetConnection(cfg.TranscriptionConnectionID)
+	if conn == nil {
+		return &PlaceholderProcessor{Reason: "No transcription connection configured. Set one up in Connections."}, nil
+	}
+	return buildProcessor(conn, cfg.TranscriptionModel, "")
+}
+
+// BuildRefiner creates a Refiner from a connection+model.
+// If connectionID or model are empty, the global defaults from cfg are used.
+func BuildRefiner(cfg *config.Settings, connectionID, model string) (ai.Refiner, error) {
+	connID := connectionID
+	if connID == "" {
+		connID = cfg.EffectiveRefinementConnectionID()
+	}
+	conn := cfg.GetConnection(connID)
+	if conn == nil {
+		return &PlaceholderProcessor{Reason: "No refinement connection configured. Set one up in Connections."}, nil
+	}
+	m := model
+	if m == "" {
+		m = cfg.EffectiveRefinementModel()
+	}
+	return buildProcessor(conn, "", m)
+}
+
+func buildProcessor(conn *config.Connection, transcriptionModel, refinementModel string) (ai.Processor, error) {
+	provider, err := ai.GetProvider(conn.ProviderID)
 	if err != nil {
 		return nil, err
 	}
-
-	apiKey := resolveAPIKey(cfg.ProviderAPIKey, envKeyForProvider(cfg.ProviderID))
+	apiKey := resolveAPIKey(conn.APIKey, envKeyForProvider(conn.ProviderID))
 	if apiKey == "" {
-		return &PlaceholderProcessor{Reason: "API key is missing. Please configure it in Settings."}, nil
+		return &PlaceholderProcessor{Reason: fmt.Sprintf("API key missing for connection %q.", conn.Name)}, nil
 	}
-
-	refinementModel := cfg.EffectiveRefinementModel()
-
-	return provider.NewProcessor(apiKey, cfg.ProviderBaseURL, cfg.TranscriptionModel, refinementModel)
+	return provider.NewProcessor(apiKey, conn.BaseURL, transcriptionModel, refinementModel)
 }
 
-// PlaceholderProcessor is used when a provider is not yet fully configured.
+// PlaceholderProcessor is used when a connection is not yet configured.
 type PlaceholderProcessor struct {
 	Reason string
 }
@@ -46,7 +90,10 @@ func resolveAPIKey(configuredKey, envVar string) string {
 	if configuredKey != "" {
 		return configuredKey
 	}
-	return os.Getenv(envVar)
+	if envVar != "" {
+		return os.Getenv(envVar)
+	}
+	return ""
 }
 
 func envKeyForProvider(providerID string) string {

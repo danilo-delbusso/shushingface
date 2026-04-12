@@ -11,9 +11,7 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 
 	if p := a.cfg.ActiveProfile(); p != nil {
 		opts.SystemPrompt = p.Prompt
-		// Built-in rules (user-editable via advanced settings)
 		opts.SystemPrompt += "\n\nRules:\n" + a.cfg.GetBuiltInRules()
-		// User global rules
 		if a.cfg.GlobalRules != "" {
 			opts.SystemPrompt += "\n\nUser rules (always apply):\n" + a.cfg.GlobalRules
 		}
@@ -22,7 +20,6 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 			Temperature: p.Temperature,
 			TopP:        p.TopP,
 		}
-		// Static few-shot examples from the profile.
 		for _, ex := range p.Examples {
 			opts.Examples = append(opts.Examples, ai.FewShotPair{
 				Input:  ex.Input,
@@ -31,13 +28,10 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 		}
 	}
 
-	// Inject active app context when available.
 	if activeApp != "" {
 		opts.Context = activeApp
 	}
 
-	// Append recent history as dynamic few-shot examples so the model
-	// calibrates to the user's personal style over time.
 	if a.history != nil {
 		if records, err := a.history.GetHistory(2, 0); err == nil {
 			for _, r := range records {
@@ -55,14 +49,14 @@ func (a *App) buildRefineOptions(activeApp string) ai.RefineOptions {
 }
 
 func (a *App) TestPrompt(sampleText, systemPrompt string) ProcessResult {
-	proc := a.engine.GetProcessor()
+	refiner := a.engine.GetRefiner()
 	prompt := systemPrompt
 	prompt += "\n\nRules:\n" + a.cfg.GetBuiltInRules()
 	if a.cfg.GlobalRules != "" {
 		prompt += "\n\nUser rules (always apply):\n" + a.cfg.GlobalRules
 	}
 	opts := ai.RefineOptions{SystemPrompt: prompt}
-	refined, err := proc.Refine(a.ctx, sampleText, opts)
+	refined, err := refiner.Refine(a.ctx, sampleText, opts)
 	if err != nil {
 		return ProcessResult{Error: err.Error()}
 	}

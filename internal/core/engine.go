@@ -10,36 +10,46 @@ import (
 )
 
 type Engine struct {
-	mu        sync.RWMutex
-	recorder  audio.Recorder
-	processor ai.Processor
+	mu          sync.RWMutex
+	recorder    audio.Recorder
+	transcriber ai.Transcriber
+	refiner     ai.Refiner
 }
 
-func NewEngine(recorder audio.Recorder, processor ai.Processor) *Engine {
+func NewEngine(recorder audio.Recorder, transcriber ai.Transcriber, refiner ai.Refiner) *Engine {
 	return &Engine{
-		recorder:  recorder,
-		processor: processor,
+		recorder:    recorder,
+		transcriber: transcriber,
+		refiner:     refiner,
 	}
 }
 
-func (e *Engine) SetProcessor(processor ai.Processor) {
+func (e *Engine) SetTranscriber(t ai.Transcriber) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.processor = processor
+	e.transcriber = t
 }
 
-func (e *Engine) GetProcessor() ai.Processor {
+func (e *Engine) SetRefiner(r ai.Refiner) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.refiner = r
+}
+
+func (e *Engine) GetRefiner() ai.Refiner {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.processor
+	return e.refiner
 }
 
 func (e *Engine) StartRecording() error {
 	return e.recorder.Start()
 }
 
-// StopAndProcess stops recording, transcribes, and refines with the given options.
-func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions) (transcript string, refined string, err error) {
+// StopAndProcess stops recording, transcribes, and refines.
+// If refinerOverride is non-nil it is used instead of the default refiner
+// (for per-profile connection overrides).
+func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions, refinerOverride ai.Refiner) (transcript string, refined string, err error) {
 	samples, err := e.recorder.Stop()
 	if err != nil {
 		return "", "", err
@@ -51,10 +61,15 @@ func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions) (tra
 	}
 
 	e.mu.RLock()
-	proc := e.processor
+	t := e.transcriber
+	r := e.refiner
 	e.mu.RUnlock()
 
-	transcript, err = proc.Transcribe(ctx, wavData)
+	if refinerOverride != nil {
+		r = refinerOverride
+	}
+
+	transcript, err = t.Transcribe(ctx, wavData)
 	if err != nil {
 		return "", "", err
 	}
@@ -63,7 +78,7 @@ func (e *Engine) StopAndProcess(ctx context.Context, opts ai.RefineOptions) (tra
 		return "", "", nil
 	}
 
-	refined, err = proc.Refine(ctx, transcript, opts)
+	refined, err = r.Refine(ctx, transcript, opts)
 	if err != nil {
 		return transcript, "", err
 	}

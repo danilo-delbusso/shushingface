@@ -88,7 +88,18 @@ func (a *App) StopAndProcess() ProcessResult {
 	opts := a.buildRefineOptions(activeApp)
 	slog.Info("using refinement profile", "id", opts.SystemPrompt[:min(30, len(opts.SystemPrompt))], "examples", len(opts.Examples))
 
-	transcript, refined, err := a.engine.StopAndProcess(a.ctx, opts)
+	// Build per-profile refiner override if the profile specifies a different connection/model.
+	var refinerOverride ai.Refiner
+	if p := a.cfg.ActiveProfile(); p != nil && (p.ConnectionID != "" || p.Model != "") {
+		r, err := factory.BuildRefiner(a.cfg, p.ConnectionID, p.Model)
+		if err != nil {
+			slog.Warn("failed to build profile refiner, using default", "error", err)
+		} else {
+			refinerOverride = r
+		}
+	}
+
+	transcript, refined, err := a.engine.StopAndProcess(a.ctx, opts, refinerOverride)
 	if a.cfg.EnableNotifications {
 		notify.RecordingDone()
 	}
@@ -104,7 +115,6 @@ func (a *App) StopAndProcess() ProcessResult {
 		}
 	}
 
-	// Auto-paste refined text into focused app (no clipboard pollution)
 	if a.cfg.AutoPaste && refined != "" {
 		if err := paste.Type(refined); err != nil {
 			slog.Warn("auto-paste failed", "error", err)
@@ -121,16 +131,17 @@ func (a *App) GetPlatform() platform.Info {
 func (a *App) GetSettings() *config.Settings { return a.cfg }
 
 func (a *App) SaveSettings(newSettings config.Settings) error {
-	newProcessor, err := factory.NewFromConfig(&newSettings)
+	pair, err := factory.NewFromConfig(&newSettings)
 	if err != nil {
-		return fmt.Errorf("failed to reload AI processor: %w", err)
+		return fmt.Errorf("failed to reload AI processors: %w", err)
 	}
 
 	if err := config.Save(&newSettings); err != nil {
 		return err
 	}
 
-	a.engine.SetProcessor(newProcessor)
+	a.engine.SetTranscriber(pair.Transcriber)
+	a.engine.SetRefiner(pair.Refiner)
 
 	if newSettings.EnableIndicator && !a.cfg.EnableIndicator {
 		indicator.Start(func() { wailsRuntime.WindowShow(a.ctx) })
@@ -155,8 +166,7 @@ func (a *App) GetPasteStatus() PasteStatus {
 }
 
 func (a *App) GetDefaultProfiles() []config.RefinementProfile {
-	defaults := config.DefaultSettings()
-	return defaults.RefinementProfiles
+	return config.DefaultProfiles()
 }
 
 func (a *App) GetDefaultSettings() *config.Settings {
@@ -167,15 +177,20 @@ func (a *App) ListProviders() []ai.ProviderInfo {
 	return ai.ListProviders()
 }
 
-func (a *App) ListModels() ([]ai.ModelInfo, error) {
-	provider, err := ai.GetProvider(a.cfg.ProviderID)
+// ListModelsForConnection fetches available models for a specific connection.
+func (a *App) ListModelsForConnection(connectionID string) ([]ai.ModelInfo, error) {
+	conn := a.cfg.GetConnection(connectionID)
+	if conn == nil {
+		return nil, fmt.Errorf("connection not found: %s", connectionID)
+	}
+	provider, err := ai.GetProvider(conn.ProviderID)
 	if err != nil {
 		return nil, err
 	}
-	if a.cfg.ProviderAPIKey == "" {
-		return nil, fmt.Errorf("API key not configured")
+	if conn.APIKey == "" {
+		return nil, fmt.Errorf("API key not configured for %s", conn.Name)
 	}
-	return provider.ListModels(a.ctx, a.cfg.ProviderAPIKey, a.cfg.ProviderBaseURL)
+	return provider.ListModels(a.ctx, conn.APIKey, conn.BaseURL)
 }
 
 func (a *App) GetDefaultBuiltInRules() string {
@@ -208,11 +223,12 @@ func (a *App) DeleteAllData() error {
 		return fmt.Errorf("failed to reset config: %w", err)
 	}
 
-	newProcessor, err := factory.NewFromConfig(defaults)
+	pair, err := factory.NewFromConfig(defaults)
 	if err != nil {
-		return fmt.Errorf("failed to reload AI processor: %w", err)
+		return fmt.Errorf("failed to reload AI processors: %w", err)
 	}
-	a.engine.SetProcessor(newProcessor)
+	a.engine.SetTranscriber(pair.Transcriber)
+	a.engine.SetRefiner(pair.Refiner)
 	*a.cfg = *defaults
 	return nil
 }

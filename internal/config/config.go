@@ -12,31 +12,41 @@ import (
 // Types
 // ──────────────────────────────────────────────────
 
+// Connection represents a named AI provider configuration.
+type Connection struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	ProviderID string `json:"providerId"`
+	APIKey     string `json:"apiKey"`
+	BaseURL    string `json:"baseUrl,omitempty"`
+}
+
 type FewShotExample struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
 }
 
 type RefinementProfile struct {
-	ID          string           `json:"id"`
-	Name        string           `json:"name"`
-	Icon        string           `json:"icon"`   // lucide icon name
-	Model       string           `json:"model"`  // override; empty = use global RefinementModel
-	Prompt      string           `json:"prompt"`
-	Examples    []FewShotExample `json:"examples,omitempty"`
-	Temperature float32          `json:"temperature,omitempty"`
-	TopP        float32          `json:"topP,omitempty"`
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	Icon         string           `json:"icon"`                    // lucide icon name
+	ConnectionID string           `json:"connectionId,omitempty"`  // override; empty = use global
+	Model        string           `json:"model"`                   // override; empty = use global RefinementModel
+	Prompt       string           `json:"prompt"`
+	Examples     []FewShotExample `json:"examples,omitempty"`
+	Temperature  float32          `json:"temperature,omitempty"`
+	TopP         float32          `json:"topP,omitempty"`
 }
 
 type Settings struct {
-	// Provider — one active AI service
-	ProviderID      string `json:"providerId"`
-	ProviderAPIKey  string `json:"providerApiKey"`
-	ProviderBaseURL string `json:"providerBaseUrl,omitempty"`
+	// Connections — multiple named AI service configurations
+	Connections []Connection `json:"connections"`
 
-	// Models
-	TranscriptionModel string `json:"transcriptionModel"`
-	RefinementModel    string `json:"refinementModel"`
+	// Default assignments — connection ID + model for each function
+	TranscriptionConnectionID string `json:"transcriptionConnectionId"`
+	TranscriptionModel        string `json:"transcriptionModel"`
+	RefinementConnectionID    string `json:"refinementConnectionId"`
+	RefinementModel           string `json:"refinementModel"`
 
 	// Refinement profiles
 	RefinementProfiles []RefinementProfile `json:"refinementProfiles"`
@@ -61,16 +71,33 @@ type Settings struct {
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
 
 	// Legacy fields — kept only for migration, cleared on load
-	LegacyProviders               map[string]legacyProviderConfig `json:"providers,omitempty"`
-	LegacyTranscriptionProviderID string                          `json:"transcriptionProviderId,omitempty"`
-	LegacyRefinementProviderID    string                          `json:"refinementProviderId,omitempty"`
-	LegacySystemPrompt            string                          `json:"systemPrompt,omitempty"`
+	LegacyProviderID      string                          `json:"providerId,omitempty"`
+	LegacyProviderAPIKey  string                          `json:"providerApiKey,omitempty"`
+	LegacyProviderBaseURL string                          `json:"providerBaseUrl,omitempty"`
+	LegacyProviders       map[string]legacyProviderConfig `json:"providers,omitempty"`
+	LegacyTransProviderID string                          `json:"transcriptionProviderId,omitempty"`
+	LegacyRefProviderID   string                          `json:"refinementProviderId,omitempty"`
+	LegacySystemPrompt    string                          `json:"systemPrompt,omitempty"`
 }
 
 type legacyProviderConfig struct {
 	Name    string `json:"name"`
 	APIKey  string `json:"apiKey"`
 	BaseURL string `json:"baseUrl"`
+}
+
+// ──────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────
+
+// GetConnection returns the connection with the given ID, or nil.
+func (s *Settings) GetConnection(id string) *Connection {
+	for i := range s.Connections {
+		if s.Connections[i].ID == id {
+			return &s.Connections[i]
+		}
+	}
+	return nil
 }
 
 // ActiveProfile returns the currently active refinement profile.
@@ -84,6 +111,15 @@ func (s *Settings) ActiveProfile() *RefinementProfile {
 		return &s.RefinementProfiles[0]
 	}
 	return nil
+}
+
+// EffectiveRefinementConnectionID returns the connection to use for refinement,
+// checking the active profile override first, then the global default.
+func (s *Settings) EffectiveRefinementConnectionID() string {
+	if p := s.ActiveProfile(); p != nil && p.ConnectionID != "" {
+		return p.ConnectionID
+	}
+	return s.RefinementConnectionID
 }
 
 // EffectiveRefinementModel returns the model to use for refinement,
@@ -126,7 +162,6 @@ const DefaultRefinementModel = "meta-llama/llama-4-scout-17b-16e-instruct"
 const DefaultTranscriptionModel = "whisper-large-v3"
 
 // DefaultProfiles returns the 3 preset refinement profiles.
-// The model field is left empty so the global RefinementModel is used.
 func DefaultProfiles() []RefinementProfile {
 	return []RefinementProfile{
 		{
@@ -191,10 +226,9 @@ func DefaultProfiles() []RefinementProfile {
 	}
 }
 
-// DefaultSettings returns a sensible baseline configuration.
+// DefaultSettings returns a sensible baseline configuration (no connections).
 func DefaultSettings() *Settings {
 	return &Settings{
-		ProviderID:         "groq",
 		TranscriptionModel: DefaultTranscriptionModel,
 		RefinementModel:    DefaultRefinementModel,
 		RefinementProfiles: DefaultProfiles(),
@@ -212,6 +246,15 @@ func DefaultSettings() *Settings {
 // ──────────────────────────────────────────────────
 // Load / Save / Migration
 // ──────────────────────────────────────────────────
+
+func providerDisplayName(id string) string {
+	switch id {
+	case "groq":
+		return "Groq"
+	default:
+		return id
+	}
+}
 
 // Load reads the settings from the OS user config directory.
 func Load() (*Settings, error) {
@@ -247,23 +290,42 @@ func Load() (*Settings, error) {
 
 	migrated := false
 
-	// Migrate: old multi-provider map → single provider
-	if settings.ProviderID == "" && len(settings.LegacyProviders) > 0 {
-		provID := settings.LegacyTranscriptionProviderID
+	// Migrate: old multi-provider map → single provider fields (intermediate step)
+	if settings.LegacyProviderID == "" && len(settings.LegacyProviders) > 0 {
+		provID := settings.LegacyTransProviderID
 		if provID == "" {
-			provID = settings.LegacyRefinementProviderID
+			provID = settings.LegacyRefProviderID
 		}
 		if old, ok := settings.LegacyProviders[provID]; ok {
-			settings.ProviderID = old.Name // "groq"
-			if settings.ProviderID == "" {
-				settings.ProviderID = "groq"
+			settings.LegacyProviderID = old.Name
+			if settings.LegacyProviderID == "" {
+				settings.LegacyProviderID = "groq"
 			}
-			settings.ProviderAPIKey = old.APIKey
-			settings.ProviderBaseURL = old.BaseURL
+			settings.LegacyProviderAPIKey = old.APIKey
+			settings.LegacyProviderBaseURL = old.BaseURL
 		}
 		settings.LegacyProviders = nil
-		settings.LegacyTranscriptionProviderID = ""
-		settings.LegacyRefinementProviderID = ""
+		settings.LegacyTransProviderID = ""
+		settings.LegacyRefProviderID = ""
+		migrated = true
+	}
+
+	// Migrate: single provider → connections slice
+	if len(settings.Connections) == 0 && settings.LegacyProviderID != "" {
+		connID := "default"
+		provID := settings.LegacyProviderID
+		settings.Connections = []Connection{{
+			ID:         connID,
+			Name:       providerDisplayName(provID),
+			ProviderID: provID,
+			APIKey:     settings.LegacyProviderAPIKey,
+			BaseURL:    settings.LegacyProviderBaseURL,
+		}}
+		settings.TranscriptionConnectionID = connID
+		settings.RefinementConnectionID = connID
+		settings.LegacyProviderID = ""
+		settings.LegacyProviderAPIKey = ""
+		settings.LegacyProviderBaseURL = ""
 		migrated = true
 	}
 
@@ -285,7 +347,7 @@ func Load() (*Settings, error) {
 		migrated = true
 	}
 
-	// Migrate: ensure RefinementModel is set
+	// Ensure models are set
 	if settings.RefinementModel == "" {
 		if p := settings.ActiveProfile(); p != nil && p.Model != "" {
 			settings.RefinementModel = p.Model
@@ -294,16 +356,8 @@ func Load() (*Settings, error) {
 		}
 		migrated = true
 	}
-
-	// Migrate: ensure TranscriptionModel is set
 	if settings.TranscriptionModel == "" {
 		settings.TranscriptionModel = DefaultTranscriptionModel
-		migrated = true
-	}
-
-	// Migrate: ensure ProviderID is set for old configs that had no provider map
-	if settings.ProviderID == "" {
-		settings.ProviderID = "groq"
 		migrated = true
 	}
 

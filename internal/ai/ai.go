@@ -42,14 +42,23 @@ type RefineOptions struct {
 }
 
 // ──────────────────────────────────────────────────
-// Processor — runtime transcribe/refine contract
+// Transcriber / Refiner / Processor interfaces
 // ──────────────────────────────────────────────────
 
-// Processor defines the interface for an AI backend that can
-// transcribe audio and refine the resulting text.
-type Processor interface {
+// Transcriber can transcribe audio to text.
+type Transcriber interface {
 	Transcribe(ctx context.Context, wavData []byte) (transcript string, err error)
+}
+
+// Refiner can refine a transcript into polished text.
+type Refiner interface {
 	Refine(ctx context.Context, transcript string, opts RefineOptions) (refined string, err error)
+}
+
+// Processor combines both capabilities. Provider implementations satisfy this.
+type Processor interface {
+	Transcriber
+	Refiner
 }
 
 // ──────────────────────────────────────────────────

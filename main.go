@@ -75,13 +75,13 @@ func main() {
 	}
 	defer recorder.Close()
 
-	processor, err := factory.NewFromConfig(cfg)
+	pair, err := factory.NewFromConfig(cfg)
 	if err != nil {
 		slog.Error("failed to initialize AI factory", "error", err)
 		return
 	}
 
-	engine := core.NewEngine(recorder, processor)
+	engine := core.NewEngine(recorder, pair.Transcriber, pair.Refiner)
 	app := desktop.NewApp(engine, cfg, hist)
 
 	logPath, _ := config.GetLogPath()
