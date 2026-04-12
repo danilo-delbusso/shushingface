@@ -226,7 +226,7 @@ function ConnectionCard({
       apiKey: conn.apiKey,
       baseUrl: conn.baseUrl ?? "",
     });
-  }, [conn.id, conn.name, conn.providerId, conn.apiKey, conn.baseUrl, reset]);
+  }, [conn.name, conn.providerId, conn.apiKey, conn.baseUrl, reset]);
 
   const onSubmit = (data: ConnectionFormData) => {
     onSave(

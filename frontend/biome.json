@@ -37,6 +37,10 @@
           },
           "correctness": {
             "useExhaustiveDependencies": "off"
+          },
+          "suspicious": {
+            "noDocumentCookie": "off",
+            "noArrayIndexKey": "off"
           }
         }
       }

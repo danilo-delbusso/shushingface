@@ -843,7 +843,7 @@ function ProfileCard({
                     <Input
                       type="number" min={0} max={1} step={0.05}
                       value={field.value ?? 0.3}
-                      onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0 && v <= 1) field.onChange(v); }}
+                      onChange={(e) => { const v = parseFloat(e.target.value); if (!Number.isNaN(v) && v >= 0 && v <= 1) field.onChange(v); }}
                       className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
                     />
                   </div>
@@ -862,7 +862,7 @@ function ProfileCard({
                     <Input
                       type="number" min={0.1} max={1} step={0.05}
                       value={field.value ?? 0.9}
-                      onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0.1 && v <= 1) field.onChange(v); }}
+                      onChange={(e) => { const v = parseFloat(e.target.value); if (!Number.isNaN(v) && v >= 0.1 && v <= 1) field.onChange(v); }}
                       className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
                     />
                   </div>

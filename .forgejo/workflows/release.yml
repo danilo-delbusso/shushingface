@@ -33,36 +33,18 @@ jobs:
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Build
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          LDFLAGS="-X codeberg.org/dbus/shushingface/internal/version.version=$VERSION"
-          wails build -tags webkit2_41 -ldflags "$LDFLAGS"
-
-      - name: Package
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          mkdir -p dist
-          tar czf "dist/shushingface-${VERSION}-linux-amd64.tar.gz" \
-            -C build/bin shushingface \
-            -C ../../build/linux shushingface.desktop \
-            -C .. appicon.png
+      - name: Build and package
+        run: ./scripts/build-release.sh "${GITHUB_REF#refs/tags/}"
 
       - name: Generate changelog
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            echo "## Changes since $PREV_TAG" > CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            git log --pretty=format:"- %s" "${PREV_TAG}..HEAD" >> CHANGELOG.md
-          else
-            echo "## Initial Release" > CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            git log --pretty=format:"- %s" >> CHANGELOG.md
-          fi
+        run: ./scripts/generate-changelog.sh CHANGELOG.md
 
       - name: Create release
-        uses: https://github.com/softprops/action-gh-release@v2
+        uses: https://code.forgejo.org/actions/forgejo-release@v2
         with:
-          body_path: CHANGELOG.md
-          files: dist/*
+          direction: upload
+          url: https://codeberg.org
+          token: ${{ secrets.RELEASE_TOKEN }}
+          tag: ${{ github.ref_name }}
+          release-dir: dist
+          release-notes: CHANGELOG.md
