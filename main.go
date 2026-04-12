@@ -59,8 +59,8 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("failed to load config", "error", err)
-		return
+		slog.Warn("failed to load config, using defaults", "error", err)
+		cfg = config.DefaultSettings()
 	}
 
 	database, err := db.Open()

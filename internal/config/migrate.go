@@ -27,14 +27,16 @@ func migrateConfig(data map[string]any) (bool, error) {
 	v, _ := data["configVersion"].(float64)
 	current := int(v)
 
-	if current > currentConfigVersion {
-		return false, fmt.Errorf(
-			"config version %d is newer than this app supports (%d); please update shushingface",
-			current, currentConfigVersion,
-		)
-	}
-
-	if current == currentConfigVersion {
+	if current >= currentConfigVersion {
+		// Already at or beyond current version — nothing to do.
+		// During development, config versions may go backwards when
+		// migrations are collapsed. Accept it gracefully.
+		if current > currentConfigVersion {
+			slog.Warn("config version is newer than expected, accepting as-is",
+				"config", current, "app", currentConfigVersion)
+			data["configVersion"] = float64(currentConfigVersion)
+			return true, nil // save to downgrade the version number
+		}
 		return false, nil
 	}
 
