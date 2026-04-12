@@ -20,7 +20,6 @@ import {
   usePasteStatus,
   isConfigured,
 } from "@/lib/hooks";
-import * as AppBridge from "../wailsjs/go/desktop/App";
 import { config } from "../wailsjs/go/models";
 
 function App() {
@@ -124,20 +123,6 @@ function App() {
               pasteAvailable={pasteStatus?.available ?? true}
               pasteInstallCmd={pasteStatus?.installCmd ?? ""}
               onSave={saveSettings}
-              onRunSetup={async () => {
-                const defaults = await AppBridge.GetDefaultSettings();
-                // Keep existing connections but reset everything else
-                saveSettings(
-                  config.Settings.createFrom({
-                    ...defaults,
-                    connections: settings.connections,
-                    transcriptionConnectionId:
-                      settings.transcriptionConnectionId,
-                    refinementConnectionId: settings.refinementConnectionId,
-                    setupComplete: false,
-                  }),
-                );
-              }}
             />
           )}
         </SidebarInset>

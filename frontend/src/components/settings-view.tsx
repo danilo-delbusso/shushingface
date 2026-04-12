@@ -22,7 +22,6 @@ interface SettingsViewProps {
   pasteAvailable: boolean;
   pasteInstallCmd: string;
   onSave: (settings: config.Settings) => void;
-  onRunSetup: () => void;
 }
 
 export function SettingsView({
@@ -31,7 +30,6 @@ export function SettingsView({
   pasteAvailable,
   pasteInstallCmd,
   onSave,
-  onRunSetup,
 }: SettingsViewProps) {
   const toggle = (patch: Partial<config.Settings>) => {
     onSave({ ...settings, ...patch } as config.Settings);
@@ -162,27 +160,6 @@ export function SettingsView({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">Reset & run setup</p>
-                <p className="text-xs text-muted-foreground">
-                  Resets settings to defaults and re-runs the wizard. API key is
-                  kept.
-                </p>
-              </div>
-              <ConfirmDialog
-                trigger={
-                  <Button variant="destructive" size="sm">
-                    Reset
-                  </Button>
-                }
-                title="Reset and run setup?"
-                description="This resets all settings to defaults and re-runs the setup wizard. Your API key will be kept."
-                confirmLabel="Reset"
-                onConfirm={onRunSetup}
-              />
-            </div>
-            <Separator />
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">Delete all data</p>
