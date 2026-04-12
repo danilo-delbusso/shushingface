@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Play,
   Loader2,
@@ -161,6 +161,13 @@ export function AiView({
   const [activeId, setActiveId] = useState(settings.activeProfileId);
   const [globalRules, setGlobalRules] = useState(settings.globalRules ?? "");
   const [builtInRules, setBuiltInRules] = useState(settings.builtInRules ?? "");
+
+  // Show the effective built-in rules when the stored value is empty
+  useEffect(() => {
+    if (!settings.builtInRules) {
+      AppBridge.GetDefaultBuiltInRules().then(setBuiltInRules);
+    }
+  }, [settings.builtInRules]);
 
   const saveAll = (
     profiles?: typeof draftProfiles,
