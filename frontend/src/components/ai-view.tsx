@@ -143,6 +143,16 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     toast.success("Default styles restored");
   };
 
+  const restoreProfile = async (id: string) => {
+    const defaults = await AppBridge.GetDefaultProfiles();
+    const def = defaults.find((d) => d.id === id);
+    if (!def) return;
+    const updated = draftProfiles.map((p) => (p.id === id ? def : p));
+    setDraftProfiles(updated);
+    saveAll(updated);
+    toast.success(`"${def.name}" restored to default`);
+  };
+
   const placeholderText =
     "hey um so I was thinking we should probably move the meeting to thursday because like john cant make it on wednesday and I think it would be better if we all met together you know";
 
@@ -507,6 +517,19 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                     <Button size="sm" onClick={() => saveProfile(profile.id)}>
                       Save
                     </Button>
+                    {isPreset && (
+                      <ConfirmDialog
+                        trigger={
+                          <Button variant="outline" size="sm">
+                            <RotateCcw className="size-3.5" /> Restore Default
+                          </Button>
+                        }
+                        title={`Restore "${profile.name}" to default?`}
+                        description="This will reset the prompt, examples, and sampling parameters to their defaults."
+                        confirmLabel="Restore"
+                        onConfirm={() => restoreProfile(profile.id)}
+                      />
+                    )}
                     {!isPreset && (
                       <ConfirmDialog
                         trigger={
