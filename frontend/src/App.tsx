@@ -10,6 +10,7 @@ import { AiView } from "@/components/ai-view";
 import { AppearanceView } from "@/components/appearance-view";
 import { SettingsView } from "@/components/settings-view";
 import { WelcomeWizard } from "@/components/welcome-wizard";
+import { ErrorBoundary } from "@/components/error-boundary";
 import {
   useSettings,
   useHistory,
@@ -50,16 +51,19 @@ function App() {
   // Show wizard for first-time setup
   if (settings && !settings.setupComplete) {
     return (
-      <>
-        <WelcomeWizard settings={settings} onComplete={saveSettings} />
-        <Toaster position="bottom-right" richColors />
-      </>
+      <ErrorBoundary>
+        <TooltipProvider>
+          <WelcomeWizard settings={settings} onComplete={saveSettings} />
+          <Toaster position="bottom-right" richColors />
+        </TooltipProvider>
+      </ErrorBoundary>
     );
   }
 
   if (!settings) return null;
 
   return (
+    <ErrorBoundary>
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar
@@ -140,6 +144,7 @@ function App() {
       </SidebarProvider>
       <Toaster position="bottom-right" richColors />
     </TooltipProvider>
+    </ErrorBoundary>
   );
 }
 
