@@ -286,6 +286,19 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     saveAll(undefined, id);
   };
 
+  const applyDefaultsToAll = () => {
+    const updated = draftProfiles.map((p) =>
+      config.RefinementProfile.createFrom({
+        ...p,
+        connectionId: undefined,
+        model: "",
+      }),
+    );
+    setDraftProfiles(updated);
+    saveAll(updated);
+    toast.success("All styles now use global defaults");
+  };
+
   const restoreDefaultProfiles = async () => {
     const defaults = await AppBridge.GetDefaultProfiles();
     const defaultIds = new Set(defaults.map((d) => d.id));
@@ -480,6 +493,18 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
             <InfoTip text="Each style defines how your speech gets rewritten. Styles can override the connection and model." />
           </h3>
           <div className="flex items-center gap-1.5">
+            <ConfirmDialog
+              trigger={
+                <Button variant="ghost" size="sm">
+                  Apply Defaults to All
+                </Button>
+              }
+              title="Apply defaults to all styles?"
+              description="This clears connection and model overrides on every style so they all use the global defaults above."
+              confirmLabel="Apply"
+              variant="default"
+              onConfirm={applyDefaultsToAll}
+            />
             <ConfirmDialog
               trigger={
                 <Button variant="ghost" size="sm">
