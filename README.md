@@ -36,48 +36,33 @@ macOS support is planned.
 
 ## Install
 
-### From .deb (Pop!_OS / Ubuntu / Debian)
+### From a release artifact
 
-Download the latest `.deb` from [releases](https://codeberg.org/dbus/shushingface/releases):
+Download the latest build from [releases](https://codeberg.org/dbus/shushingface/releases):
 
-```bash
-sudo dpkg -i shushingface_*.deb
-```
-
-### From tarball
-
-```bash
-tar xzf shushingface-*.tar.gz
-sudo cp shushingface /usr/local/bin/
-```
+- **Pop!_OS / Ubuntu / Debian**: `sudo dpkg -i shushingface_*.deb`
+- **Other Linux**: extract `shushingface-*.tar.gz` and copy `shushingface` onto your `PATH`
+- **Windows**: run the NSIS installer
 
 ### From source
 
-Requires Go 1.26+, Bun, and the Wails CLI. On Linux also install `libwebkit2gtk-4.1-dev`.
-
-Linux / macOS:
-
 ```bash
-just install
+just doctor      # report missing dependencies
+just bootstrap   # install missing dependencies (use --yes to skip prompts)
+just dev         # run in dev mode
+just install     # build + install for the current user
 ```
 
-Windows (PowerShell with `just` on PATH):
+The same three commands work on Linux and Windows. `just install` puts
+the binary under `$HOME/.local/bin/` (`%USERPROFILE%\.local\bin\` on
+Windows). Override with `PREFIX=/path/to/wherever just install`.
 
-Install a mingw-w64 C compiler (CGO dependency — required by `malgo` audio and `modernc.org/sqlite`). The Microsoft/winget `LLVM.LLVM` package targets MSVC and is **not** compatible; use llvm-mingw instead:
+### Packaging (maintainers)
 
-```powershell
-winget install --id MartinStorsjo.LLVM-MinGW.UCRT
-```
+`just package` produces installable artifacts for the current OS:
 
-Then restart the shell so the new `PATH` is picked up. Alternatively, download the zip manually from <https://github.com/mstorsjo/llvm-mingw/releases> and add its `bin` directory to PATH.
-
-Then:
-
-```powershell
-just install-windows
-```
-
-The Windows target copies `shushingface.exe` into `%LOCALAPPDATA%\Programs\shushingface` and drops a Start Menu shortcut. Global hotkey registration is handled in-app from Settings → Shortcut.
+- Linux: `dist/shushingface-<version>-linux-amd64.tar.gz` and `dist/shushingface_<version>_amd64.deb`
+- Windows: NSIS installer in `dist/`
 
 ## Usage
 
