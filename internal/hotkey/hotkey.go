@@ -38,11 +38,34 @@ type Capabilities struct {
 	Reason        string `json:"reason,omitempty"`
 }
 
+// Mode describes how a hotkey delivers events.
+type Mode int
+
+const (
+	ModeToggle      Mode = iota // single press → one Trigger event
+	ModePushToTalk              // delivers Press on keydown and Release on keyup
+)
+
+// EventType describes which kind of hotkey event was delivered.
+type EventType int
+
+const (
+	Trigger EventType = iota
+	Press
+	Release
+)
+
+// Event is one occurrence of a registered hotkey.
+type Event struct {
+	Name string
+	Type EventType
+}
+
 // Manager registers global hotkeys and forwards events.
 type Manager interface {
-	Register(id string, spec Spec) error
+	Register(id string, spec Spec, mode Mode) error
 	Unregister(id string) error
-	Events() <-chan string
+	Events() <-chan Event
 	Close() error
 }
 
