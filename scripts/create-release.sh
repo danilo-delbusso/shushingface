@@ -16,7 +16,8 @@ if [ -f CHANGELOG.md ]; then
 fi
 
 IS_PRE="false"
-if echo "$TAG" | grep -q "rc\|alpha\|beta"; then
+# Treat as prerelease if tag is 0.x.x (pre-1.0) or contains rc/alpha/beta.
+if echo "$TAG" | grep -qE "^v0\.|rc|alpha|beta"; then
     IS_PRE="true"
 fi
 
