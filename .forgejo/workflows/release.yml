@@ -45,10 +45,12 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
       - name: Build and package
-        run: ./scripts/build-release.sh "${GITHUB_REF#refs/tags/}"
+        run: just package
+        env:
+          VERSION: ${{ github.ref_name }}
 
       - name: Generate changelog
-        run: ./scripts/generate-changelog.sh CHANGELOG.md
+        run: ./scripts/release/changelog.sh CHANGELOG.md
 
       - name: Create release
-        run: ./scripts/create-release.sh "${{ github.ref_name }}" "${{ secrets.GITHUB_TOKEN }}"
+        run: ./scripts/release/create-release.sh "${{ github.ref_name }}" "${{ secrets.GITHUB_TOKEN }}"

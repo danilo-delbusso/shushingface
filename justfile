@@ -119,14 +119,23 @@ uninstall:
 alias install-windows   := install
 alias uninstall-windows := uninstall
 
+# Produce installable artifact(s) for the current OS (tar.gz + .deb on Linux, NSIS on Windows)
+[unix]
+package:
+    @bash scripts/package/linux.sh
+
+[windows]
+package:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package/windows.ps1
+
 # Re-generates TypeScript bindings from Go structs
 bindings:
     wails generate module
 
 # Generate THIRD_PARTY_LICENSES.md from Go + frontend deps + assets
 licenses:
-    ./scripts/check-licenses.sh --update
+    ./scripts/release/licenses.sh --update
 
 # Verify THIRD_PARTY_LICENSES.md is up to date (for CI)
 licenses-check:
-    ./scripts/check-licenses.sh
+    ./scripts/release/licenses.sh

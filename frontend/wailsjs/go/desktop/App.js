@@ -14,6 +14,10 @@ export function DeleteAllData() {
   return window['go']['desktop']['App']['DeleteAllData']();
 }
 
+export function GetCapabilities() {
+  return window['go']['desktop']['App']['GetCapabilities']();
+}
+
 export function GetDefaultBuiltInRules() {
   return window['go']['desktop']['App']['GetDefaultBuiltInRules']();
 }
@@ -32,10 +36,6 @@ export function GetLogPath() {
 
 export function GetPasteStatus() {
   return window['go']['desktop']['App']['GetPasteStatus']();
-}
-
-export function GetCapabilities() {
-  return window['go']['desktop']['App']['GetCapabilities']();
 }
 
 export function GetPlatform() {
