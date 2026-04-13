@@ -5,6 +5,7 @@ package overlay
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"runtime"
 	"sync/atomic"
 	"syscall"
@@ -31,21 +32,26 @@ const (
 	wmTimer   = 0x0113
 	wmDestroy = 0x0002
 
-	overlayWidth  = 240
-	overlayHeight = 60
-	overlayMargin = 12 // distance above the bottom edge of the active window
+	overlayWidth   = 96
+	overlayHeight  = 22
+	overlayCorner  = 8  // window corner radius (rounded rectangle)
+	overlayMargin  = 12 // distance above the work-area bottom (taskbar)
 
 	swpNoActivate = 0x0010
 	swpShowWindow = 0x0040
 	hwndTopmost   = ^uintptr(0) // (HWND)-1
 
 	// Visual tuning.
-	numBars       = 9
-	barWidth      = 4
-	barGap        = 4
-	barRadius     = 2
-	barMinHeight  = 4 // px — idle bars never collapse to 0
-	barMaxHeight  = 36
+	numBars       = 7
+	barWidth      = 2
+	barGap        = 3
+	barRadius     = 1
+	barMinHeight  = 2 // px — idle bars never collapse to 0
+	barMaxHeight  = 14
+	levelGain     = 8  // amplification applied to RMS before mapping to bar height
+	smoothingStep = 0.25 // 0..1 — fraction of the gap between current and target heights closed each frame
+	idleAmplitude = 1.5  // px peak of the resting wave when the mic is silent
+	idleFreq      = 0.012 // rad / frame — slow gentle ripple
 	timerID       = 1
 	timerInterval = 33 // ms (~30 fps)
 )
@@ -69,12 +75,12 @@ var (
 	procSetTimer         = u.NewProc("SetTimer")
 	procKillTimer        = u.NewProc("KillTimer")
 
-	procCreateSolidBrush  = g.NewProc("CreateSolidBrush")
-	procCreateEllipticRgn = g.NewProc("CreateEllipticRgn")
-	procDeleteObject      = g.NewProc("DeleteObject")
-	procRoundRect         = g.NewProc("RoundRect")
-	procSelectObject      = g.NewProc("SelectObject")
-	procGetStockObject    = g.NewProc("GetStockObject")
+	procCreateSolidBrush   = g.NewProc("CreateSolidBrush")
+	procCreateRoundRectRgn = g.NewProc("CreateRoundRectRgn")
+	procDeleteObject       = g.NewProc("DeleteObject")
+	procRoundRect          = g.NewProc("RoundRect")
+	procSelectObject       = g.NewProc("SelectObject")
+	procGetStockObject     = g.NewProc("GetStockObject")
 )
 
 // Stock object indexes.
@@ -129,10 +135,12 @@ type command struct {
 
 const wmOverlayWake = win32.WMApp
 
-// activeBars holds the smoothed amplitude history that paintOverlay
-// reads. Accessed via atomics from the audio side and the paint side.
+// activeBars holds the moving target heights that paintOverlay reads.
+// Audio thread writes targets via push; paint thread does the visible
+// per-frame interpolation in paintOverlay using its own non-shared
+// state. Accessed via atomics so we don't lock in the audio callback.
 type barHistory struct {
-	bars [numBars]uint32 // each holds a float32 bits via atomic.StoreUint32
+	targets [numBars]uint32 // float32 bits, target heights in [0,1]
 }
 
 func (b *barHistory) push(level float32) {
@@ -142,18 +150,20 @@ func (b *barHistory) push(level float32) {
 	if level > 1 {
 		level = 1
 	}
-	// Shift left, push newest into the rightmost slot. Cheap because
-	// numBars is small.
+	// Shift the target series left by one and push the freshest sample
+	// into the rightmost slot. The visible bars then chase these targets
+	// each render frame, so even a single audio update produces several
+	// frames of smooth motion across the bar bank.
 	for i := 0; i < numBars-1; i++ {
-		atomic.StoreUint32(&b.bars[i], atomic.LoadUint32(&b.bars[i+1]))
+		atomic.StoreUint32(&b.targets[i], atomic.LoadUint32(&b.targets[i+1]))
 	}
-	atomic.StoreUint32(&b.bars[numBars-1], math32Bits(level))
+	atomic.StoreUint32(&b.targets[numBars-1], math32Bits(level))
 }
 
 func (b *barHistory) snapshot() [numBars]float32 {
 	var out [numBars]float32
-	for i := range b.bars {
-		out[i] = math32FromBits(atomic.LoadUint32(&b.bars[i]))
+	for i := range b.targets {
+		out[i] = math32FromBits(atomic.LoadUint32(&b.targets[i]))
 	}
 	return out
 }
@@ -164,7 +174,11 @@ func math32Bits(f float32) uint32     { return *(*uint32)(unsafe.Pointer(&f)) }
 func math32FromBits(u uint32) float32 { return *(*float32)(unsafe.Pointer(&u)) }
 
 // Single global state — only one overlay window is ever shown at once.
-var activeBars barHistory
+var (
+	activeBars      barHistory
+	smoothedHeights [numBars]float32 // per-frame interpolated heights, paint-thread only
+	idlePhase       float32          // monotonically increasing radians for the resting wave
+)
 
 // New creates the overlay; spawns a dedicated message-loop goroutine.
 func New() Overlay {
@@ -239,15 +253,18 @@ func (o *overlay) loop(ready chan<- error) {
 	}
 	o.hwnd = hwnd
 
-	// Clip the window to an ellipse via SetWindowRgn. The system never
-	// paints pixels outside this region — the result is a true ellipse
-	// silhouette, no per-pixel alpha needed.
-	rgn, _, _ := procCreateEllipticRgn.Call(0, 0, overlayWidth, overlayHeight)
+	// Clip the window to a rounded rectangle. Pixels outside the region
+	// are never painted by the system, giving us crisp rounded corners
+	// without needing per-pixel alpha.
+	rgn, _, _ := procCreateRoundRectRgn.Call(
+		0, 0, overlayWidth+1, overlayHeight+1,
+		overlayCorner*2, overlayCorner*2,
+	)
 	procSetWindowRgn.Call(o.hwnd, rgn, 1)
 
-	// Brushes: black background, near-white bars.
+	// Brushes: solid black background, pure white bars.
 	bg, _, _ := procCreateSolidBrush.Call(rgb(0, 0, 0))
-	fg, _, _ := procCreateSolidBrush.Call(rgb(220, 220, 220))
+	fg, _, _ := procCreateSolidBrush.Call(rgb(255, 255, 255))
 	o.bgBrush = bg
 	o.fgBrush = fg
 
@@ -373,12 +390,30 @@ func paintOverlay(hwnd uintptr) {
 		defer procSelectObject.Call(hdc, oldPen)
 		defer procSelectObject.Call(hdc, oldBrush)
 
-		bars := activeBars.snapshot()
+		// Advance the resting-wave phase so quiet moments still ripple.
+		idlePhase += idleFreq * float32(numBars)
+
+		targets := activeBars.snapshot()
 		totalW := int32(numBars*barWidth + (numBars-1)*barGap)
 		startX := (rc.Right - totalW) / 2
 		centerY := rc.Bottom / 2
-		for i, lvl := range bars {
-			h := int32(float32(barMinHeight) + lvl*float32(barMaxHeight-barMinHeight)*4)
+
+		for i, target := range targets {
+			// Interpolate the visible height toward this bar's target.
+			// This makes a single audio update animate over many frames
+			// rather than snapping, which is what "moves a bit more"
+			// actually feels like.
+			amplified := target * levelGain
+			if amplified > 1 {
+				amplified = 1
+			}
+			targetH := float32(barMinHeight) + amplified*float32(barMaxHeight-barMinHeight)
+			// Add a small per-bar idle ripple so the widget never looks frozen.
+			idle := float32(math.Sin(float64(idlePhase+float32(i)*0.9))) * idleAmplitude
+			targetH += idle
+			smoothedHeights[i] += (targetH - smoothedHeights[i]) * smoothingStep
+
+			h := int32(smoothedHeights[i] + 0.5)
 			if h < barMinHeight {
 				h = barMinHeight
 			}
@@ -401,7 +436,7 @@ func (o *overlay) doShow() error {
 	if o.hwnd == 0 {
 		return nil
 	}
-	x, y := positionUnderActive(overlayWidth, overlayHeight, overlayMargin)
+	x, y := positionAboveTaskbar(overlayWidth, overlayHeight, overlayMargin)
 	procSetWindowPos.Call(o.hwnd, hwndTopmost,
 		uintptr(x), uintptr(y),
 		uintptr(int32(overlayWidth)), uintptr(int32(overlayHeight)),
@@ -410,9 +445,11 @@ func (o *overlay) doShow() error {
 	activeOverlayBrushes.bg = o.bgBrush
 	activeOverlayBrushes.fg = o.fgBrush
 
-	// Reset bar history so the new session starts from idle, then begin
-	// the redraw timer.
+	// Reset bar history + smoothed render state so the new session starts
+	// from idle, then begin the redraw timer.
 	activeBars = barHistory{}
+	smoothedHeights = [numBars]float32{}
+	idlePhase = 0
 	procSetTimer.Call(o.hwnd, timerID, timerInterval, 0)
 
 	procInvalidateRect.Call(o.hwnd, 0, 1)
@@ -429,15 +466,21 @@ func (o *overlay) doHide() error {
 	return nil
 }
 
-func positionUnderActive(w, h, margin int32) (int32, int32) {
-	hwnd := win32.GetForegroundWindow()
-	if hwnd == 0 {
+// positionAboveTaskbar returns the top-left screen coords for an overlay
+// of the given size, centered horizontally and pinned just above the
+// taskbar of the active monitor (the one containing the foreground
+// window). Falls back to the primary monitor's work area if there is
+// no foreground window.
+func positionAboveTaskbar(w, h, margin int32) (int32, int32) {
+	hmon := win32.MonitorFromWindow(win32.GetForegroundWindow(), win32.MonitorDefaultToNearest)
+	var mi win32.MONITORINFO
+	if !win32.GetMonitorInfo(hmon, &mi) {
+		// No monitor info — pick a safe corner. Better than crashing.
 		return 100, 100
 	}
-	var rc win32.RECT
-	win32.GetWindowRect(hwnd, &rc)
-	cx := rc.Left + (rc.Right-rc.Left)/2
-	return cx - w/2, rc.Bottom - h - margin
+	work := mi.RcWork
+	cx := work.Left + (work.Right-work.Left)/2
+	return cx - w/2, work.Bottom - h - margin
 }
 
 func rgb(r, g, b byte) uintptr {
