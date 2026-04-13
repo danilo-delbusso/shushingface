@@ -41,6 +41,10 @@ type App struct {
 	cleanIPC func()
 	hotkey   hotkey.Manager
 	overlay  overlay.Overlay
+
+	// levelStop closes the level-pump goroutine started in StartRecording.
+	// Replaced (and the previous one closed) on every start.
+	levelStop chan struct{}
 }
 
 // Caller must hold at least a.mu.RLock.
@@ -294,9 +298,40 @@ func (a *App) StartRecording() error {
 			if err := a.overlay.Show("Recording...", opacity); err != nil {
 				slog.Warn("overlay show failed", "error", err)
 			}
+			a.startLevelPump()
 		}
 	}
 	return err
+}
+
+// startLevelPump forwards live mic amplitudes from the engine to the
+// overlay until stopLevelPump is called. Idempotent: cancels any prior
+// pump first.
+func (a *App) startLevelPump() {
+	a.stopLevelPump()
+	stop := make(chan struct{})
+	a.levelStop = stop
+	levels := a.engine.Level()
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case v, ok := <-levels:
+				if !ok {
+					return
+				}
+				a.overlay.SetLevel(v)
+			}
+		}
+	}()
+}
+
+func (a *App) stopLevelPump() {
+	if a.levelStop != nil {
+		close(a.levelStop)
+		a.levelStop = nil
+	}
 }
 
 func (a *App) StopAndProcess() ProcessResult {
@@ -329,6 +364,7 @@ func (a *App) StopAndProcess() ProcessResult {
 	// AI processing can take many seconds and it's confusing to still see
 	// the "Recording..." pill during that window.
 	indicator.SetRecording(false)
+	a.stopLevelPump()
 	if a.overlay != nil {
 		if hErr := a.overlay.Hide(); hErr != nil {
 			slog.Warn("overlay hide failed", "error", hErr)

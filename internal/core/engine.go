@@ -35,6 +35,9 @@ type Engine interface {
 	SetTranscriber(t ai.Transcriber)
 	SetRefiner(r ai.Refiner)
 	GetRefiner() ai.Refiner
+	// Level proxies the recorder's live amplitude channel for UI consumers
+	// (e.g. the overlay) that want to react to mic input in real time.
+	Level() <-chan float32
 }
 
 type engine struct {
@@ -73,6 +76,8 @@ func (e *engine) GetRefiner() ai.Refiner {
 func (e *engine) StartRecording() error {
 	return e.recorder.Start()
 }
+
+func (e *engine) Level() <-chan float32 { return e.recorder.Level() }
 
 // StopAndProcess stops recording, transcribes, and refines.
 // If refinerOverride is non-nil it is used instead of the default refiner.
