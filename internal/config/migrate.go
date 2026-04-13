@@ -7,7 +7,7 @@ import (
 
 // currentConfigVersion is the version of the current config schema.
 // Bump this when adding a new migration.
-const currentConfigVersion = 3
+const currentConfigVersion = 4
 
 type configMigration struct {
 	version     int
@@ -22,6 +22,14 @@ var configMigrations = []configMigration{
 	{version: 1, description: "initial schema", up: migrateInitial},
 	{version: 2, description: "add shortcut field", up: migrateAddShortcut},
 	{version: 3, description: "add recording mode and overlay", up: migrateAddOverlay},
+	{version: 4, description: "add debug logging toggle", up: migrateAddDebugLogging},
+}
+
+func migrateAddDebugLogging(data map[string]any) error {
+	if _, ok := data["debugLogging"]; !ok {
+		data["debugLogging"] = false
+	}
+	return nil
 }
 
 func migrateAddShortcut(data map[string]any) error {

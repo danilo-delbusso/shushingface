@@ -80,6 +80,9 @@ type Settings struct {
 	// Floating recording overlay above the focused app.
 	OverlayEnabled bool    `json:"overlayEnabled"`
 	OverlayOpacity float64 `json:"overlayOpacity,omitempty"` // 0.05–1.0; default 0.4
+
+	// Debug logging — when true, slog level is Debug; otherwise Info.
+	DebugLogging bool `json:"debugLogging"`
 }
 
 func HydrateAPIKeys(conns []Connection, get func(key string) (string, error)) {
