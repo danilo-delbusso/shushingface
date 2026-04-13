@@ -4,22 +4,51 @@ Voice-to-text refinement desktop app. Go backend (Wails v2) + React 19 / TypeScr
 
 ## Stack
 
-- **Backend**: Go 1.26, Wails v2, SQLite (modernc), malgo audio
-- **Frontend**: React 19, TypeScript, Tailwind CSS v4, Radix UI (via `radix-ui` package), sonner toasts, lucide-react icons
+- **Backend**: Go 1.26, Wails v2, SQLite (modernc), goose migrations, malgo audio, zalando/go-keyring
+- **Frontend**: React 19, TypeScript, Tailwind CSS v4, Radix UI (via `radix-ui` package), sonner toasts, lucide-react icons, react-hook-form + zod
 - **Font**: JetBrains Mono globally — do NOT add `font-mono` classes, it's the default
-- **Build**: `go build ./...` for backend, `npx vite build` for frontend, `wails build` for full binary
+- **Lint**: `golangci-lint` (config in `.golangci.yml`), Biome for frontend
+- **Build**: prefer `just` targets — `just dev`, `just build`, `just lint`, `just check`. Underlying: `go build -tags webkit2_41 ./...`, `cd frontend && bun run build`, `wails build` for full binary
 
 ## Architecture
 
-- `internal/ai/ai.go` — Provider/Processor interfaces, registry, shared types
-- `internal/ai/groq/` — Groq implementation (provider.go + processor.go)
-- `internal/config/config.go` — Settings struct, built-in rules, default profiles, load/save/migration
-- `internal/ai/factory/` — Builds Processor from config via provider registry
-- `internal/core/engine.go` — Recording + transcription + refinement pipeline
-- `internal/ui/desktop/app.go` — Wails-bound App methods
+- `internal/ai/ai.go` — `Transcriber`/`Refiner`/`Processor`/`Provider` interfaces, registry, shared types
+- `internal/ai/factory/` — Builds processors from config via provider registry
+- `internal/ai/openaicompat/` — Generic OpenAI-compatible HTTP client (used by groq + openai)
+- `internal/ai/groq/`, `internal/ai/openai/` — Provider implementations
+- `internal/audio/` — `Recorder` interface; `malgo/` impl
+- `internal/config/` — `Settings` struct, defaults, load/save with versioned migration (`migrate.go`)
+- `internal/core/engine.go` — `Engine` interface: recording → transcription → refinement pipeline
+- `internal/db/` — SQLite + goose migrations (schema in `migrations/`)
+- `internal/history/` — `Store` interface + SQL `Repository` for transcription history
+- `internal/secrets/` — `Store` interface; OS keyring (`keyring.go`) + plaintext fallback (`fallback.go`)
+- `internal/ui/desktop/app.go` — Wails-bound `App` methods (RWMutex-protected config snapshots)
 - `internal/ui/desktop/refine.go` — Prompt assembly (profile + built-in rules + user rules + context)
+- `internal/ipc/`, `internal/indicator/`, `internal/notify/`, `internal/paste/`, `internal/osutil/`, `internal/platform/`, `internal/update/` — platform glue
 
 Adding a new AI provider: implement `ai.Provider`, call `ai.RegisterProvider()` in `init()`, add blank import in `factory.go`.
+
+## Backend conventions
+
+### Interfaces for testability
+
+Inject dependencies as interfaces, not concrete types — this is what makes mocking possible. Pattern: define the interface in the package that *consumes* it or alongside the implementation; constructor returns the interface. Examples: `core.Engine`, `history.Store`, `secrets.Store`, `audio.Recorder`, `ai.Transcriber`/`ai.Refiner`.
+
+### Error handling
+
+- **Never suppress errors with `_ =`.** At minimum, log with `slog.Warn`. For deferred Close patterns, wrap in `func() { if err := x.Close(); err != nil { slog.Warn(...) } }()` or extract a helper (e.g. `closeWarn`).
+- Wrap with `%w` when bubbling up: `fmt.Errorf("doing X: %w", err)`.
+- Use `errors.New` / `fmt.Errorf` (without `%w`) only for root-cause errors with no underlying err.
+
+### Comments
+
+- No package doc comments on `internal/` packages — they're not public API.
+- No doc comments that just restate the function name (`// Save writes the settings.`). Only comment when behavior is non-obvious.
+- No decorative section dividers (`// ──────────`). Use blank lines.
+
+### Concurrency
+
+`App` protects its `cfg` pointer with `sync.RWMutex`. Reads should snapshot via `a.snapshotConfig()` under `RLock` and operate on the copy. Writes acquire `Lock` only for the final assignment, never during I/O.
 
 ## Frontend conventions
 
@@ -205,6 +234,8 @@ import { ExternalLink } from "@/components/ui/external-link";
 
 ## Don't
 
+### Frontend
+
 - Don't add `font-mono` — it's the global font
 - Don't use `max-w-xl` or `max-w-3xl` for views
 - Don't use `space-y-6` in view wrappers
@@ -213,3 +244,13 @@ import { ExternalLink } from "@/components/ui/external-link";
 - Don't forget `shrink-0` on flex icons
 - Don't use `gap-1.5` in CardTitle — always `gap-2`
 - Don't use `window.open()` or `<button>` for external links — use `<ExternalLink>`
+- Don't add decorative section dividers (`// ──────────`) in TS/TSX files
+
+### Backend
+
+- Don't suppress errors with `_ =` — log at minimum with `slog.Warn`
+- Don't add doc comments that just restate the function name
+- Don't add decorative section dividers (`// ──────────`)
+- Don't add package doc comments to `internal/` packages
+- Don't depend on concrete types when an interface exists (e.g. accept `core.Engine`, not `*core.engine`)
+- Don't read `a.cfg` directly in `App` methods — snapshot under `RLock`

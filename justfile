@@ -30,7 +30,7 @@ format-go:
 
 # Lints Go code (requires golangci-lint)
 lint-go:
-    golangci-lint run
+    golangci-lint run --build-tags webkit2_41
 
 # Runs backend tests
 test-go:
