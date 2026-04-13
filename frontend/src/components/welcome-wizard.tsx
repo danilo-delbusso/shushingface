@@ -24,15 +24,15 @@ import { ExternalLink } from "@/components/ui/external-link";
 import { InfoTip } from "@/components/info-tip";
 import { ShortcutGuide } from "@/components/shortcut-guide";
 import { ShortcutRecorder } from "@/components/shortcut-recorder";
-import type { hotkey as hotkeyNs } from "../../wailsjs/go/models";
+import type { platform as platformNs } from "../../wailsjs/go/models";
 
 function WizardShortcut({ platformInfo }: { platformInfo: any }) {
-  const [caps, setCaps] = useState<hotkeyNs.Capabilities | null>(null);
+  const [caps, setCaps] = useState<platformNs.Capability | null>(null);
   const [draft, setDraft] = useState<string>("");
   const [bound, setBound] = useState<string>("");
 
   useEffect(() => {
-    AppBridge.HotkeyCapabilities().then(setCaps).catch(() => setCaps({ supported: false } as hotkeyNs.Capabilities));
+    AppBridge.HotkeyCapabilities().then(setCaps).catch(() => setCaps({ supported: false } as platformNs.Capability));
   }, []);
 
   if (!caps) return null;

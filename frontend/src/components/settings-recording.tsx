@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Mic, Eye } from "lucide-react";
 import { InfoTip } from "@/components/info-tip";
 import {
@@ -19,16 +20,36 @@ interface SettingsRecordingProps {
 
 export function SettingsRecording({ settings, onSave }: SettingsRecordingProps) {
   const mode = settings.recordingMode || "toggle";
-  const opacity = settings.overlayOpacity ?? 0.4;
+  const persistedOpacity = settings.overlayOpacity ?? 0.4;
+
+  // Slider feedback is instant, but saves are debounced so dragging doesn't
+  // spam SaveSettings + toasts. Local state tracks the live value; the
+  // effect commits it after the user stops moving the slider.
+  const [opacity, setOpacityLocal] = useState(persistedOpacity);
+  const pendingRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setOpacityLocal(persistedOpacity);
+  }, [persistedOpacity]);
+
+  useEffect(() => {
+    if (opacity === persistedOpacity) return;
+    pendingRef.current = window.setTimeout(() => {
+      onSave({ ...settings, overlayOpacity: opacity } as config.Settings);
+    }, 300);
+    return () => {
+      if (pendingRef.current !== null) {
+        window.clearTimeout(pendingRef.current);
+        pendingRef.current = null;
+      }
+    };
+  }, [opacity, persistedOpacity, settings, onSave]);
 
   const setMode = (m: "toggle" | "push_to_talk") =>
     onSave({ ...settings, recordingMode: m } as config.Settings);
 
   const setOverlay = (v: boolean) =>
     onSave({ ...settings, overlayEnabled: v } as config.Settings);
-
-  const setOpacity = (v: number) =>
-    onSave({ ...settings, overlayOpacity: v } as config.Settings);
 
   return (
     <Card>
@@ -98,7 +119,7 @@ export function SettingsRecording({ settings, onSave }: SettingsRecordingProps) 
               max={1}
               step={0.05}
               value={opacity}
-              onChange={(e) => setOpacity(Number(e.target.value))}
+              onChange={(e) => setOpacityLocal(Number(e.target.value))}
               className="w-full"
             />
           </div>

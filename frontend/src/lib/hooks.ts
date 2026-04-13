@@ -41,6 +41,17 @@ export function usePasteStatus() {
   return status;
 }
 
+// useCapabilities reports which platform-dependent features work here so
+// the settings UI can grey out toggles that would be no-ops. Returns null
+// while loading.
+export function useCapabilities() {
+  const [caps, setCaps] = useState<desktop.Capabilities | null>(null);
+  useEffect(() => {
+    AppBridge.GetCapabilities().then(setCaps);
+  }, []);
+  return caps;
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<config.Settings | null>(null);
 

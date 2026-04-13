@@ -16,13 +16,14 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
-import type { config, platform } from "../../wailsjs/go/models";
+import type { config, desktop, platform } from "../../wailsjs/go/models";
 
 interface SettingsViewProps {
   settings: config.Settings;
   platform: platform.Info | null;
   pasteAvailable: boolean;
   pasteInstallCmd: string;
+  capabilities: desktop.Capabilities | null;
   onSave: (settings: config.Settings) => void;
 }
 
@@ -31,11 +32,19 @@ export function SettingsView({
   platform,
   pasteAvailable,
   pasteInstallCmd,
+  capabilities,
   onSave,
 }: SettingsViewProps) {
   const toggle = (patch: Partial<config.Settings>) => {
     onSave({ ...settings, ...patch } as config.Settings);
   };
+
+  // Default to "supported" while capabilities are still loading so initial
+  // render doesn't briefly grey everything out.
+  const cap = (pick: (c: desktop.Capabilities) => platform.Capability) =>
+    capabilities ? pick(capabilities) : { supported: true, reason: "" };
+  const notificationsCap = cap((c) => c.notifications);
+  const indicatorCap = cap((c) => c.trayIndicator);
 
   const deleteAllData = async () => {
     try {
@@ -122,12 +131,15 @@ export function SettingsView({
               <div className="space-y-0.5">
                 <Label htmlFor="indicator-toggle">Panel indicator</Label>
                 <p className="text-xs text-muted-foreground">
-                  Show a mic icon in the system panel bar
+                  {indicatorCap.supported
+                    ? "Show a mic icon in the system panel bar"
+                    : indicatorCap.reason}
                 </p>
               </div>
               <Switch
                 id="indicator-toggle"
-                checked={settings.enableIndicator}
+                checked={settings.enableIndicator && indicatorCap.supported}
+                disabled={!indicatorCap.supported}
                 onCheckedChange={(v) => toggle({ enableIndicator: v })}
               />
             </div>
@@ -136,12 +148,15 @@ export function SettingsView({
               <div className="space-y-0.5">
                 <Label htmlFor="notify-toggle">Desktop notifications</Label>
                 <p className="text-xs text-muted-foreground">
-                  Show notifications when recording starts and stops
+                  {notificationsCap.supported
+                    ? "Show notifications when recording starts and stops"
+                    : notificationsCap.reason}
                 </p>
               </div>
               <Switch
                 id="notify-toggle"
-                checked={settings.enableNotifications}
+                checked={settings.enableNotifications && notificationsCap.supported}
+                disabled={!notificationsCap.supported}
                 onCheckedChange={(v) => toggle({ enableNotifications: v })}
               />
             </div>
@@ -157,6 +172,21 @@ export function SettingsView({
                 id="update-toggle"
                 checked={settings.checkForUpdates}
                 onCheckedChange={(v) => toggle({ checkForUpdates: v })}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="debug-log-toggle">Debug logging</Label>
+                <p className="text-xs text-muted-foreground">
+                  Write verbose diagnostic output to app.log. Enable when
+                  reproducing a bug.
+                </p>
+              </div>
+              <Switch
+                id="debug-log-toggle"
+                checked={settings.debugLogging}
+                onCheckedChange={(v) => toggle({ debugLogging: v })}
               />
             </div>
           </CardContent>

@@ -34,6 +34,10 @@ export function GetPasteStatus() {
   return window['go']['desktop']['App']['GetPasteStatus']();
 }
 
+export function GetCapabilities() {
+  return window['go']['desktop']['App']['GetCapabilities']();
+}
+
 export function GetPlatform() {
   return window['go']['desktop']['App']['GetPlatform']();
 }

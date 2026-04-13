@@ -14,14 +14,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
-import type { hotkey, platform } from "../../wailsjs/go/models";
+import type { platform } from "../../wailsjs/go/models";
 
 interface SettingsShortcutProps {
   platform: platform.Info | null;
 }
 
 export function SettingsShortcut({ platform }: SettingsShortcutProps) {
-  const [caps, setCaps] = useState<hotkey.Capabilities | null>(null);
+  const [caps, setCaps] = useState<platform.Capability | null>(null);
   const [current, setCurrent] = useState<string>("");
   const [draft, setDraft] = useState<string>("");
   const [saving, setSaving] = useState(false);

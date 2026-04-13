@@ -20,6 +20,7 @@ import {
   useTheme,
   usePlatform,
   usePasteStatus,
+  useCapabilities,
   isConfigured,
 } from "@/lib/hooks";
 import * as AppBridge from "../wailsjs/go/desktop/App";
@@ -35,6 +36,7 @@ function App() {
   } = useHistory();
   const platform = usePlatform();
   const pasteStatus = usePasteStatus();
+  const capabilities = useCapabilities();
   const [appVersion, setAppVersion] = useState("");
   const configured = isConfigured(settings);
   useTheme(settings?.theme);
@@ -157,6 +159,7 @@ function App() {
               platform={platform}
               pasteAvailable={pasteStatus?.available ?? true}
               pasteInstallCmd={pasteStatus?.installCmd ?? ""}
+              capabilities={capabilities}
               onSave={saveSettings}
             />
           )}

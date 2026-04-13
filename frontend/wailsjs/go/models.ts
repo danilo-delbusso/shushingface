@@ -161,6 +161,7 @@ export namespace config {
 	    recordingMode?: string;
 	    overlayEnabled: boolean;
 	    overlayOpacity?: number;
+	    debugLogging: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -192,6 +193,7 @@ export namespace config {
 	        this.recordingMode = source["recordingMode"];
 	        this.overlayEnabled = source["overlayEnabled"];
 	        this.overlayOpacity = source["overlayOpacity"];
+	        this.debugLogging = source["debugLogging"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -220,15 +222,37 @@ export namespace desktop {
 	export class PasteStatus {
 	    available: boolean;
 	    installCmd: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PasteStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.available = source["available"];
 	        this.installCmd = source["installCmd"];
+	    }
+	}
+	export class Capabilities {
+	    hotkey: platform.Capability;
+	    paste: platform.Capability;
+	    notifications: platform.Capability;
+	    trayIndicator: platform.Capability;
+	    overlay: platform.Capability;
+	    activeWindowTag: platform.Capability;
+
+	    static createFrom(source: any = {}) {
+	        return new Capabilities(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hotkey = source["hotkey"];
+	        this.paste = source["paste"];
+	        this.notifications = source["notifications"];
+	        this.trayIndicator = source["trayIndicator"];
+	        this.overlay = source["overlay"];
+	        this.activeWindowTag = source["activeWindowTag"];
 	    }
 	}
 	export class ProcessResult {
@@ -296,29 +320,23 @@ export namespace history {
 
 }
 
-export namespace hotkey {
-	
-	export class Capabilities {
+export namespace platform {
+
+	export class Capability {
 	    supported: boolean;
-	    conflictCheck: boolean;
 	    reason?: string;
-	
+
 	    static createFrom(source: any = {}) {
-	        return new Capabilities(source);
+	        return new Capability(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.supported = source["supported"];
-	        this.conflictCheck = source["conflictCheck"];
 	        this.reason = source["reason"];
 	    }
 	}
 
-}
-
-export namespace platform {
-	
 	export class Info {
 	    os: string;
 	    displayServer: string;

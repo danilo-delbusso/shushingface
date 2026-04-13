@@ -4,7 +4,6 @@ import {config} from '../models';
 import {history} from '../models';
 import {desktop} from '../models';
 import {platform} from '../models';
-import {hotkey} from '../models';
 import {audio} from '../models';
 import {ai} from '../models';
 
@@ -34,7 +33,9 @@ export function GetShortcut():Promise<string>;
 
 export function GetVersion():Promise<string>;
 
-export function HotkeyCapabilities():Promise<hotkey.Capabilities>;
+export function HotkeyCapabilities():Promise<platform.Capability>;
+
+export function GetCapabilities():Promise<desktop.Capabilities>;
 
 export function IsSecretStorageSecure():Promise<boolean>;
 
