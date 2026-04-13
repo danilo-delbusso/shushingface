@@ -5,28 +5,23 @@ package osutil
 import (
 	"path/filepath"
 	"syscall"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"codeberg.org/dbus/shushingface/internal/platform"
+	"codeberg.org/dbus/shushingface/internal/win32"
 )
 
-var (
-	user32                       = windows.NewLazySystemDLL("user32.dll")
-	kernel32                     = windows.NewLazySystemDLL("kernel32.dll")
-	procGetForegroundWindow      = user32.NewProc("GetForegroundWindow")
-	procGetWindowThreadProcessID = user32.NewProc("GetWindowThreadProcessId")
-	procQueryFullProcessImageName = kernel32.NewProc("QueryFullProcessImageNameW")
-)
+func activeAppCapability() platform.Capability { return platform.Supported() }
 
 // GetActiveWindowName returns the base name of the executable that owns the
 // foreground window, or an empty string on failure.
 func GetActiveWindowName() string {
-	hwnd, _, _ := procGetForegroundWindow.Call()
+	hwnd := win32.GetForegroundWindow()
 	if hwnd == 0 {
 		return ""
 	}
-	var pid uint32
-	procGetWindowThreadProcessID.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+	pid := win32.GetWindowThreadProcessID(hwnd)
 	if pid == 0 {
 		return ""
 	}
@@ -39,16 +34,8 @@ func GetActiveWindowName() string {
 
 	var buf [windows.MAX_PATH]uint16
 	size := uint32(len(buf))
-	r, _, _ := procQueryFullProcessImageName.Call(
-		uintptr(h),
-		0,
-		uintptr(unsafe.Pointer(&buf[0])),
-		uintptr(unsafe.Pointer(&size)),
-	)
-	if r == 0 {
+	if !win32.QueryFullProcessImageName(uintptr(h), 0, &buf[0], &size) {
 		return ""
 	}
-	full := syscall.UTF16ToString(buf[:size])
-	name := filepath.Base(full)
-	return name
+	return filepath.Base(syscall.UTF16ToString(buf[:size]))
 }
