@@ -79,6 +79,7 @@ var (
 	procCreateRoundRectRgn = g.NewProc("CreateRoundRectRgn")
 	procDeleteObject       = g.NewProc("DeleteObject")
 	procRoundRect          = g.NewProc("RoundRect")
+	procEllipse            = g.NewProc("Ellipse")
 	procSelectObject       = g.NewProc("SelectObject")
 	procGetStockObject     = g.NewProc("GetStockObject")
 )
@@ -178,6 +179,16 @@ var (
 	activeBars      barHistory
 	smoothedHeights [numBars]float32 // per-frame interpolated heights, paint-thread only
 	idlePhase       float32          // monotonically increasing radians for the resting wave
+	currentMode     uint32           // overlay.Mode read atomically by paint thread
+	processingPhase float32          // monotonically increasing radians for the loader
+)
+
+// Loader visuals.
+const (
+	loaderDots   = 3
+	loaderRadius = 2
+	loaderSpace  = 6
+	loaderSpeed  = 0.16 // rad / frame — full pulse cycle takes ~40 frames (~1.3 s)
 )
 
 // New creates the overlay; spawns a dedicated message-loop goroutine.
@@ -215,6 +226,8 @@ func (o *overlay) Close() error {
 }
 
 func (o *overlay) SetLevel(level float32) { activeBars.push(level) }
+
+func (o *overlay) SetMode(mode Mode) { atomic.StoreUint32(&currentMode, uint32(mode)) }
 
 func (o *overlay) wake() {
 	win32.PostThreadMessageW(o.threadID, wmOverlayWake, 0, 0)
@@ -381,54 +394,88 @@ func paintOverlay(hwnd uintptr) {
 		procFillRect.Call(hdc, uintptr(unsafe.Pointer(&rc)), activeOverlayBrushes.bg)
 	}
 
-	// Draw the bars. Use null pen + foreground brush so RoundRect fills
-	// without an outline.
-	if activeOverlayBrushes.fg != 0 {
-		nullPenObj, _, _ := procGetStockObject.Call(nullPen)
-		oldPen, _, _ := procSelectObject.Call(hdc, nullPenObj)
-		oldBrush, _, _ := procSelectObject.Call(hdc, activeOverlayBrushes.fg)
-		defer procSelectObject.Call(hdc, oldPen)
-		defer procSelectObject.Call(hdc, oldBrush)
+	if activeOverlayBrushes.fg == 0 {
+		return
+	}
+	nullPenObj, _, _ := procGetStockObject.Call(nullPen)
+	oldPen, _, _ := procSelectObject.Call(hdc, nullPenObj)
+	oldBrush, _, _ := procSelectObject.Call(hdc, activeOverlayBrushes.fg)
+	defer procSelectObject.Call(hdc, oldPen)
+	defer procSelectObject.Call(hdc, oldBrush)
 
-		// Advance the resting-wave phase so quiet moments still ripple.
-		idlePhase += idleFreq * float32(numBars)
+	switch Mode(atomic.LoadUint32(&currentMode)) {
+	case ModeProcessing:
+		paintLoader(hdc, &rc)
+	default:
+		paintBars(hdc, &rc)
+	}
+}
 
-		targets := activeBars.snapshot()
-		totalW := int32(numBars*barWidth + (numBars-1)*barGap)
-		startX := (rc.Right - totalW) / 2
-		centerY := rc.Bottom / 2
+func paintBars(hdc uintptr, rc *win32.RECT) {
+	// Advance the resting-wave phase so quiet moments still ripple.
+	idlePhase += idleFreq * float32(numBars)
 
-		for i, target := range targets {
-			// Interpolate the visible height toward this bar's target.
-			// This makes a single audio update animate over many frames
-			// rather than snapping, which is what "moves a bit more"
-			// actually feels like.
-			amplified := target * levelGain
-			if amplified > 1 {
-				amplified = 1
-			}
-			targetH := float32(barMinHeight) + amplified*float32(barMaxHeight-barMinHeight)
-			// Add a small per-bar idle ripple so the widget never looks frozen.
-			idle := float32(math.Sin(float64(idlePhase+float32(i)*0.9))) * idleAmplitude
-			targetH += idle
-			smoothedHeights[i] += (targetH - smoothedHeights[i]) * smoothingStep
+	targets := activeBars.snapshot()
+	totalW := int32(numBars*barWidth + (numBars-1)*barGap)
+	startX := (rc.Right - totalW) / 2
+	centerY := rc.Bottom / 2
 
-			h := int32(smoothedHeights[i] + 0.5)
-			if h < barMinHeight {
-				h = barMinHeight
-			}
-			if h > barMaxHeight {
-				h = barMaxHeight
-			}
-			x := startX + int32(i)*int32(barWidth+barGap)
-			y := centerY - h/2
-			procRoundRect.Call(
-				hdc,
-				uintptr(x), uintptr(y),
-				uintptr(x+barWidth), uintptr(y+h),
-				barRadius*2, barRadius*2,
-			)
+	for i, target := range targets {
+		// Interpolate the visible height toward this bar's target so a
+		// single audio update animates over several frames rather than
+		// snapping.
+		amplified := target * levelGain
+		if amplified > 1 {
+			amplified = 1
 		}
+		targetH := float32(barMinHeight) + amplified*float32(barMaxHeight-barMinHeight)
+		idle := float32(math.Sin(float64(idlePhase+float32(i)*0.9))) * idleAmplitude
+		targetH += idle
+		smoothedHeights[i] += (targetH - smoothedHeights[i]) * smoothingStep
+
+		h := int32(smoothedHeights[i] + 0.5)
+		if h < barMinHeight {
+			h = barMinHeight
+		}
+		if h > barMaxHeight {
+			h = barMaxHeight
+		}
+		x := startX + int32(i)*int32(barWidth+barGap)
+		y := centerY - h/2
+		procRoundRect.Call(
+			hdc,
+			uintptr(x), uintptr(y),
+			uintptr(x+barWidth), uintptr(y+h),
+			barRadius*2, barRadius*2,
+		)
+	}
+}
+
+// paintLoader draws three dots whose alpha-equivalent (here: drawn vs
+// shrunken-to-1px) chases a sine wave so the row reads as a "typing
+// indicator" — small, calm, obvious that work is in progress.
+func paintLoader(hdc uintptr, rc *win32.RECT) {
+	processingPhase += loaderSpeed
+	totalW := int32(loaderDots*loaderRadius*2 + (loaderDots-1)*loaderSpace)
+	startX := (rc.Right - totalW) / 2
+	centerY := rc.Bottom / 2
+	for i := 0; i < loaderDots; i++ {
+		// Phase-shift each dot by 1/3 cycle so the bump travels.
+		phase := float64(processingPhase) - float64(i)*(2*math.Pi/float64(loaderDots))
+		// Map [-1,1] to [0,1] so dots breathe between minimum and full.
+		amp := (math.Sin(phase) + 1) / 2
+		// Scale radius between half and full size.
+		r := int32(float64(loaderRadius)*0.5 + amp*float64(loaderRadius)*0.5)
+		if r < 1 {
+			r = 1
+		}
+		cx := startX + int32(i)*(loaderRadius*2+loaderSpace) + loaderRadius
+		cy := centerY
+		procEllipse.Call(
+			hdc,
+			uintptr(cx-r), uintptr(cy-r),
+			uintptr(cx+r), uintptr(cy+r),
+		)
 	}
 }
 
@@ -446,10 +493,12 @@ func (o *overlay) doShow() error {
 	activeOverlayBrushes.fg = o.fgBrush
 
 	// Reset bar history + smoothed render state so the new session starts
-	// from idle, then begin the redraw timer.
+	// from idle, default back to recording mode, then begin the redraw timer.
 	activeBars = barHistory{}
 	smoothedHeights = [numBars]float32{}
 	idlePhase = 0
+	processingPhase = 0
+	atomic.StoreUint32(&currentMode, uint32(ModeRecording))
 	procSetTimer.Call(o.hwnd, timerID, timerInterval, 0)
 
 	procInvalidateRect.Call(o.hwnd, 0, 1)

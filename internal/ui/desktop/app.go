@@ -359,19 +359,23 @@ func (a *App) StopAndProcess() ProcessResult {
 		}
 	}
 
-	// Hide overlay + indicator BEFORE the transcribe/refine step so the UI
-	// reflects "no longer capturing" the moment the user asked to stop —
-	// AI processing can take many seconds and it's confusing to still see
-	// the "Recording..." pill during that window.
+	// Switch the overlay from "recording bars" to "processing loader" the
+	// instant the user asks to stop — capture is over, but transcription
+	// + refinement may take seconds and we want visible feedback that
+	// something is still happening. We drop the level pump (no more mic
+	// data is incoming) but keep the window open until processing ends.
 	indicator.SetRecording(false)
 	a.stopLevelPump()
+	if a.overlay != nil {
+		a.overlay.SetMode(overlay.ModeProcessing)
+	}
+
+	transcript, refined, err := a.engine.StopAndProcess(a.ctx, tOpts, rOpts, refinerOverride)
 	if a.overlay != nil {
 		if hErr := a.overlay.Hide(); hErr != nil {
 			slog.Warn("overlay hide failed", "error", hErr)
 		}
 	}
-
-	transcript, refined, err := a.engine.StopAndProcess(a.ctx, tOpts, rOpts, refinerOverride)
 	if cfg.EnableNotifications {
 		notify.RecordingDone()
 	}
