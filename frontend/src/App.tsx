@@ -6,11 +6,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar, type View } from "@/components/app-sidebar";
 import { RecordView } from "@/components/record-view";
 import { HistoryView } from "@/components/history-view";
-import { ConnectionsView } from "@/components/connections-view";
-import { AiView } from "@/components/ai-view";
-import { AppearanceView } from "@/components/appearance-view";
-import { SettingsView } from "@/components/settings-view";
-import { AboutView } from "@/components/about-view";
+import {
+  SettingsDialog,
+  type SettingsSection,
+} from "@/components/settings-dialog";
 import { WelcomeWizard } from "@/components/welcome-wizard";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -28,6 +27,9 @@ import { config } from "../wailsjs/go/models";
 
 function App() {
   const [view, setView] = useState<View>("home");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] =
+    useState<SettingsSection>("connections");
   const { settings, saveSettings } = useSettings();
   const {
     historyList,
@@ -70,9 +72,17 @@ function App() {
     [settings?.refinementProfiles, settings?.activeProfileId],
   );
 
+  const openSettings = (section: SettingsSection = "connections") => {
+    setSettingsSection(section);
+    setSettingsOpen(true);
+  };
+
   useEffect(() => {
     if (settings && !settings.setupComplete) return;
-    if (settings && !isConfigured(settings)) setView("connections");
+    if (settings && !isConfigured(settings)) {
+      setSettingsSection("connections");
+      setSettingsOpen(true);
+    }
     if (settings && !settings.enableHistory && view === "history")
       setView("home");
   }, [settings, view]);
@@ -94,12 +104,13 @@ function App() {
   return (
     <ErrorBoundary>
       <TooltipProvider>
-        <SidebarProvider>
+        <SidebarProvider defaultOpen={false}>
           <AppSidebar
             view={view}
             onNavigate={setView}
-            configured={configured}
+            onOpenSettings={() => openSettings()}
             historyEnabled={settings.enableHistory}
+            hasWarnings={!configured}
             version={appVersion}
             updateAvailable={updateAvailable}
           />
@@ -112,8 +123,10 @@ function App() {
                 profiles={settings.refinementProfiles ?? []}
                 activeProfile={activeProfile}
                 language={settings.transcriptionLanguage ?? ""}
+                historyEnabled={settings.enableHistory}
+                historyItems={historyList}
                 onToggle={toggle}
-                onGoToSettings={() => setView("connections")}
+                onGoToSettings={() => openSettings("connections")}
                 onSwitchProfile={(id) =>
                   saveSettings(
                     config.Settings.createFrom({
@@ -135,37 +148,22 @@ function App() {
             {view === "history" && (
               <HistoryView items={historyList} onClear={clearHistory} />
             )}
-            {view === "connections" && (
-              <ConnectionsView
-                settings={settings}
-                configured={configured}
-                onSave={saveSettings}
-              />
-            )}
-            {view === "ai" && (
-              <AiView
-                settings={settings}
-                configured={configured}
-                onSave={saveSettings}
-              />
-            )}
-            {view === "appearance" && (
-              <AppearanceView settings={settings} onSave={saveSettings} />
-            )}
-            {view === "general" && (
-              <SettingsView
-                settings={settings}
-                platform={platform}
-                pasteAvailable={pasteStatus?.available ?? true}
-                pasteInstallCmd={pasteStatus?.installCmd ?? ""}
-                capabilities={capabilities}
-                onSave={saveSettings}
-              />
-            )}
-            {view === "about" && (
-              <AboutView version={appVersion} platform={platform} />
-            )}
           </SidebarInset>
+          <SettingsDialog
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            section={settingsSection}
+            onSectionChange={setSettingsSection}
+            settings={settings}
+            configured={configured}
+            hasWarnings={!configured}
+            platform={platform}
+            pasteAvailable={pasteStatus?.available ?? true}
+            pasteInstallCmd={pasteStatus?.installCmd ?? ""}
+            capabilities={capabilities}
+            appVersion={appVersion}
+            onSave={saveSettings}
+          />
         </SidebarProvider>
         <Toaster position="bottom-right" richColors />
       </TooltipProvider>

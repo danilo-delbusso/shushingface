@@ -9,9 +9,10 @@ import {
 import { useState } from "react";
 import { Popover } from "radix-ui";
 import { Button } from "@/components/ui/button";
+import { HomeStats } from "@/components/home-stats";
 import { getProfileIcon } from "@/lib/icons";
 import { whisperLanguages, getLanguage } from "@/lib/languages";
-import type { config } from "../../wailsjs/go/models";
+import type { config, history } from "../../wailsjs/go/models";
 
 interface RecordViewProps {
   configured: boolean;
@@ -20,6 +21,8 @@ interface RecordViewProps {
   profiles: config.RefinementProfile[];
   activeProfile: config.RefinementProfile | null;
   language: string;
+  historyEnabled: boolean;
+  historyItems: history.Record[];
   onToggle: () => void;
   onGoToSettings: () => void;
   onSwitchProfile: (id: string) => void;
@@ -33,6 +36,8 @@ export function RecordView({
   profiles,
   activeProfile,
   language,
+  historyEnabled,
+  historyItems,
   onToggle,
   onGoToSettings,
   onSwitchProfile,
@@ -57,7 +62,17 @@ export function RecordView({
   const ProfileIcon = activeProfile ? getProfileIcon(activeProfile.icon) : null;
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <header className="flex items-start justify-between gap-4 border-b px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold">Welcome back</h1>
+          <p className="text-xs text-muted-foreground">
+            Hold your shortcut and start speaking.
+          </p>
+        </div>
+        {historyEnabled && <HomeStats items={historyItems} />}
+      </header>
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6 overflow-y-auto">
       <div className="flex items-center gap-2">
         {activeProfile && ProfileIcon && (
           <ProfileSwitcher
@@ -92,6 +107,7 @@ export function RecordView({
             ? "processing..."
             : "click to start recording"}
       </p>
+      </div>
     </div>
   );
 }
