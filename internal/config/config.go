@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -307,26 +306,3 @@ func GetLogPath() (string, error) {
 	return filepath.Join(appDir, "app.log"), nil
 }
 
-func InitLogger() func() {
-	logPath, err := GetLogPath()
-	if err != nil {
-		slog.Warn("could not resolve log path, logging to stderr only", "error", err)
-		return func() {}
-	}
-
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-	if err != nil {
-		slog.Warn("could not open log file, logging to stderr only", "error", err)
-		return func() {}
-	}
-
-	w := io.MultiWriter(os.Stderr, f)
-	handler := slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo})
-	slog.SetDefault(slog.New(handler))
-
-	return func() {
-		if err := f.Close(); err != nil {
-			slog.Warn("failed to close log file", "error", err)
-		}
-	}
-}
