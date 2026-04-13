@@ -55,3 +55,6 @@ docs/
 # Build artifacts
 dist/
 *.deb
+
+# context guardian
+.context-guardian/
