@@ -26,13 +26,10 @@ shushing face helps you work more efficiently by leveraging the fact that speaki
 | OS | Version | Desktop | Status |
 |----|---------|---------|--------|
 | Pop!_OS | 24.04 LTS | COSMIC (Wayland) | Tested |
+| Windows | 10 / 11 | — | Tested |
 | Ubuntu | 24.04 LTS | GNOME (Wayland/X11) | Expected to work |
 | Ubuntu | 22.04 LTS | GNOME (X11/Wayland) | Expected to work |
 | Fedora | 40+ | GNOME (Wayland) | Expected to work |
-| Arch Linux | Rolling | Any | Expected to work |
-| Windows | 10 / 11 | — | In development |
-
-macOS support is planned.
 
 ## Install
 
@@ -79,7 +76,7 @@ Runtime files also live in OS-standard locations:
 
 1. Launch shushing face
 2. Set up an AI provider (Groq is free and fast)
-3. Bind `shushingface --toggle` to a keyboard shortcut
+3. Set your global shortcut in **Settings → Shortcut** (on Linux, `just install` also registers a system-wide Super+Ctrl+B binding)
 4. Press the shortcut to start recording, press again to stop
 5. Refined text is typed where your cursor is
 

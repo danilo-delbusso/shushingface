@@ -16,15 +16,23 @@ Voice-to-text refinement desktop app. Go backend (Wails v2) + React 19 / TypeScr
 - `internal/ai/factory/` — Builds processors from config via provider registry
 - `internal/ai/openaicompat/` — Generic OpenAI-compatible HTTP client (used by groq + openai)
 - `internal/ai/groq/`, `internal/ai/openai/` — Provider implementations
-- `internal/audio/` — `Recorder` interface; `malgo/` impl
-- `internal/config/` — `Settings` struct, defaults, load/save with versioned migration (`migrate.go`)
+- `internal/audio/` — `Recorder` interface (with live `Level() <-chan float32`); `malgo/` impl
+- `internal/config/` — `Settings` struct, defaults, load/save with versioned migration (`migrate.go`, currently collapsed to v1)
 - `internal/core/engine.go` — `Engine` interface: recording → transcription → refinement pipeline
-- `internal/db/` — SQLite + goose migrations (schema in `migrations/`)
+- `internal/db/` — SQLite + goose migrations (schema in `migrations/`, collapsed to a single `00001_initial.go` baseline)
 - `internal/history/` — `Store` interface + SQL `Repository` for transcription history
+- `internal/hotkey/` — `Manager` interface for global shortcut registration; thin `_windows.go` / `_stub.go` adapter
+- `internal/overlay/` — `Overlay` interface (recording bars + processing loader); thin adapter per OS
+- `internal/paths/` — `Config()` and `State()` helpers implementing XDG / `%APPDATA%` / `%LOCALAPPDATA%` conventions; handles one-shot migration from the legacy config-dir location
+- `internal/platform/` — OS/distro detection + `Capability{Supported, Reason}` type shared by every feature package
 - `internal/secrets/` — `Store` interface; OS keyring (`keyring.go`) + plaintext fallback (`fallback.go`)
+- `internal/sni/` — Linux StatusNotifierItem D-Bus impl used by `internal/indicator`
 - `internal/ui/desktop/app.go` — Wails-bound `App` methods (RWMutex-protected config snapshots)
 - `internal/ui/desktop/refine.go` — Prompt assembly (profile + built-in rules + user rules + context)
-- `internal/ipc/`, `internal/indicator/`, `internal/notify/`, `internal/paste/`, `internal/osutil/`, `internal/platform/`, `internal/update/` — platform glue
+- `internal/win32/` — Shared Win32 DLL handles / types / typed syscall wrappers (windows-only)
+- `internal/win32/overlay/` — Win32 implementation of the floating overlay (package `winoverlay`)
+- `internal/win32/hotkey/` — Win32 implementation of global hotkeys (package `winhotkey`; toggles via `golang.design/x/hotkey`, PTT via `WH_KEYBOARD_LL` hook on a dedicated pump thread)
+- `internal/ipc/`, `internal/indicator/`, `internal/notify/`, `internal/paste/`, `internal/osutil/`, `internal/update/` — platform glue
 
 Adding a new AI provider: implement `ai.Provider`, call `ai.RegisterProvider()` in `init()`, add blank import in `factory.go`.
 
