@@ -3,224 +3,78 @@
 package hotkey
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"runtime"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 
-	"golang.org/x/sys/windows"
+	gdhotkey "golang.design/x/hotkey"
+
+	"codeberg.org/dbus/shushingface/internal/platform"
+	"codeberg.org/dbus/shushingface/internal/win32"
 )
 
-func runtimeLockOSThread()   { runtime.LockOSThread() }
-func runtimeUnlockOSThread() { runtime.UnlockOSThread() }
+func capability() platform.Capability { return platform.Supported() }
 
+// Minimum gap between consecutive toggle-hotkey triggers we'll emit.
+// golang.design/x/hotkey does not set MOD_NOREPEAT, so holding the key for
+// even a few ms fires a flood of WM_HOTKEY events. We swallow anything
+// within this window of the previous trigger.
+const toggleDebounce = 350 * time.Millisecond
+
+// Windows error returned by RegisterHotKey when the combination is already
+// claimed by another process.
+const errHotkeyAlreadyRegistered syscall.Errno = 1409
+
+// Local RegisterHotKey modifier bitmask (distinct from the hook-path
+// modifier tracking done via win32.VK* key-state checks).
 const (
-	modAlt      = 0x0001
-	modControl  = 0x0002
-	modShift    = 0x0004
-	modWin      = 0x0008
-	modNoRepeat = 0x4000
-
-	wmHotkey     = 0x0312
-	wmKeyDown    = 0x0100
-	wmKeyUp      = 0x0101
-	wmSysKeyDown = 0x0104
-	wmSysKeyUp   = 0x0105
-
-	wmClose      = 0x0010
-	wmApp        = 0x8000
-	wmRegister   = wmApp + 1
-	wmUnregister = wmApp + 2
-
-	whKeyboardLL = 13
-
-	vkLControl = 0xA2
-	vkRControl = 0xA3
-	vkLAlt     = 0xA4
-	vkRAlt     = 0xA5
-	vkLShift   = 0xA0
-	vkRShift   = 0xA1
-	vkLWin     = 0x5B
-	vkRWin     = 0x5C
+	modControl = 0x0002
+	modAlt     = 0x0001
+	modShift   = 0x0004
+	modWin     = 0x0008
 )
-
-var (
-	user32                 = windows.NewLazySystemDLL("user32.dll")
-	procRegisterHotKey     = user32.NewProc("RegisterHotKey")
-	procUnregisterHotKey   = user32.NewProc("UnregisterHotKey")
-	procGetMessageW        = user32.NewProc("GetMessageW")
-	procDispatchMessageW   = user32.NewProc("DispatchMessageW")
-	procTranslateMessage   = user32.NewProc("TranslateMessage")
-	procPostThreadMessage  = user32.NewProc("PostThreadMessageW")
-	procSetWindowsHookExW  = user32.NewProc("SetWindowsHookExW")
-	procUnhookWindowsHookEx = user32.NewProc("UnhookWindowsHookEx")
-	procCallNextHookEx     = user32.NewProc("CallNextHookEx")
-	procGetKeyState        = user32.NewProc("GetKeyState")
-
-	kernel32               = windows.NewLazySystemDLL("kernel32.dll")
-	procGetCurrentThreadID = kernel32.NewProc("GetCurrentThreadId")
-	procGetModuleHandleW   = kernel32.NewProc("GetModuleHandleW")
-)
-
-type msg struct {
-	Hwnd     uintptr
-	Message  uint32
-	WParam   uintptr
-	LParam   uintptr
-	Time     uint32
-	Pt       [2]int32
-	LPrivate uint32
-}
-
-type kbdHookStruct struct {
-	VkCode      uint32
-	ScanCode    uint32
-	Flags       uint32
-	Time        uint32
-	DwExtraInfo uintptr
-}
 
 type registration struct {
-	id   uint16
 	mode Mode
+	// Toggle mode: library handle + signal channel to stop the watcher goroutine.
+	hk       *gdhotkey.Hotkey
+	cancelCh chan struct{}
+	// PTT mode: match criteria + current keydown state (debounces OS auto-repeat).
 	mods uint32
 	vk   uint32
-	down bool // for PTT: tracks current keydown state (debounces auto-repeat)
-}
-
-type regReq struct {
-	id   uint16
-	mods uint32
-	vk   uint32
-	resp chan error
-}
-
-type unregReq struct {
-	id   uint16
-	resp chan error
+	down bool
 }
 
 type manager struct {
-	mu       sync.Mutex
-	regs     map[string]*registration
-	next     uint16
-	threadID uint32
-	events   chan Event
-	regCh    chan regReq
-	unregCh  chan unregReq
-	hookHwnd uintptr
-	done     chan struct{}
+	mu           sync.Mutex
+	regs         map[string]*registration
+	events       chan Event
+	hookHwnd     uintptr
+	hookThreadID uint32        // OS thread hosting the WH_KEYBOARD_LL pump
+	hookStopped  chan struct{} // closed when hook goroutine exits
 }
 
-// New creates a Windows hotkey manager. The returned manager runs its own
-// OS-thread-pinned message loop; Close to tear it down.
+// Thread-message code used to tell the hook pump goroutine to exit.
+const wmHookShutdown = win32.WMApp + 1
+
+// New creates a Windows hotkey manager. Toggle shortcuts use
+// golang.design/x/hotkey (HWND-backed, battle-tested message loop);
+// push-to-talk shortcuts use a shared low-level keyboard hook.
 func New() Manager {
-	m := &manager{
-		regs:    map[string]*registration{},
-		next:    1,
-		events:  make(chan Event, 16),
-		regCh:   make(chan regReq, 16),
-		unregCh: make(chan unregReq, 16),
-		done:    make(chan struct{}),
+	return &manager{
+		regs:   map[string]*registration{},
+		events: make(chan Event, 16),
 	}
-	ready := make(chan struct{})
-	go m.loop(ready)
-	<-ready
-	return m
 }
 
-// Detect returns platform capabilities for hotkey registration.
-func Detect() Capabilities {
-	return Capabilities{Supported: true, ConflictCheck: true}
-}
-
-// activeManager is set while the manager goroutine runs so the C-style
-// hook callback can find the channel/registrations.
+// activeManager is read by the C-style hook callback; set while a PTT
+// registration is active.
 var activeManager *manager
-
-func (m *manager) loop(ready chan<- struct{}) {
-	runtimeLockOSThread()
-	defer runtimeUnlockOSThread()
-
-	tid, _, _ := procGetCurrentThreadID.Call()
-	m.threadID = uint32(tid)
-
-	activeManager = m
-	defer func() { activeManager = nil }()
-
-	close(ready)
-
-	var message msg
-	for {
-		select {
-		case req := <-m.regCh:
-			req.resp <- m.doRegister(req.id, req.mods, req.vk)
-			continue
-		case req := <-m.unregCh:
-			req.resp <- m.doUnregister(req.id)
-			continue
-		case <-m.done:
-			m.tearDownHook()
-			return
-		default:
-		}
-
-		r, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&message)), 0, 0, 0)
-		if int32(r) <= 0 {
-			return
-		}
-		if message.Message == wmHotkey {
-			m.dispatchHotkey(uint16(message.WParam))
-		}
-		procTranslateMessage.Call(uintptr(unsafe.Pointer(&message)))
-		procDispatchMessageW.Call(uintptr(unsafe.Pointer(&message)))
-	}
-}
-
-func (m *manager) dispatchHotkey(id uint16) {
-	m.mu.Lock()
-	var name string
-	for n, r := range m.regs {
-		if r.id == id {
-			name = n
-			break
-		}
-	}
-	m.mu.Unlock()
-	if name == "" {
-		return
-	}
-	select {
-	case m.events <- Event{Name: name, Type: Trigger}:
-	default:
-		slog.Warn("hotkey: event channel full, dropping", "name", name)
-	}
-}
-
-func (m *manager) doRegister(id uint16, mods, vk uint32) error {
-	r, _, err := procRegisterHotKey.Call(0, uintptr(id), uintptr(mods|modNoRepeat), uintptr(vk))
-	if r == 0 {
-		if errno, ok := err.(syscall.Errno); ok && errno == 1409 {
-			return ErrConflict
-		}
-		return fmt.Errorf("RegisterHotKey: %w", err)
-	}
-	return nil
-}
-
-func (m *manager) doUnregister(id uint16) error {
-	r, _, err := procUnregisterHotKey.Call(0, uintptr(id))
-	if r == 0 {
-		return fmt.Errorf("UnregisterHotKey: %w", err)
-	}
-	return nil
-}
-
-func (m *manager) wake(code uint32) {
-	procPostThreadMessage.Call(uintptr(m.threadID), uintptr(code), 0, 0)
-}
 
 func (m *manager) Register(name string, spec Spec, mode Mode) error {
 	vk, ok := vkFromKey(spec.Key)
@@ -232,48 +86,76 @@ func (m *manager) Register(name string, spec Spec, mode Mode) error {
 		return fmt.Errorf("%w: at least one modifier required", ErrInvalidSpec)
 	}
 
-	m.mu.Lock()
-	if existing, ok := m.regs[name]; ok {
-		existingID := existing.id
-		existingMode := existing.mode
-		delete(m.regs, name)
-		m.mu.Unlock()
-		if existingMode == ModeToggle {
-			resp := make(chan error, 1)
-			m.unregCh <- unregReq{id: existingID, resp: resp}
-			m.wake(wmUnregister)
-			if err := <-resp; err != nil {
-				slog.Warn("hotkey: stale unregister failed", "error", err)
-			}
-		}
-		m.mu.Lock()
+	// Replace any prior registration with the same name.
+	if err := m.Unregister(name); err != nil {
+		slog.Warn("hotkey: prior unregister failed during re-register", "name", name, "error", err)
 	}
-	id := m.next
-	m.next++
-	reg := &registration{id: id, mode: mode, mods: mods, vk: vk}
-	m.regs[name] = reg
-	m.mu.Unlock()
+
+	slog.Debug("hotkey: registering",
+		"name", name, "spec", FormatSpec(spec), "mode", mode, "vk", vk, "mods", mods)
 
 	switch mode {
 	case ModeToggle:
-		resp := make(chan error, 1)
-		m.regCh <- regReq{id: id, mods: mods, vk: vk, resp: resp}
-		m.wake(wmRegister)
-		if err := <-resp; err != nil {
-			m.mu.Lock()
-			delete(m.regs, name)
-			m.mu.Unlock()
-			return err
+		hk := gdhotkey.New(libMods(spec.Mods), gdhotkey.Key(vk))
+		if err := hk.Register(); err != nil {
+			if isConflictErr(err) {
+				slog.Warn("hotkey: conflict", "name", name, "spec", FormatSpec(spec))
+				return ErrConflict
+			}
+			slog.Warn("hotkey: register failed", "name", name, "spec", FormatSpec(spec), "error", err)
+			return fmt.Errorf("RegisterHotKey: %w", err)
 		}
+
+		reg := &registration{mode: mode, hk: hk, cancelCh: make(chan struct{})}
+		m.mu.Lock()
+		m.regs[name] = reg
+		m.mu.Unlock()
+
+		go m.toggleLoop(name, reg)
+		slog.Debug("hotkey: toggle registered", "name", name)
+		return nil
+
 	case ModePushToTalk:
 		if err := m.ensureHook(); err != nil {
-			m.mu.Lock()
-			delete(m.regs, name)
-			m.mu.Unlock()
 			return err
 		}
+		reg := &registration{mode: mode, mods: mods, vk: vk}
+		m.mu.Lock()
+		m.regs[name] = reg
+		activeManager = m
+		m.mu.Unlock()
+		slog.Debug("hotkey: ptt registered", "name", name)
+		return nil
 	}
-	return nil
+	return fmt.Errorf("unknown mode %d", mode)
+}
+
+func (m *manager) toggleLoop(name string, reg *registration) {
+	slog.Debug("hotkey: toggleLoop starting", "name", name)
+	defer slog.Debug("hotkey: toggleLoop exiting", "name", name)
+	var lastFired time.Time
+	for {
+		select {
+		case _, ok := <-reg.hk.Keydown():
+			if !ok {
+				return
+			}
+			if since := time.Since(lastFired); since < toggleDebounce {
+				slog.Debug("hotkey: trigger suppressed (auto-repeat)",
+					"name", name, "since_last", since)
+				continue
+			}
+			lastFired = time.Now()
+			slog.Debug("hotkey: trigger fired", "name", name)
+			select {
+			case m.events <- Event{Name: name, Type: Trigger}:
+			default:
+				slog.Warn("hotkey: event channel full, dropping", "name", name)
+			}
+		case <-reg.cancelCh:
+			return
+		}
+	}
 }
 
 func (m *manager) Unregister(name string) error {
@@ -292,14 +174,21 @@ func (m *manager) Unregister(name string) error {
 		}
 	}
 	m.mu.Unlock()
-	if reg.mode == ModeToggle {
-		resp := make(chan error, 1)
-		m.unregCh <- unregReq{id: reg.id, resp: resp}
-		m.wake(wmUnregister)
-		return <-resp
-	}
-	if !hasPTT {
-		m.tearDownHook()
+
+	slog.Debug("hotkey: unregistering", "name", name, "mode", reg.mode)
+
+	switch reg.mode {
+	case ModeToggle:
+		if reg.hk != nil {
+			if err := reg.hk.Unregister(); err != nil {
+				slog.Warn("hotkey: lib Unregister failed", "name", name, "error", err)
+			}
+		}
+		close(reg.cancelCh)
+	case ModePushToTalk:
+		if !hasPTT {
+			m.tearDownHook()
+		}
 	}
 	return nil
 }
@@ -308,28 +197,23 @@ func (m *manager) Events() <-chan Event { return m.events }
 
 func (m *manager) Close() error {
 	m.mu.Lock()
-	toggleIDs := make([]uint16, 0, len(m.regs))
-	for _, r := range m.regs {
-		if r.mode == ModeToggle {
-			toggleIDs = append(toggleIDs, r.id)
-		}
+	names := make([]string, 0, len(m.regs))
+	for name := range m.regs {
+		names = append(names, name)
 	}
-	m.regs = map[string]*registration{}
 	m.mu.Unlock()
-
-	for _, id := range toggleIDs {
-		resp := make(chan error, 1)
-		m.unregCh <- unregReq{id: id, resp: resp}
-		m.wake(wmUnregister)
-		if err := <-resp; err != nil {
-			slog.Warn("hotkey: unregister on close failed", "id", id, "error", err)
+	for _, n := range names {
+		if err := m.Unregister(n); err != nil {
+			slog.Warn("hotkey: unregister on close failed", "name", n, "error", err)
 		}
 	}
-	close(m.done)
-	m.wake(wmClose)
 	return nil
 }
 
+// ensureHook installs the low-level keyboard hook on a dedicated OS thread
+// that runs a Win32 message loop. WH_KEYBOARD_LL callbacks only fire on
+// threads with an active GetMessageW pump — without this, no PTT event
+// would ever dispatch.
 func (m *manager) ensureHook() error {
 	m.mu.Lock()
 	have := m.hookHwnd != 0
@@ -338,51 +222,103 @@ func (m *manager) ensureHook() error {
 		return nil
 	}
 
-	hInst, _, _ := procGetModuleHandleW.Call(0)
-	hook, _, err := procSetWindowsHookExW.Call(
-		uintptr(whKeyboardLL),
-		syscall.NewCallback(keyboardProc),
-		hInst,
-		0,
-	)
-	if hook == 0 {
-		return fmt.Errorf("SetWindowsHookEx: %w", err)
+	ready := make(chan error, 1)
+	stopped := make(chan struct{})
+	go m.hookPump(ready, stopped)
+	if err := <-ready; err != nil {
+		return err
 	}
 	m.mu.Lock()
-	m.hookHwnd = hook
+	m.hookStopped = stopped
 	m.mu.Unlock()
+	slog.Debug("hotkey: keyboard hook installed")
 	return nil
+}
+
+// hookPump is pinned to an OS thread; it installs the hook on that thread
+// and then services its Windows message queue until told to shut down.
+func (m *manager) hookPump(ready chan<- error, stopped chan<- struct{}) {
+	runtimeLockOSThread()
+	defer runtimeUnlockOSThread()
+	defer close(stopped)
+
+	tid := win32.GetCurrentThreadID()
+	hook, err := win32.SetWindowsHookExW(
+		win32.WHKeyboardLL,
+		win32.NewCallback(keyboardProc),
+		win32.GetModuleHandleW(),
+		0,
+	)
+	if err != nil {
+		ready <- fmt.Errorf("SetWindowsHookEx: %w", err)
+		return
+	}
+
+	m.mu.Lock()
+	m.hookHwnd = hook
+	m.hookThreadID = tid
+	m.mu.Unlock()
+	ready <- nil
+
+	var msg win32.MSG
+	for {
+		r := win32.GetMessageW(&msg)
+		if r <= 0 {
+			break // WM_QUIT or error
+		}
+		if msg.Message == wmHookShutdown {
+			break
+		}
+		win32.TranslateMessage(&msg)
+		win32.DispatchMessageW(&msg)
+	}
+
+	win32.UnhookWindowsHookEx(hook)
+	m.mu.Lock()
+	m.hookHwnd = 0
+	m.hookThreadID = 0
+	m.mu.Unlock()
+	slog.Debug("hotkey: keyboard hook pump exited")
 }
 
 func (m *manager) tearDownHook() {
 	m.mu.Lock()
-	hook := m.hookHwnd
-	m.hookHwnd = 0
-	m.mu.Unlock()
-	if hook != 0 {
-		procUnhookWindowsHookEx.Call(hook)
+	tid := m.hookThreadID
+	stopped := m.hookStopped
+	m.hookStopped = nil
+	if activeManager == m {
+		activeManager = nil
 	}
+	m.mu.Unlock()
+	if tid == 0 {
+		return
+	}
+	win32.PostThreadMessageW(tid, wmHookShutdown, 0, 0)
+	if stopped != nil {
+		<-stopped
+	}
+	slog.Debug("hotkey: keyboard hook removed")
 }
 
-// keyboardProc is the low-level keyboard hook callback. Runs on the manager's
-// message-loop thread (where the hook was installed).
+func runtimeLockOSThread()   { runtime.LockOSThread() }
+func runtimeUnlockOSThread() { runtime.UnlockOSThread() }
+
+// keyboardProc is the low-level keyboard hook callback.
 func keyboardProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 	if nCode < 0 || activeManager == nil {
-		r, _, _ := procCallNextHookEx.Call(0, uintptr(nCode), wParam, uintptr(lParam))
-		return r
+		return win32.CallNextHookEx(nCode, wParam, lParam)
 	}
-	kbd := (*kbdHookStruct)(unsafe.Pointer(lParam))
+	kbd := (*win32.KBDLLHOOKSTRUCT)(unsafe.Pointer(lParam))
 	vk := kbd.VkCode
 
 	switch wParam {
-	case wmKeyDown, wmSysKeyDown:
+	case win32.WMKeyDown, win32.WMSysKeyDown:
 		activeManager.handlePTT(vk, true)
-	case wmKeyUp, wmSysKeyUp:
+	case win32.WMKeyUp, win32.WMSysKeyUp:
 		activeManager.handlePTT(vk, false)
 	}
 
-	r, _, _ := procCallNextHookEx.Call(0, uintptr(nCode), wParam, uintptr(lParam))
-	return r
+	return win32.CallNextHookEx(nCode, wParam, lParam)
 }
 
 func (m *manager) handlePTT(vk uint32, down bool) {
@@ -396,7 +332,6 @@ func (m *manager) handlePTT(vk uint32, down bool) {
 		if reg.vk != vk {
 			continue
 		}
-		// On keydown require the configured modifiers to be held.
 		if down {
 			if mods != reg.mods {
 				continue
@@ -412,7 +347,6 @@ func (m *manager) handlePTT(vk uint32, down bool) {
 			}
 			return
 		}
-		// keyup: only emit Release if we previously emitted Press.
 		if reg.down {
 			reg.down = false
 			select {
@@ -425,27 +359,32 @@ func (m *manager) handlePTT(vk uint32, down bool) {
 	}
 }
 
-// currentMods reads the current modifier-key state via GetKeyState.
 func currentMods() uint32 {
 	var mods uint32
-	if isDown(vkLControl) || isDown(vkRControl) {
+	if win32.IsKeyDown(win32.VKLControl) || win32.IsKeyDown(win32.VKRControl) {
 		mods |= modControl
 	}
-	if isDown(vkLAlt) || isDown(vkRAlt) {
+	if win32.IsKeyDown(win32.VKLAlt) || win32.IsKeyDown(win32.VKRAlt) {
 		mods |= modAlt
 	}
-	if isDown(vkLShift) || isDown(vkRShift) {
+	if win32.IsKeyDown(win32.VKLShift) || win32.IsKeyDown(win32.VKRShift) {
 		mods |= modShift
 	}
-	if isDown(vkLWin) || isDown(vkRWin) {
+	if win32.IsKeyDown(win32.VKLWin) || win32.IsKeyDown(win32.VKRWin) {
 		mods |= modWin
 	}
 	return mods
 }
 
-func isDown(vk uint32) bool {
-	r, _, _ := procGetKeyState.Call(uintptr(vk))
-	return int16(r) < 0 // high bit = pressed
+func isConflictErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		return errno == errHotkeyAlreadyRegistered
+	}
+	return false
 }
 
 func winMods(m Modifier) uint32 {
@@ -461,6 +400,23 @@ func winMods(m Modifier) uint32 {
 	}
 	if m&ModSuper != 0 {
 		out |= modWin
+	}
+	return out
+}
+
+func libMods(m Modifier) []gdhotkey.Modifier {
+	var out []gdhotkey.Modifier
+	if m&ModCtrl != 0 {
+		out = append(out, gdhotkey.ModCtrl)
+	}
+	if m&ModAlt != 0 {
+		out = append(out, gdhotkey.ModAlt)
+	}
+	if m&ModShift != 0 {
+		out = append(out, gdhotkey.ModShift)
+	}
+	if m&ModSuper != 0 {
+		out = append(out, gdhotkey.ModWin)
 	}
 	return out
 }
