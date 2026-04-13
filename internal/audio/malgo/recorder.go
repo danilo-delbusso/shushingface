@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"math"
 	"sync"
 
 	"codeberg.org/dbus/shushingface/internal/audio"
@@ -18,6 +19,7 @@ type recorder struct {
 	samples    []int16
 	recording  bool
 	sampleRate uint32
+	level      chan float32
 }
 
 func NewRecorder(sampleRate uint32) (audio.Recorder, error) {
@@ -29,6 +31,7 @@ func NewRecorder(sampleRate uint32) (audio.Recorder, error) {
 	r := &recorder{
 		mctx:       mctx,
 		sampleRate: sampleRate,
+		level:      make(chan float32, 1),
 	}
 
 	if err := r.initDevice(""); err != nil {
@@ -60,16 +63,40 @@ func (r *recorder) initDevice(id string) error {
 
 	onRecvFrames := func(_, pSampleIn []byte, _ uint32) {
 		r.mu.Lock()
-		defer r.mu.Unlock()
 		if !r.recording {
+			r.mu.Unlock()
 			return
 		}
 		sampleCount := len(pSampleIn) / 2
 		s := make([]int16, sampleCount)
+		var sumSq float64
 		for i := range sampleCount {
-			s[i] = int16(pSampleIn[i*2]) | int16(pSampleIn[i*2+1])<<8
+			v := int16(pSampleIn[i*2]) | int16(pSampleIn[i*2+1])<<8
+			s[i] = v
+			fv := float64(v)
+			sumSq += fv * fv
 		}
 		r.samples = append(r.samples, s...)
+		r.mu.Unlock()
+
+		// Push the latest RMS amplitude (normalised to 0..1) to the level
+		// channel without blocking the audio callback. If a stale value is
+		// still queued and unread, drop it in favour of the fresh one.
+		if sampleCount > 0 {
+			rms := math.Sqrt(sumSq/float64(sampleCount)) / 32767.0
+			select {
+			case r.level <- float32(rms):
+			default:
+				select {
+				case <-r.level:
+				default:
+				}
+				select {
+				case r.level <- float32(rms):
+				default:
+				}
+			}
+		}
 	}
 
 	device, err := malgo.InitDevice(r.mctx.Context, deviceConfig, malgo.DeviceCallbacks{Data: onRecvFrames})
@@ -135,6 +162,8 @@ func (r *recorder) ListDevices() ([]audio.DeviceInfo, error) {
 	}
 	return out, nil
 }
+
+func (r *recorder) Level() <-chan float32 { return r.level }
 
 func (r *recorder) SetDevice(id string) error {
 	r.mu.Lock()

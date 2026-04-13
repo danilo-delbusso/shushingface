@@ -17,4 +17,10 @@ type Recorder interface {
 	// SetDevice re-initialises the underlying device with the given ID.
 	// Empty string means the system default. Safe to call only while not recording.
 	SetDevice(id string) error
+	// Level returns a buffered channel that receives the most recent capture
+	// buffer's RMS amplitude in [0,1] while recording is active. Buffer
+	// capacity is 1: producers drop old values when nobody's reading, so
+	// consumers always see the freshest sample without back-pressuring the
+	// audio callback. The channel is alive for the lifetime of the recorder.
+	Level() <-chan float32
 }
