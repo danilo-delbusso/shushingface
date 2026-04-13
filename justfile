@@ -3,7 +3,7 @@
 
 set shell := ["bash", "-c"]
 
-prefix := env("PREFIX", env("HOME") / ".local")
+prefix := env("PREFIX", env("HOME", env("USERPROFILE", "")) / ".local")
 
 default:
     @just --list
