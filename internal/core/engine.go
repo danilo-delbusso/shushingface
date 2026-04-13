@@ -177,21 +177,21 @@ func rmsInt16(samples []int16) float64 {
 // data. Comparisons are case-insensitive and ignore trailing punctuation /
 // whitespace, so "Thank you." and " thank you " both match.
 var whisperHallucinations = map[string]struct{}{
-	"":                      {},
-	"you":                   {},
-	"thank you":             {},
-	"thanks":                {},
-	"thanks for watching":   {},
+	"":                       {},
+	"you":                    {},
+	"thank you":              {},
+	"thanks":                 {},
+	"thanks for watching":    {},
 	"thank you for watching": {},
-	"please subscribe":      {},
-	"subscribe":             {},
-	"bye":                   {},
-	"goodbye":               {},
-	"okay":                  {},
-	"ok":                    {},
-	"hmm":                   {},
-	"um":                    {},
-	"uh":                    {},
+	"please subscribe":       {},
+	"subscribe":              {},
+	"bye":                    {},
+	"goodbye":                {},
+	"okay":                   {},
+	"ok":                     {},
+	"hmm":                    {},
+	"um":                     {},
+	"uh":                     {},
 }
 
 // isWhisperHallucination returns true when transcript looks like one of

@@ -45,8 +45,8 @@ type Spec struct {
 type Mode int
 
 const (
-	ModeToggle      Mode = iota // single press → one Trigger event
-	ModePushToTalk              // delivers Press on keydown and Release on keyup
+	ModeToggle     Mode = iota // single press → one Trigger event
+	ModePushToTalk             // delivers Press on keydown and Release on keyup
 )
 
 // EventType describes which kind of hotkey event was delivered.

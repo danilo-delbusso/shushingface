@@ -24,9 +24,9 @@ type FewShotExample struct {
 type RefinementProfile struct {
 	ID           string           `json:"id"`
 	Name         string           `json:"name"`
-	Icon         string           `json:"icon"`                    // lucide icon name
-	ConnectionID string           `json:"connectionId,omitempty"`  // override; empty = use global
-	Model        string           `json:"model"`                   // override; empty = use global RefinementModel
+	Icon         string           `json:"icon"`                   // lucide icon name
+	ConnectionID string           `json:"connectionId,omitempty"` // override; empty = use global
+	Model        string           `json:"model"`                  // override; empty = use global RefinementModel
 	Prompt       string           `json:"prompt"`
 	Examples     []FewShotExample `json:"examples,omitempty"`
 	Temperature  float32          `json:"temperature,omitempty"`
@@ -218,22 +218,22 @@ func DefaultProfiles() []RefinementProfile {
 
 func DefaultSettings() *Settings {
 	return &Settings{
-		ConfigVersion:      currentConfigVersion,
-		TranscriptionModel: DefaultTranscriptionModel,
-		RefinementModel:    DefaultRefinementModel,
-		RefinementProfiles: DefaultProfiles(),
-		ActiveProfileID:    "professional",
-		SetupComplete:      false,
-		Theme:              "dark",
-		AutoPaste:          true,
-		AutoCopy:           false,
-		EnableHistory:      true,
-		EnableIndicator:    true,
+		ConfigVersion:       currentConfigVersion,
+		TranscriptionModel:  DefaultTranscriptionModel,
+		RefinementModel:     DefaultRefinementModel,
+		RefinementProfiles:  DefaultProfiles(),
+		ActiveProfileID:     "professional",
+		SetupComplete:       false,
+		Theme:               "dark",
+		AutoPaste:           true,
+		AutoCopy:            false,
+		EnableHistory:       true,
+		EnableIndicator:     true,
 		EnableNotifications: false,
 		CheckForUpdates:     true,
-		RecordingMode:      "toggle",
-		OverlayEnabled:     true,
-		OverlayOpacity:     0.4,
+		RecordingMode:       "toggle",
+		OverlayEnabled:      true,
+		OverlayOpacity:      0.4,
 	}
 }
 
@@ -322,4 +322,3 @@ func GetLogPath() (string, error) {
 	}
 	return filepath.Join(appDir, "app.log"), nil
 }
-

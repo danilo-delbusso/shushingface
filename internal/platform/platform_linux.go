@@ -17,9 +17,9 @@ var (
 func Detect() Info {
 	infoOnce.Do(func() {
 		info = Info{
-			OS:            "linux",
-			DisplayServer: detectDisplayServer(),
-			Desktop:       os.Getenv("XDG_CURRENT_DESKTOP"),
+			OS:             "linux",
+			DisplayServer:  detectDisplayServer(),
+			Desktop:        os.Getenv("XDG_CURRENT_DESKTOP"),
 			PackageManager: detectPackageManager(),
 		}
 	})

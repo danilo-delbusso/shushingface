@@ -124,7 +124,7 @@ func (s *sniItem) Activate(x, y int32) *dbus.Error {
 	}
 	return nil
 }
-func (s *sniItem) SecondaryActivate(x, y int32) *dbus.Error { return nil }
+func (s *sniItem) SecondaryActivate(x, y int32) *dbus.Error           { return nil }
 func (s *sniItem) Scroll(delta int32, orientation string) *dbus.Error { return nil }
 
 type iconPixmap struct {
@@ -152,7 +152,6 @@ func iconPixmaps(pngData []byte) []iconPixmap {
 	}
 	return []iconPixmap{{int32(w), int32(h), argb}}
 }
-
 
 var (
 	instance *sniItem

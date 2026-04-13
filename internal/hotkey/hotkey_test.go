@@ -12,10 +12,10 @@ func TestParseSpec(t *testing.T) {
 		{"ctrl+b", "Ctrl+B", false},
 		{"Super+Ctrl+B", "Ctrl+Super+B", false},
 		{"Alt+F5", "Alt+F5", false},
-		{"B", "", true},        // no modifier
-		{"Ctrl+", "", true},    // missing key
-		{"", "", true},         // empty
-		{"Foo+B", "", true},    // unknown modifier
+		{"B", "", true},     // no modifier
+		{"Ctrl+", "", true}, // missing key
+		{"", "", true},      // empty
+		{"Foo+B", "", true}, // unknown modifier
 	}
 	for _, tc := range cases {
 		spec, err := ParseSpec(tc.in)
