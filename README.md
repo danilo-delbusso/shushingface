@@ -30,8 +30,9 @@ shushing face helps you work more efficiently by leveraging the fact that speaki
 | Ubuntu | 22.04 LTS | GNOME (X11/Wayland) | Expected to work |
 | Fedora | 40+ | GNOME (Wayland) | Expected to work |
 | Arch Linux | Rolling | Any | Expected to work |
+| Windows | 10 / 11 | — | In development |
 
-macOS and Windows support is planned.
+macOS support is planned.
 
 ## Install
 
@@ -52,11 +53,21 @@ sudo cp shushingface /usr/local/bin/
 
 ### From source
 
-Requires Go 1.26+, Bun, and `libwebkit2gtk-4.1-dev`:
+Requires Go 1.26+, Bun, and the Wails CLI. On Linux also install `libwebkit2gtk-4.1-dev`.
+
+Linux / macOS:
 
 ```bash
 just install
 ```
+
+Windows (PowerShell or Git Bash with `just` on PATH):
+
+```bash
+just install-windows
+```
+
+The Windows target copies `shushingface.exe` into `%LOCALAPPDATA%\Programs\shushingface` and drops a Start Menu shortcut. Global hotkey registration is handled in-app from Settings → Shortcut.
 
 ## Usage
 
