@@ -58,20 +58,20 @@ LDFLAGS := "-X codeberg.org/dbus/shushingface/internal/version.version=" + VERSI
 # Runs the Wails Desktop application in development mode
 dev:
     #!/bin/bash
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        wails dev -tags webkit2_41 -ldflags '{{LDFLAGS}}'
-    else
-        wails dev -ldflags '{{LDFLAGS}}'
-    fi
+    case "$OSTYPE" in
+        linux-gnu*) wails dev -tags webkit2_41 -ldflags '{{LDFLAGS}}' ;;
+        msys*|cygwin*|win32*) wails dev -ldflags '{{LDFLAGS}}' ;;
+        *) wails dev -ldflags '{{LDFLAGS}}' ;;
+    esac
 
 # Platform-aware build (auto-detects OS)
 build:
     #!/bin/bash
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}'
-    else
-        wails build -ldflags '{{LDFLAGS}}'
-    fi
+    case "$OSTYPE" in
+        linux-gnu*) wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}' ;;
+        msys*|cygwin*|win32*) wails build -ldflags '{{LDFLAGS}}' ;;
+        *) wails build -ldflags '{{LDFLAGS}}' ;;
+    esac
 
 # Build for Linux explicitly
 build-linux:
@@ -81,9 +81,14 @@ build-linux:
 build-darwin:
     wails build -ldflags '{{LDFLAGS}}'
 
+# Build for Windows explicitly (produces NSIS installer in build/bin)
+build-windows:
+    wails build -nsis -ldflags '{{LDFLAGS}}'
+
 # --- Install & Uninstall (Linux) ---
 # macOS: `wails build` produces a .app bundle in build/bin/
-# Windows: `wails build -nsis` produces an installer
+# Windows: use `just install-windows` (copies exe + Start Menu shortcut)
+#          or `just build-windows` to produce an NSIS installer
 
 # Install shushingface on Linux (binary + desktop entry + icon + shortcut)
 install: build
@@ -161,6 +166,31 @@ uninstall:
       echo "{}" > "$file"
       echo "Removed COSMIC shortcut"
     fi
+    echo "Uninstalled shushingface"
+
+# --- Install & Uninstall (Windows) ---
+
+# Install shushingface on Windows (binary to LocalAppData + Start Menu shortcut)
+install-windows: build-windows
+    #!/bin/bash
+    set -e
+    dest="$LOCALAPPDATA/Programs/shushingface"
+    mkdir -p "$dest"
+    cp build/bin/shushingface.exe "$dest/shushingface.exe"
+    pwsh -NoProfile -Command "$WshShell = New-Object -ComObject WScript.Shell; \
+      $lnk = [System.IO.Path]::Combine($env:APPDATA, 'Microsoft\\Windows\\Start Menu\\Programs\\shushingface.lnk'); \
+      $s = $WshShell.CreateShortcut($lnk); \
+      $s.TargetPath = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'Programs\\shushingface\\shushingface.exe'); \
+      $s.Save()"
+    echo "Installed shushingface to $dest"
+    echo "Tip: open the app and bind a shortcut from Settings -> Shortcut"
+
+# Remove shushingface on Windows
+uninstall-windows:
+    #!/bin/bash
+    rm -f "$LOCALAPPDATA/Programs/shushingface/shushingface.exe"
+    rmdir "$LOCALAPPDATA/Programs/shushingface" 2>/dev/null || true
+    rm -f "$APPDATA/Microsoft/Windows/Start Menu/Programs/shushingface.lnk"
     echo "Uninstalled shushingface"
 
 # Re-generates TypeScript bindings from Go structs
