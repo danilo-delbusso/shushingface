@@ -1,5 +1,6 @@
 import { SlidersHorizontal, AlertTriangle } from "lucide-react";
 import { SettingsShortcut } from "@/components/settings-shortcut";
+import { SettingsInputDevice } from "@/components/settings-input-device";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
@@ -50,6 +51,8 @@ export function SettingsView({
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         <SettingsShortcut platform={platform} />
+
+        <SettingsInputDevice settings={settings} onSave={onSave} />
 
         <Card>
           <CardHeader className="pb-3">

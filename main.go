@@ -96,7 +96,7 @@ func main() {
 	}
 
 	engine := core.NewEngine(recorder, pair.Transcriber, pair.Refiner)
-	app := desktop.NewApp(engine, cfg, secretStore, hist)
+	app := desktop.NewApp(engine, recorder, cfg, secretStore, hist)
 
 	logPath, _ := config.GetLogPath()
 	appLogger := logger.NewFileLogger(logPath)

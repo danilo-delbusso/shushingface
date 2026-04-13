@@ -33,6 +33,27 @@ export namespace ai {
 
 }
 
+export namespace audio {
+	
+	export class DeviceInfo {
+	    id: string;
+	    name: string;
+	    isDefault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeviceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.isDefault = source["isDefault"];
+	    }
+	}
+
+}
+
 export namespace config {
 	
 	export class Connection {

@@ -13,6 +13,7 @@ import (
 
 	"codeberg.org/dbus/shushingface/internal/ai"
 	"codeberg.org/dbus/shushingface/internal/ai/factory"
+	"codeberg.org/dbus/shushingface/internal/audio"
 	"codeberg.org/dbus/shushingface/internal/config"
 	"codeberg.org/dbus/shushingface/internal/core"
 	"codeberg.org/dbus/shushingface/internal/history"
@@ -31,6 +32,7 @@ import (
 type App struct {
 	ctx      context.Context
 	engine   core.Engine
+	recorder audio.Recorder
 	mu       sync.RWMutex
 	cfg      *config.Settings
 	secrets  secrets.Store
@@ -49,8 +51,8 @@ func (a *App) snapshotConfig() config.Settings {
 	return s
 }
 
-func NewApp(engine core.Engine, cfg *config.Settings, secretStore secrets.Store, hist history.Store) *App {
-	return &App{engine: engine, cfg: cfg, secrets: secretStore, history: hist}
+func NewApp(engine core.Engine, recorder audio.Recorder, cfg *config.Settings, secretStore secrets.Store, hist history.Store) *App {
+	return &App{engine: engine, recorder: recorder, cfg: cfg, secrets: secretStore, history: hist}
 }
 
 func (a *App) Startup(ctx context.Context) {
@@ -61,6 +63,15 @@ func (a *App) Startup(ctx context.Context) {
 	checkForUpdates := a.cfg.CheckForUpdates
 	shortcutSpec := a.cfg.Shortcut
 	a.mu.RUnlock()
+
+	a.mu.RLock()
+	deviceID := a.cfg.InputDeviceID
+	a.mu.RUnlock()
+	if deviceID != "" {
+		if err := a.recorder.SetDevice(deviceID); err != nil {
+			slog.Warn("failed to apply saved input device, falling back to default", "id", deviceID, "error", err)
+		}
+	}
 
 	if hotkey.Detect().Supported {
 		a.hotkey = hotkey.New()
@@ -304,7 +315,14 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	oldConns := make([]config.Connection, len(a.cfg.Connections))
 	copy(oldConns, a.cfg.Connections)
 	oldIndicator := a.cfg.EnableIndicator
+	oldDeviceID := a.cfg.InputDeviceID
 	a.mu.RUnlock()
+
+	if newSettings.InputDeviceID != oldDeviceID {
+		if err := a.recorder.SetDevice(newSettings.InputDeviceID); err != nil {
+			return fmt.Errorf("switch input device: %w", err)
+		}
+	}
 
 	// Clean up secrets for deleted connections
 	newIDs := make(map[string]bool)
@@ -380,6 +398,11 @@ func (a *App) GetPasteStatus() PasteStatus {
 		Available:  paste.Available(),
 		InstallCmd: paste.InstallHint(),
 	}
+}
+
+// ListInputDevices returns the available capture devices.
+func (a *App) ListInputDevices() ([]audio.DeviceInfo, error) {
+	return a.recorder.ListDevices()
 }
 
 func (a *App) GetDefaultProfiles() []config.RefinementProfile {

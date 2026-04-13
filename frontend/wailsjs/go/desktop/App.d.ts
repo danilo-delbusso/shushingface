@@ -5,6 +5,7 @@ import {history} from '../models';
 import {desktop} from '../models';
 import {platform} from '../models';
 import {hotkey} from '../models';
+import {audio} from '../models';
 import {ai} from '../models';
 
 export function ClearHistory():Promise<void>;
@@ -36,6 +37,8 @@ export function GetVersion():Promise<string>;
 export function HotkeyCapabilities():Promise<hotkey.Capabilities>;
 
 export function IsSecretStorageSecure():Promise<boolean>;
+
+export function ListInputDevices():Promise<Array<audio.DeviceInfo>>;
 
 export function ListModelsForConnection(arg1:string):Promise<Array<ai.ModelInfo>>;
 

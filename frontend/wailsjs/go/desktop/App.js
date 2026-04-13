@@ -62,6 +62,10 @@ export function IsSecretStorageSecure() {
   return window['go']['desktop']['App']['IsSecretStorageSecure']();
 }
 
+export function ListInputDevices() {
+  return window['go']['desktop']['App']['ListInputDevices']();
+}
+
 export function ListModelsForConnection(arg1) {
   return window['go']['desktop']['App']['ListModelsForConnection'](arg1);
 }
