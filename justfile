@@ -20,6 +20,15 @@ doctor:
 doctor:
     @bash scripts/doctor/windows.sh
 
+# Install missing dependencies (pass --yes to skip prompts)
+[unix]
+bootstrap *args:
+    @bash scripts/bootstrap/linux.sh {{args}}
+
+[windows]
+bootstrap *args:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap/windows.ps1 {{args}}
+
 # --- Frontend Tasks ---
 
 # Formats frontend code using Biome
