@@ -10,6 +10,7 @@ require (
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/zalando/go-keyring v0.2.8
+	golang.design/x/hotkey v0.4.1
 	golang.org/x/sys v0.42.0
 	modernc.org/sqlite v1.48.2
 )
