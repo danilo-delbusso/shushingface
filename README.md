@@ -7,7 +7,7 @@
 <p align="center">speak naturally, get polished text.</p>
 
 <p align="center">
-shushing face records your voice, transcribes it with AI, rewrites it into clean text, and types it right where your cursor is.
+shushing face helps you work more efficiently by leveraging the fact that speaking is generally faster than typing. It operates in the background, allowing you to speak freely, and with a simple press or shortcut, it transcribes and cleans up your spoken words into clear, professional text, making it ideal for emails, reports, and other workplace communication.
 </p>
 
 <p align="center">
