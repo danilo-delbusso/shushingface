@@ -63,10 +63,13 @@ just install
 
 Windows (PowerShell with `just` on PATH):
 
-Install a mingw-w64 C compiler (CGO dependency — required by `malgo` audio and `modernc.org/sqlite`). The Microsoft/winget LLVM targets MSVC and is **not** compatible; use llvm-mingw instead:
+Install a mingw-w64 C compiler (CGO dependency — required by `malgo` audio and `modernc.org/sqlite`). The Microsoft/winget `LLVM.LLVM` package targets MSVC and is **not** compatible; use llvm-mingw instead:
 
-- Download the right zip from <https://github.com/mstorsjo/llvm-mingw/releases> (`ucrt-aarch64` on ARM64 Windows, `ucrt-x86_64` on x64).
-- Extract it somewhere (e.g. `C:\tools\llvm-mingw`) and add its `bin` directory to PATH.
+```powershell
+winget install --id MartinStorsjo.LLVM-MinGW.UCRT
+```
+
+Then restart the shell so the new `PATH` is picked up. Alternatively, download the zip manually from <https://github.com/mstorsjo/llvm-mingw/releases> and add its `bin` directory to PATH.
 
 Then:
 
