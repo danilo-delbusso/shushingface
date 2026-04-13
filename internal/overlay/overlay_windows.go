@@ -9,73 +9,69 @@ import (
 	"syscall"
 	"unsafe"
 
-	"golang.org/x/sys/windows"
+	"codeberg.org/dbus/shushingface/internal/platform"
+	"codeberg.org/dbus/shushingface/internal/win32"
 )
 
-const (
-	wsPopup        = 0x80000000
-	wsExLayered    = 0x00080000
-	wsExTransparent = 0x00000020
-	wsExTopmost    = 0x00000008
-	wsExNoActivate = 0x08000000
-	wsExToolWindow = 0x00000080
+func capability() platform.Capability { return platform.Supported() }
 
-	swHide        = 0
+// Window-style and message constants used only by the overlay. Shared
+// messages like WM_QUIT live in the win32 package.
+const (
+	wsPopup         = 0x80000000
+	wsExLayered     = 0x00080000
+	wsExTransparent = 0x00000020
+	wsExTopmost     = 0x00000008
+	wsExNoActivate  = 0x08000000
+	wsExToolWindow  = 0x00000080
+
+	swHide           = 0
 	swShowNoActivate = 4
 
 	lwaAlpha = 0x00000002
 
 	wmPaint   = 0x000F
 	wmDestroy = 0x0002
-	wmClose   = 0x0010
-	wmApp     = 0x8000
-	wmShow    = wmApp + 1
-	wmHide    = wmApp + 2
 
 	overlayWidth  = 180
 	overlayHeight = 36
-	overlayMargin = 24 // distance above the bottom edge of the active window
+	overlayMargin = 8 // distance above the bottom edge of the active window
 
-	dtCenter   = 0x00000001
-	dtVCenter  = 0x00000004
+	dtCenter     = 0x00000001
+	dtVCenter    = 0x00000004
 	dtSingleLine = 0x00000020
 
-	srcCopy = 0x00CC0020
+	swpNoActivate = 0x0010
+	swpShowWindow = 0x0040
+	hwndTopmost   = ^uintptr(0) // (HWND)-1
 )
 
+// Overlay-specific window/paint procs. Everything that more than one
+// package needs (GetForegroundWindow, GetWindowRect, GetMessage, etc.)
+// lives in internal/win32; these are the leftovers that are genuinely
+// overlay-only.
 var (
-	user32   = windows.NewLazySystemDLL("user32.dll")
-	gdi32    = windows.NewLazySystemDLL("gdi32.dll")
-	kernel32 = windows.NewLazySystemDLL("kernel32.dll")
+	u = win32.User32()
+	g = win32.GDI32()
 
-	procRegisterClassExW       = user32.NewProc("RegisterClassExW")
-	procCreateWindowExW        = user32.NewProc("CreateWindowExW")
-	procDefWindowProcW         = user32.NewProc("DefWindowProcW")
-	procShowWindow             = user32.NewProc("ShowWindow")
-	procDestroyWindow          = user32.NewProc("DestroyWindow")
-	procSetLayeredWindowAttrs  = user32.NewProc("SetLayeredWindowAttributes")
-	procSetWindowPos           = user32.NewProc("SetWindowPos")
-	procGetForegroundWindow    = user32.NewProc("GetForegroundWindow")
-	procGetWindowRect          = user32.NewProc("GetWindowRect")
-	procInvalidateRect         = user32.NewProc("InvalidateRect")
-	procBeginPaint             = user32.NewProc("BeginPaint")
-	procEndPaint               = user32.NewProc("EndPaint")
-	procFillRect               = user32.NewProc("FillRect")
-	procDrawTextW              = user32.NewProc("DrawTextW")
-	procGetMessageW            = user32.NewProc("GetMessageW")
-	procDispatchMessageW       = user32.NewProc("DispatchMessageW")
-	procTranslateMessage       = user32.NewProc("TranslateMessage")
-	procPostThreadMessage      = user32.NewProc("PostThreadMessageW")
-	procPostMessageW           = user32.NewProc("PostMessageW")
-	procLoadCursorW            = user32.NewProc("LoadCursorW")
+	procRegisterClassExW     = u.NewProc("RegisterClassExW")
+	procCreateWindowExW      = u.NewProc("CreateWindowExW")
+	procDefWindowProcW       = u.NewProc("DefWindowProcW")
+	procShowWindow           = u.NewProc("ShowWindow")
+	procDestroyWindow        = u.NewProc("DestroyWindow")
+	procSetLayeredWindowAttr = u.NewProc("SetLayeredWindowAttributes")
+	procSetWindowPos         = u.NewProc("SetWindowPos")
+	procInvalidateRect       = u.NewProc("InvalidateRect")
+	procBeginPaint           = u.NewProc("BeginPaint")
+	procEndPaint             = u.NewProc("EndPaint")
+	procFillRect             = u.NewProc("FillRect")
+	procDrawTextW            = u.NewProc("DrawTextW")
+	procLoadCursorW          = u.NewProc("LoadCursorW")
 
-	procCreateSolidBrush       = gdi32.NewProc("CreateSolidBrush")
-	procDeleteObject           = gdi32.NewProc("DeleteObject")
-	procSetBkMode              = gdi32.NewProc("SetBkMode")
-	procSetTextColor           = gdi32.NewProc("SetTextColor")
-
-	procGetCurrentThreadID     = kernel32.NewProc("GetCurrentThreadId")
-	procGetModuleHandleW       = kernel32.NewProc("GetModuleHandleW")
+	procCreateSolidBrush = g.NewProc("CreateSolidBrush")
+	procDeleteObject     = g.NewProc("DeleteObject")
+	procSetBkMode        = g.NewProc("SetBkMode")
+	procSetTextColor     = g.NewProc("SetTextColor")
 )
 
 type wndclassex struct {
@@ -93,26 +89,10 @@ type wndclassex struct {
 	hIconSm       uintptr
 }
 
-type rect struct {
-	Left, Top, Right, Bottom int32
-}
-
-type point struct{ X, Y int32 }
-
-type msg struct {
-	Hwnd     uintptr
-	Message  uint32
-	WParam   uintptr
-	LParam   uintptr
-	Time     uint32
-	Pt       point
-	LPrivate uint32
-}
-
 type paintStruct struct {
 	Hdc         uintptr
 	FErase      int32
-	RcPaint     rect
+	RcPaint     win32.RECT
 	FRestore    int32
 	FIncUpdate  int32
 	RgbReserved [32]byte
@@ -123,7 +103,6 @@ type overlay struct {
 	hwnd     uintptr
 	bg       uintptr // brush
 	cmds     chan command
-	done     chan struct{}
 	current  string
 }
 
@@ -142,12 +121,13 @@ type command struct {
 	resp    chan error
 }
 
+// Wake-message code used to poke the overlay's message-loop out of
+// GetMessageW when a new command is ready on the cmds chan.
+const wmOverlayWake = win32.WMApp
+
 // New creates the overlay; spawns a dedicated message-loop goroutine.
 func New() Overlay {
-	ov := &overlay{
-		cmds: make(chan command, 8),
-		done: make(chan struct{}),
-	}
+	ov := &overlay{cmds: make(chan command, 8)}
 	ready := make(chan error, 1)
 	go ov.loop(ready)
 	if err := <-ready; err != nil {
@@ -156,12 +136,6 @@ func New() Overlay {
 	}
 	return ov
 }
-
-type stub struct{}
-
-func (stub) Show(string, float64) error { return nil }
-func (stub) Hide() error                { return nil }
-func (stub) Close() error               { return nil }
 
 func (o *overlay) Show(text string, opacity float64) error {
 	resp := make(chan error, 1)
@@ -185,25 +159,29 @@ func (o *overlay) Close() error {
 }
 
 func (o *overlay) wake() {
-	procPostThreadMessage.Call(uintptr(o.threadID), wmApp, 0, 0)
+	win32.PostThreadMessageW(o.threadID, wmOverlayWake, 0, 0)
 }
 
-var classRegistered bool
-var classNamePtr *uint16
+var (
+	classRegistered bool
+	classNamePtr    *uint16
+)
 
+// loop is pinned to one OS thread (required for Win32 windows/message
+// loops) and owns the overlay HWND. Commands from Show/Hide/Close are
+// marshalled in via o.cmds + PostThreadMessage.
 func (o *overlay) loop(ready chan<- error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	tid, _, _ := procGetCurrentThreadID.Call()
-	o.threadID = uint32(tid)
+	o.threadID = win32.GetCurrentThreadID()
 
 	if err := o.ensureClass(); err != nil {
 		ready <- err
 		return
 	}
 
-	hInst, _, _ := procGetModuleHandleW.Call(0)
+	hInst := win32.GetModuleHandleW()
 	hwnd, _, err := procCreateWindowExW.Call(
 		wsExLayered|wsExTransparent|wsExTopmost|wsExNoActivate|wsExToolWindow,
 		uintptr(unsafe.Pointer(classNamePtr)),
@@ -218,46 +196,52 @@ func (o *overlay) loop(ready chan<- error) {
 	}
 	o.hwnd = hwnd
 
-	// Solid red background brush; layered alpha makes it translucent.
+	// Solid red brush; the layered-window alpha makes it translucent.
 	brush, _, _ := procCreateSolidBrush.Call(rgb(220, 38, 38))
 	o.bg = brush
 
 	ready <- nil
 
-	var m msg
+	var msg win32.MSG
 	for {
+		// Non-blocking: drain any pending commands before sleeping in GetMessageW.
 		select {
 		case c := <-o.cmds:
-			switch c.kind {
-			case cmdShow:
-				err := o.doShow(c.text, c.opacity)
-				c.resp <- err
-			case cmdHide:
-				err := o.doHide()
-				c.resp <- err
-			case cmdClose:
-				if o.hwnd != 0 {
-					procDestroyWindow.Call(o.hwnd)
-					o.hwnd = 0
-				}
-				if o.bg != 0 {
-					procDeleteObject.Call(o.bg)
-					o.bg = 0
-				}
-				c.resp <- nil
+			if o.handleCommand(c) {
 				return
 			}
 			continue
 		default:
 		}
 
-		r, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&m)), 0, 0, 0)
-		if int32(r) <= 0 {
+		if win32.GetMessageW(&msg) <= 0 {
 			return
 		}
-		procTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))
-		procDispatchMessageW.Call(uintptr(unsafe.Pointer(&m)))
+		win32.TranslateMessage(&msg)
+		win32.DispatchMessageW(&msg)
 	}
+}
+
+// handleCommand returns true when the overlay should tear down and exit.
+func (o *overlay) handleCommand(c command) (done bool) {
+	switch c.kind {
+	case cmdShow:
+		c.resp <- o.doShow(c.text, c.opacity)
+	case cmdHide:
+		c.resp <- o.doHide()
+	case cmdClose:
+		if o.hwnd != 0 {
+			procDestroyWindow.Call(o.hwnd)
+			o.hwnd = 0
+		}
+		if o.bg != 0 {
+			procDeleteObject.Call(o.bg)
+			o.bg = 0
+		}
+		c.resp <- nil
+		return true
+	}
+	return false
 }
 
 func (o *overlay) ensureClass() error {
@@ -270,15 +254,13 @@ func (o *overlay) ensureClass() error {
 	}
 	classNamePtr = name
 
-	hInst, _, _ := procGetModuleHandleW.Call(0)
+	hInst := win32.GetModuleHandleW()
 	cursor, _, _ := procLoadCursorW.Call(0, 32512) // IDC_ARROW
 
 	wc := wndclassex{
-		cbSize:        uint32(unsafe.Sizeof(wndclassex{})),
 		lpfnWndProc:   syscall.NewCallback(wndProc),
 		hInstance:     hInst,
 		hCursor:       cursor,
-		hbrBackground: 0,
 		lpszClassName: name,
 	}
 	wc.cbSize = uint32(unsafe.Sizeof(wc))
@@ -313,8 +295,8 @@ func paintOverlay(hwnd uintptr) {
 	hdc, _, _ := procBeginPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps)))
 	defer procEndPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps)))
 
-	var rc rect
-	procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&rc)))
+	var rc win32.RECT
+	win32.GetWindowRect(hwnd, &rc)
 	rc.Right -= rc.Left
 	rc.Bottom -= rc.Top
 	rc.Left, rc.Top = 0, 0
@@ -352,12 +334,13 @@ func (o *overlay) doShow(text string, opacity float64) error {
 		opacity = 1
 	}
 	alpha := byte(opacity * 255)
-	procSetLayeredWindowAttrs.Call(o.hwnd, 0, uintptr(alpha), lwaAlpha)
+	procSetLayeredWindowAttr.Call(o.hwnd, 0, uintptr(alpha), lwaAlpha)
 
 	x, y := positionUnderActive(overlayWidth, overlayHeight, overlayMargin)
-	const swpNoActivate = 0x0010
-	const swpShowWindow = 0x0040
-	procSetWindowPos.Call(o.hwnd, ^uintptr(0) /* HWND_TOPMOST = -1 */, uintptr(x), uintptr(y), uintptr(int32(overlayWidth)), uintptr(int32(overlayHeight)), swpNoActivate|swpShowWindow)
+	procSetWindowPos.Call(o.hwnd, hwndTopmost,
+		uintptr(x), uintptr(y),
+		uintptr(int32(overlayWidth)), uintptr(int32(overlayHeight)),
+		swpNoActivate|swpShowWindow)
 
 	activeOverlayState.text = text
 	activeOverlayState.brush = o.bg
@@ -374,19 +357,21 @@ func (o *overlay) doHide() error {
 	return nil
 }
 
+// positionUnderActive returns the top-left screen coordinates where the
+// overlay should sit given the current foreground window. Falls back to a
+// fixed corner if no window has focus.
 func positionUnderActive(w, h, margin int32) (int32, int32) {
-	hwnd, _, _ := procGetForegroundWindow.Call()
+	hwnd := win32.GetForegroundWindow()
 	if hwnd == 0 {
 		return 100, 100
 	}
-	var rc rect
-	procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&rc)))
+	var rc win32.RECT
+	win32.GetWindowRect(hwnd, &rc)
 	cx := rc.Left + (rc.Right-rc.Left)/2
-	x := cx - w/2
-	y := rc.Bottom - h - margin
-	return x, y
+	return cx - w/2, rc.Bottom - h - margin
 }
 
+// rgb packs 8-bit RGB components into a Win32 COLORREF (0x00BBGGRR).
 func rgb(r, g, b byte) uintptr {
 	return uintptr(r) | uintptr(g)<<8 | uintptr(b)<<16
 }
