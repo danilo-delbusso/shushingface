@@ -61,30 +61,30 @@ just install
 
 ## Screenshots
 
+**Onboarding** — connect a provider, pick a style, bind a shortcut.
+
 <table>
   <tr>
-    <td width="50%"><img src="images/connections.png" alt="connect a provider"></td>
-    <td width="50%"><img src="images/style.png" alt="choose a style"></td>
-  </tr>
-  <tr>
-    <td><b>Connect a provider</b><br>Groq, OpenAI, or any OpenAI-compatible endpoint.</td>
-    <td><b>Pick a style</b><br>Casual, Professional, or Concise — switch anytime.</td>
-  </tr>
-  <tr>
-    <td><img src="images/shortcut.png" alt="bind a shortcut"></td>
-    <td><img src="images/transcription_example.png" alt="refined output"></td>
-  </tr>
-  <tr>
-    <td><b>Bind a shortcut</b><br>Trigger recording from anywhere with a keybind.</td>
-    <td><b>Speak, paste</b><br>Refined text appears wherever your cursor is.</td>
-  </tr>
-  <tr>
-    <td colspan="2"><img src="images/custom-styles.png" alt="customize a style"></td>
-  </tr>
-  <tr>
-    <td colspan="2"><b>Customize</b><br>Edit prompts, override the model, tune temperature per style.</td>
+    <td width="33%"><img src="images/chooseapiprovider.png" alt="connect a provider"></td>
+    <td width="33%"><img src="images/choosestyle.png" alt="choose a style"></td>
+    <td width="33%"><img src="images/shortcut.png" alt="bind a shortcut"></td>
   </tr>
 </table>
+
+**Configure** — pick default models for transcription and refinement, then tweak prompts per style.
+
+<table>
+  <tr>
+    <td width="50%"><img src="images/choosemodels.png" alt="default models"></td>
+    <td width="50%"><img src="images/editstylesandprompts.png" alt="edit styles and prompts"></td>
+  </tr>
+</table>
+
+**Use** — speak, get polished text wherever your cursor is.
+
+<p align="center">
+  <img src="images/exampletranscription.png" width="720" alt="example transcription">
+</p>
 
 ## License
 
