@@ -15,16 +15,23 @@ jobs:
       - name: Checkout
         uses: https://github.com/actions/checkout@v6
 
+      - name: Load tool versions
+        run: |
+          source scripts/lib/versions.env
+          echo "GO_VERSION=$GO_VERSION"     >> $GITHUB_ENV
+          echo "BUN_VERSION=$BUN_VERSION"   >> $GITHUB_ENV
+          echo "WAILS_VERSION=$WAILS_VERSION" >> $GITHUB_ENV
+
       - name: Set up Go
         uses: https://github.com/actions/setup-go@v6
         with:
-          go-version: '1.26.1'
+          go-version: ${{ env.GO_VERSION }}
           cache: true
 
       - name: Set up Bun
         uses: https://github.com/oven-sh/setup-bun@v2
         with:
-          bun-version: '1.3.11'
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Cache bun modules
         uses: https://github.com/actions/cache@v4
@@ -61,10 +68,15 @@ jobs:
       - name: Checkout
         uses: https://github.com/actions/checkout@v6
 
+      - name: Load tool versions
+        run: |
+          source scripts/lib/versions.env
+          echo "BUN_VERSION=$BUN_VERSION" >> $GITHUB_ENV
+
       - name: Set up Bun
         uses: https://github.com/oven-sh/setup-bun@v2
         with:
-          bun-version: '1.3.11'
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Cache bun modules
         uses: https://github.com/actions/cache@v4
@@ -83,4 +95,47 @@ jobs:
 
       - name: Build
         run: cd frontend && bun run build
+
+  # Build-only on Windows. No tests — they need a GUI runtime. Requires a
+  # self-hosted runner labeled `windows-shushingface`; if none exists,
+  # this job will queue and skip but won't fail other jobs.
+  build-windows:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: windows-shushingface
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: https://github.com/actions/checkout@v6
+
+      - name: Load tool versions
+        shell: bash
+        run: |
+          source scripts/lib/versions.env
+          echo "GO_VERSION=$GO_VERSION"     >> $GITHUB_ENV
+          echo "BUN_VERSION=$BUN_VERSION"   >> $GITHUB_ENV
+          echo "WAILS_VERSION=$WAILS_VERSION" >> $GITHUB_ENV
+
+      - name: Set up Go
+        uses: https://github.com/actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set up Bun
+        uses: https://github.com/oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install Wails
+        shell: bash
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: cd frontend && bun install --frozen-lockfile
+
+      - name: Build
+        shell: bash
+        run: just build
 
