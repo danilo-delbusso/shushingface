@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"codeberg.org/dbus/shushingface/internal/paths"
 )
 
 type Connection struct {
@@ -311,14 +313,16 @@ func Save(settings *Settings) error {
 	return os.WriteFile(configFile, data, 0600)
 }
 
+// GetLogPath returns the absolute path of the rolling app log file.
+// Logs live under the OS state directory (XDG_STATE_HOME on Linux,
+// %LOCALAPPDATA% on Windows) — separate from the config directory so
+// they do not roam and do not pollute the user's config backups.
 func GetLogPath() (string, error) {
-	configDir, err := os.UserConfigDir()
+	stateDir, err := paths.State()
 	if err != nil {
 		return "", err
 	}
-	appDir := filepath.Join(configDir, "shushingface")
-	if err := os.MkdirAll(appDir, 0700); err != nil {
-		return "", err
-	}
-	return filepath.Join(appDir, "app.log"), nil
+	logPath := filepath.Join(stateDir, "app.log")
+	paths.MigrateFromConfig("app.log", logPath)
+	return logPath, nil
 }

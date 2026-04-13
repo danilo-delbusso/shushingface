@@ -1,6 +1,8 @@
 package paths
 
 import (
+	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -74,4 +76,46 @@ func stateDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, ".local", "state"), nil
+}
+
+// MigrateFromConfig moves a file produced by an earlier version (which
+// stored everything under the OS config dir) into its new home. Best-
+// effort: if the source is missing, or the destination already exists,
+// or any IO step fails, we leave the legacy file alone.
+//
+// Pass the bare filename (e.g. "app.log") and the absolute destination
+// path. Used by callers that switched their on-disk location after the
+// runtime-paths refactor.
+func MigrateFromConfig(filename, destPath string) {
+	if _, err := os.Stat(destPath); err == nil {
+		return
+	}
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return
+	}
+	legacy := filepath.Join(configDir, appName, filename)
+	info, err := os.Stat(legacy)
+	if err != nil || info.IsDir() {
+		return
+	}
+	if err := os.Rename(legacy, destPath); err == nil {
+		slog.Info("paths: migrated file from config dir to state dir",
+			"file", filename, "from", legacy, "to", destPath)
+		return
+	} else if errors.Is(err, os.ErrPermission) {
+		slog.Warn("paths: legacy file move denied", "from", legacy, "error", err)
+		return
+	}
+	// Cross-device fallback: copy then remove.
+	data, rerr := os.ReadFile(legacy)
+	if rerr != nil {
+		return
+	}
+	if werr := os.WriteFile(destPath, data, 0o600); werr != nil {
+		return
+	}
+	_ = os.Remove(legacy)
+	slog.Info("paths: migrated file from config dir to state dir (copy)",
+		"file", filename, "from", legacy, "to", destPath)
 }
