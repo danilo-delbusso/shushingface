@@ -23,6 +23,51 @@ import { providerPresets } from "@/lib/providers";
 import { ExternalLink } from "@/components/ui/external-link";
 import { InfoTip } from "@/components/info-tip";
 import { ShortcutGuide } from "@/components/shortcut-guide";
+import { ShortcutRecorder } from "@/components/shortcut-recorder";
+import type { hotkey as hotkeyNs } from "../../wailsjs/go/models";
+
+function WizardShortcut({ platformInfo }: { platformInfo: any }) {
+  const [caps, setCaps] = useState<hotkeyNs.Capabilities | null>(null);
+  const [draft, setDraft] = useState<string>("");
+  const [bound, setBound] = useState<string>("");
+
+  useEffect(() => {
+    AppBridge.HotkeyCapabilities().then(setCaps).catch(() => setCaps({ supported: false } as hotkeyNs.Capabilities));
+  }, []);
+
+  if (!caps) return null;
+
+  if (!caps.supported) {
+    return (
+      <div className="rounded-lg border bg-card p-4">
+        <ShortcutGuide platform={platformInfo} compact />
+      </div>
+    );
+  }
+
+  const save = async () => {
+    if (!draft) return;
+    try {
+      await AppBridge.SetShortcut(draft);
+      setBound(draft);
+    } catch (e) {
+      // toast handled at app level via thrown error if needed
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <ShortcutRecorder value={draft} onChange={setDraft} />
+      <Button size="sm" disabled={!draft || draft === bound} onClick={save}>
+        bind {draft || ""}
+      </Button>
+      {bound && (
+        <p className="text-xs text-muted-foreground">Bound to {bound}.</p>
+      )}
+    </div>
+  );
+}
 import { usePlatform } from "@/lib/hooks";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
@@ -354,7 +399,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
             </div>
 
             <div className="rounded-lg border bg-card p-4">
-              <ShortcutGuide platform={platformInfo} compact />
+              <WizardShortcut platformInfo={platformInfo} />
             </div>
 
             <Button
