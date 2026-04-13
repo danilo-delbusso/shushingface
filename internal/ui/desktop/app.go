@@ -76,7 +76,7 @@ func (a *App) Startup(ctx context.Context) {
 		}
 	}
 
-	if hotkey.Detect().Supported {
+	if hotkey.Capability().Supported {
 		a.hotkey = hotkey.New()
 		go func() {
 			for ev := range a.hotkey.Events() {
@@ -247,8 +247,35 @@ func (a *App) ClearShortcut() error {
 }
 
 // HotkeyCapabilities reports whether in-app shortcut binding is available.
-func (a *App) HotkeyCapabilities() hotkey.Capabilities {
-	return hotkey.Detect()
+// Kept as a separate method (not just GetCapabilities().Hotkey) because the
+// frontend shortcut recorder binds to it directly.
+func (a *App) HotkeyCapabilities() platform.Capability {
+	return hotkey.Capability()
+}
+
+// Capabilities is the single bundle the frontend reads to decide which
+// platform-dependent toggles to show / grey out. Add a new field here when
+// a new feature gains a Capability() — there's no reason these should each
+// round-trip through their own Wails binding.
+type Capabilities struct {
+	Hotkey          platform.Capability `json:"hotkey"`
+	Paste           platform.Capability `json:"paste"`
+	Notifications   platform.Capability `json:"notifications"`
+	TrayIndicator   platform.Capability `json:"trayIndicator"`
+	Overlay         platform.Capability `json:"overlay"`
+	ActiveWindowTag platform.Capability `json:"activeWindowTag"`
+}
+
+// GetCapabilities returns every platform feature's Capability in one call.
+func (a *App) GetCapabilities() Capabilities {
+	return Capabilities{
+		Hotkey:          hotkey.Capability(),
+		Paste:           paste.Capability(),
+		Notifications:   notify.Capability(),
+		TrayIndicator:   indicator.Capability(),
+		Overlay:         overlay.Capability(),
+		ActiveWindowTag: osutil.ActiveAppCapability(),
+	}
 }
 
 func (a *App) StartRecording() error {
@@ -297,15 +324,20 @@ func (a *App) StopAndProcess() ProcessResult {
 		}
 	}
 
-	transcript, refined, err := a.engine.StopAndProcess(a.ctx, tOpts, rOpts, refinerOverride)
-	if cfg.EnableNotifications {
-		notify.RecordingDone()
-	}
+	// Hide overlay + indicator BEFORE the transcribe/refine step so the UI
+	// reflects "no longer capturing" the moment the user asked to stop —
+	// AI processing can take many seconds and it's confusing to still see
+	// the "Recording..." pill during that window.
 	indicator.SetRecording(false)
 	if a.overlay != nil {
 		if hErr := a.overlay.Hide(); hErr != nil {
 			slog.Warn("overlay hide failed", "error", hErr)
 		}
+	}
+
+	transcript, refined, err := a.engine.StopAndProcess(a.ctx, tOpts, rOpts, refinerOverride)
+	if cfg.EnableNotifications {
+		notify.RecordingDone()
 	}
 	if err != nil {
 		slog.Error("StopAndProcess failed", "error", err)
@@ -369,6 +401,7 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	oldIndicator := a.cfg.EnableIndicator
 	oldDeviceID := a.cfg.InputDeviceID
 	oldMode := a.cfg.RecordingMode
+	oldOverlayEnabled := a.cfg.OverlayEnabled
 	currentShortcut := a.cfg.Shortcut
 	a.mu.RUnlock()
 
@@ -454,6 +487,17 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	} else if !newSettings.EnableIndicator && oldIndicator {
 		indicator.Stop()
 	}
+
+	// If the user turned the overlay off while it's currently visible,
+	// dismiss it immediately — otherwise it lingers until the next Show call.
+	if oldOverlayEnabled && !newSettings.OverlayEnabled && a.overlay != nil {
+		if err := a.overlay.Hide(); err != nil {
+			slog.Warn("overlay hide on toggle-off failed", "error", err)
+		}
+	}
+
+	// Apply debug-log toggle live; next slog call picks up the new level.
+	config.ApplyLogLevel(newSettings.DebugLogging)
 
 	a.mu.Lock()
 	*a.cfg = newSettings
