@@ -73,42 +73,28 @@ check: lint test
 
 # --- Build & Run ---
 
-VERSION := if os_family() == "windows" {
-    `try { (git describe --tags --always --dirty 2>$null) } catch { 'dev' }`
-} else {
-    `git describe --tags --always --dirty 2>/dev/null || echo dev`
-}
-LDFLAGS := "-X codeberg.org/dbus/shushingface/internal/version.version=" + VERSION
-
 # Runs the Wails Desktop application in development mode
 [unix]
 dev:
-    wails dev -tags webkit2_41 -ldflags '{{LDFLAGS}}'
+    @bash scripts/build/linux.sh dev
 
 [windows]
 dev:
-    & scripts/build.ps1 dev
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build/windows.ps1 dev
 
 # Platform-aware build (auto-detects OS)
 [unix]
 build:
-    wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}'
+    @bash scripts/build/linux.sh build
 
 [windows]
 build:
-    & scripts/build.ps1 build
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build/windows.ps1 build
 
-# Build for Linux explicitly
-build-linux:
-    wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}'
-
-# Build for macOS explicitly
-build-darwin:
-    wails build -ldflags '{{LDFLAGS}}'
-
-# Build for Windows explicitly (produces NSIS installer in build/bin)
+# Produce a Windows NSIS installer in build/bin
+[windows]
 build-windows:
-    & scripts/build.ps1 build -nsis
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build/windows.ps1 build -nsis
 
 # --- Install & Uninstall (Linux) ---
 # macOS: `wails build` produces a .app bundle in build/bin/
