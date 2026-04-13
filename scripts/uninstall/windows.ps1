@@ -1,30 +1,26 @@
 #!/usr/bin/env pwsh
-# Removes shushingface from $PREFIX\bin and the Start Menu. Also cleans
-# the legacy %LOCALAPPDATA%\Programs\shushingface install path.
+# Removes shushingface from %LOCALAPPDATA%\Programs\shushingface and the
+# Start Menu. Also cleans the short-lived $HOME\.local\bin install path
+# from the PREFIX-unification experiment.
 $ErrorActionPreference = 'Stop'
-
-$prefix = $env:PREFIX
-if (-not $prefix) {
-    if ($env:HOME)            { $prefix = Join-Path $env:HOME '.local' }
-    elseif ($env:USERPROFILE) { $prefix = Join-Path $env:USERPROFILE '.local' }
-}
 
 $removed = @()
 
-$newExe = Join-Path (Join-Path $prefix 'bin') 'shushingface.exe'
-if ($prefix -and (Test-Path $newExe)) {
-    Remove-Item -Force $newExe
-    $removed += $newExe
+$dest = Join-Path $env:LOCALAPPDATA 'Programs\shushingface'
+$exe  = Join-Path $dest 'shushingface.exe'
+if (Test-Path $exe) {
+    Remove-Item -Force $exe
+    $removed += $exe
+    if ((Get-ChildItem -Path $dest -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0) {
+        Remove-Item -Force $dest
+    }
 }
 
-$legacyDir = Join-Path $env:LOCALAPPDATA 'Programs\shushingface'
-$legacyExe = Join-Path $legacyDir 'shushingface.exe'
-if (Test-Path $legacyExe) {
-    Remove-Item -Force $legacyExe
-    $removed += $legacyExe
-    if ((Get-ChildItem -Path $legacyDir -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0) {
-        Remove-Item -Force $legacyDir
-    }
+$legacyHomeBins = @()
+if ($env:HOME)        { $legacyHomeBins += (Join-Path (Join-Path $env:HOME '.local') 'bin\shushingface.exe') }
+if ($env:USERPROFILE) { $legacyHomeBins += (Join-Path (Join-Path $env:USERPROFILE '.local') 'bin\shushingface.exe') }
+foreach ($legacy in $legacyHomeBins) {
+    if (Test-Path $legacy) { Remove-Item -Force $legacy; $removed += $legacy }
 }
 
 $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\shushingface.lnk'

@@ -53,9 +53,20 @@ just dev         # run in dev mode
 just install     # build + install for the current user
 ```
 
-The same three commands work on Linux and Windows. `just install` puts
-the binary under `$HOME/.local/bin/` (`%USERPROFILE%\.local\bin\` on
-Windows). Override with `PREFIX=/path/to/wherever just install`.
+The same three commands work on Linux and Windows. Install locations
+follow each OS's convention:
+
+- Linux: binary under `$HOME/.local/bin/` (override with `PREFIX=...`),
+  desktop entry + icon under `$HOME/.local/share/`
+- Windows: binary under `%LOCALAPPDATA%\Programs\shushingface\` plus a
+  Start Menu shortcut
+
+Runtime files also live in OS-standard locations:
+
+| | Linux | Windows |
+|---|---|---|
+| Config | `$XDG_CONFIG_HOME/shushingface/config.json` (default `~/.config`) | `%APPDATA%\shushingface\config.json` |
+| Logs + history DB | `$XDG_STATE_HOME/shushingface/` (default `~/.local/state`) | `%LOCALAPPDATA%\shushingface\` |
 
 ### Packaging (maintainers)
 
