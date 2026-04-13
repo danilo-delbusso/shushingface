@@ -150,7 +150,6 @@ export function useHistory() {
 export function useRecording(configured: boolean, onResult: () => void) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [results, setResults] = useState<desktop.ProcessResult[]>([]);
   const isRecordingRef = useRef(isRecording);
   isRecordingRef.current = isRecording;
 
@@ -174,7 +173,6 @@ export function useRecording(configured: boolean, onResult: () => void) {
       if (res.error) {
         toast.error(res.error);
       } else {
-        setResults((prev) => [res, ...prev]);
         onResult();
       }
     }
@@ -203,7 +201,6 @@ export function useRecording(configured: boolean, onResult: () => void) {
     if (res.error) {
       toast.error(res.error);
     } else {
-      setResults((prev) => [res, ...prev]);
       onResult();
     }
   }, [onResult]);
@@ -222,8 +219,6 @@ export function useRecording(configured: boolean, onResult: () => void) {
   return {
     isRecording,
     isProcessing,
-    results,
-    clearResults: () => setResults([]),
     toggle,
   };
 }

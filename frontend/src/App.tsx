@@ -57,7 +57,7 @@ function App() {
     return cleanup;
   }, []);
 
-  const { isRecording, isProcessing, results, toggle } = useRecording(
+  const { isRecording, isProcessing, toggle } = useRecording(
     configured,
     refreshHistory,
   );
@@ -109,7 +109,6 @@ function App() {
                 configured={configured}
                 isRecording={isRecording}
                 isProcessing={isProcessing}
-                results={results}
                 profiles={settings.refinementProfiles ?? []}
                 activeProfile={activeProfile}
                 language={settings.transcriptionLanguage ?? ""}
