@@ -16,7 +16,7 @@ doctor:
 
 [windows]
 doctor:
-    @bash scripts/doctor/windows.sh
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/doctor/windows.ps1
 
 # Install missing dependencies (pass --yes to skip prompts)
 [unix]
