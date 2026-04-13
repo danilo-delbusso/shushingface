@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"strings"
@@ -71,7 +72,9 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte, opts ai.Tran
 	if _, err := part.Write(wavData); err != nil {
 		return "", err
 	}
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		return "", fmt.Errorf("closing multipart writer: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
 	if err != nil {
@@ -86,7 +89,11 @@ func (p *processor) Transcribe(ctx context.Context, wavData []byte, opts ai.Tran
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Warn("failed to close response body", "error", err)
+		}
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -158,7 +165,11 @@ func (p *processor) Refine(ctx context.Context, transcript string, opts ai.Refin
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Warn("failed to close response body", "error", err)
+		}
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

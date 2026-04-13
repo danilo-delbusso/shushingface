@@ -167,7 +167,9 @@ func (a *App) StopAndProcess() ProcessResult {
 		}
 		// Record the failure in history
 		if cfg.EnableHistory {
-			a.history.Insert("", "", activeApp, err.Error())
+			if _, histErr := a.history.Insert("", "", activeApp, err.Error()); histErr != nil {
+				slog.Error("failed to insert error into history", "error", histErr)
+			}
 		}
 		return ProcessResult{Error: err.Error()}
 	}
@@ -227,7 +229,9 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	}
 	for _, conn := range oldConns {
 		if !newIDs[conn.ID] {
-			a.secrets.Delete("apikey:" + conn.ID)
+			if err := a.secrets.Delete("apikey:" + conn.ID); err != nil {
+				slog.Warn("failed to delete secret for removed connection", "connection", conn.ID, "error", err)
+			}
 		}
 	}
 
@@ -379,7 +383,9 @@ func (a *App) DeleteAllData() error {
 	a.mu.RUnlock()
 
 	for _, conn := range oldConns {
-		a.secrets.Delete("apikey:" + conn.ID)
+		if err := a.secrets.Delete("apikey:" + conn.ID); err != nil {
+			slog.Warn("failed to delete secret during reset", "connection", conn.ID, "error", err)
+		}
 	}
 	defaults := config.DefaultSettings()
 	if err := config.Save(defaults); err != nil {

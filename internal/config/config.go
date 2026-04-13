@@ -221,15 +221,6 @@ func DefaultSettings() *Settings {
 	}
 }
 
-func providerDisplayName(id string) string {
-	switch id {
-	case "groq":
-		return "Groq"
-	default:
-		return id
-	}
-}
-
 func Load() (*Settings, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -279,7 +270,9 @@ func Load() (*Settings, error) {
 	}
 
 	if migrated {
-		Save(&settings)
+		if err := Save(&settings); err != nil {
+			slog.Warn("failed to persist migrated config", "error", err)
+		}
 	}
 
 	return &settings, nil
@@ -331,5 +324,9 @@ func InitLogger() func() {
 	handler := slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo})
 	slog.SetDefault(slog.New(handler))
 
-	return func() { f.Close() }
+	return func() {
+		if err := f.Close(); err != nil {
+			slog.Warn("failed to close log file", "error", err)
+		}
+	}
 }

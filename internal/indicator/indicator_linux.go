@@ -38,15 +38,6 @@ type sniItem struct {
 	onActivate func()
 }
 
-func (s *sniItem) icon() []byte {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.recording {
-		return recordingIcon
-	}
-	return idleIcon
-}
-
 // D-Bus property getters (called by the panel)
 func (s *sniItem) Get(iface, prop string) (dbus.Variant, *dbus.Error) {
 	s.mu.RLock()
@@ -174,12 +165,16 @@ func Start(onActivate func()) {
 			return
 		}
 		if err = conn.Auth(nil); err != nil {
-			conn.Close()
+			if cErr := conn.Close(); cErr != nil {
+				slog.Warn("indicator: failed to close bus after auth failure", "error", cErr)
+			}
 			slog.Debug("indicator: auth failed", "error", err)
 			return
 		}
 		if err = conn.Hello(); err != nil {
-			conn.Close()
+			if cErr := conn.Close(); cErr != nil {
+				slog.Warn("indicator: failed to close bus after hello failure", "error", cErr)
+			}
 			slog.Debug("indicator: hello failed", "error", err)
 			return
 		}
@@ -193,17 +188,23 @@ func Start(onActivate func()) {
 		item := &sniItem{conn: conn, busName: busName, onActivate: onActivate}
 		instance = item
 
-		conn.ExportMethodTable(map[string]interface{}{
+		if err := conn.ExportMethodTable(map[string]interface{}{
 			"Get":    item.Get,
 			"GetAll": item.GetAll,
 			"Set":    item.Set,
-		}, itemPath, "org.freedesktop.DBus.Properties")
+		}, itemPath, "org.freedesktop.DBus.Properties"); err != nil {
+			slog.Warn("indicator: failed to export properties interface", "error", err)
+			return
+		}
 
-		conn.ExportMethodTable(map[string]interface{}{
+		if err := conn.ExportMethodTable(map[string]interface{}{
 			"Activate":          item.Activate,
 			"SecondaryActivate": item.SecondaryActivate,
 			"Scroll":            item.Scroll,
-		}, itemPath, sniIface)
+		}, itemPath, sniIface); err != nil {
+			slog.Warn("indicator: failed to export item interface", "error", err)
+			return
+		}
 
 		node := &introspect.Node{
 			Name: itemPath,
@@ -247,7 +248,10 @@ func Start(onActivate func()) {
 				},
 			},
 		}
-		conn.Export(introspect.NewIntrospectable(node), itemPath, "org.freedesktop.DBus.Introspectable")
+		if err := conn.Export(introspect.NewIntrospectable(node), itemPath, "org.freedesktop.DBus.Introspectable"); err != nil {
+			slog.Warn("indicator: failed to export introspectable", "error", err)
+			return
+		}
 
 		call := conn.Object(watcherDest, dbus.ObjectPath(watcherPath)).Call(
 			watcherIface+".RegisterStatusNotifierItem", 0, busName)
@@ -273,10 +277,18 @@ func SetRecording(recording bool) {
 	if recording {
 		status = "NeedsAttention"
 	}
-	instance.conn.Emit(itemPath, sniIface+".NewStatus", status)
-	instance.conn.Emit(itemPath, sniIface+".NewToolTip")
-	instance.conn.Emit(itemPath, sniIface+".NewIcon")
-	instance.conn.Emit(itemPath, sniIface+".NewAttentionIcon")
+	if err := instance.conn.Emit(itemPath, sniIface+".NewStatus", status); err != nil {
+		slog.Warn("indicator: emit NewStatus failed", "error", err)
+	}
+	if err := instance.conn.Emit(itemPath, sniIface+".NewToolTip"); err != nil {
+		slog.Warn("indicator: emit NewToolTip failed", "error", err)
+	}
+	if err := instance.conn.Emit(itemPath, sniIface+".NewIcon"); err != nil {
+		slog.Warn("indicator: emit NewIcon failed", "error", err)
+	}
+	if err := instance.conn.Emit(itemPath, sniIface+".NewAttentionIcon"); err != nil {
+		slog.Warn("indicator: emit NewAttentionIcon failed", "error", err)
+	}
 }
 
 // Stop removes the indicator from the panel by closing the private D-Bus connection.
@@ -285,7 +297,9 @@ func Stop() {
 	if instance == nil {
 		return
 	}
-	instance.conn.Close()
+	if err := instance.conn.Close(); err != nil {
+		slog.Warn("indicator: failed to close D-Bus connection", "error", err)
+	}
 	instance = nil
 	once = sync.Once{}
 }

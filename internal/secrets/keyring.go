@@ -39,6 +39,8 @@ func NewKeyringStore() Store {
 		slog.Debug("OS keyring not available, will use fallback", "error", err)
 		return nil
 	}
-	keyring.Delete(serviceName, "__probe__")
+	if err := keyring.Delete(serviceName, "__probe__"); err != nil {
+		slog.Warn("failed to clean up keyring probe key", "error", err)
+	}
 	return &keyringStore{}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -32,15 +33,24 @@ func Open() (*sql.DB, error) {
 
 	// Enable WAL mode for better concurrent read/write
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		db.Close()
+		closeWarn(db, "after WAL pragma failure")
 		return nil, fmt.Errorf("enabling WAL mode: %w", err)
 	}
 
-	goose.SetDialect("sqlite3")
+	if err := goose.SetDialect("sqlite3"); err != nil {
+		closeWarn(db, "after goose dialect failure")
+		return nil, fmt.Errorf("setting goose dialect: %w", err)
+	}
 	if err := goose.UpContext(context.Background(), db, "."); err != nil {
-		db.Close()
+		closeWarn(db, "after migration failure")
 		return nil, fmt.Errorf("database migration: %w", err)
 	}
 
 	return db, nil
+}
+
+func closeWarn(db *sql.DB, what string) {
+	if err := db.Close(); err != nil {
+		slog.Warn("db close failed", "what", what, "error", err)
+	}
 }

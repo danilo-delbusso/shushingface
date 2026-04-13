@@ -24,8 +24,10 @@ func IsRunning() bool {
 	if err != nil {
 		return false
 	}
-	conn.Write([]byte("PING"))
-	conn.Close()
+	defer closeWarn(conn, "ping connection")
+	if _, err := conn.Write([]byte("PING")); err != nil {
+		return false
+	}
 	return true
 }
 
@@ -35,9 +37,16 @@ func Send(command string) error {
 	if err != nil {
 		return fmt.Errorf("shushingface is not running: %w", err)
 	}
-	defer conn.Close()
+	defer closeWarn(conn, "send connection")
 	_, err = conn.Write([]byte(command))
 	return err
+}
+
+// closeWarn closes c and logs a warning on failure. Use in defer for io.Closer.
+func closeWarn(c interface{ Close() error }, what string) {
+	if err := c.Close(); err != nil {
+		slog.Warn("close failed", "what", what, "error", err)
+	}
 }
 
 // SendToggle sends a toggle-recording signal.
@@ -50,7 +59,9 @@ func SendShow() error { return Send("SHOW") }
 // Returns a cleanup function to close the listener.
 func Listen(handler func(command string)) (func(), error) {
 	path := socketPath()
-	os.Remove(path)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		slog.Warn("failed to remove stale socket", "path", path, "error", err)
+	}
 
 	ln, err := net.Listen("unix", path)
 	if err != nil {
@@ -64,17 +75,24 @@ func Listen(handler func(command string)) (func(), error) {
 			if err != nil {
 				return
 			}
-			n, _ := conn.Read(buf)
+			n, err := conn.Read(buf)
+			if err != nil {
+				slog.Warn("IPC read failed", "error", err)
+				closeWarn(conn, "accepted connection")
+				continue
+			}
 			cmd := string(buf[:n])
 			slog.Info("received IPC command", "command", cmd)
 			handler(cmd)
-			conn.Close()
+			closeWarn(conn, "accepted connection")
 		}
 	}()
 
 	cleanup := func() {
-		ln.Close()
-		os.Remove(path)
+		closeWarn(ln, "listener")
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			slog.Warn("failed to remove socket", "path", path, "error", err)
+		}
 	}
 	return cleanup, nil
 }

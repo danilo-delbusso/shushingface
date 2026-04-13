@@ -70,5 +70,7 @@ func send(summary, body, icon string, timeout int32) {
 		slog.Debug("failed to send notification", "error", call.Err)
 		return
 	}
-	call.Store(&lastID)
+	if err := call.Store(&lastID); err != nil {
+		slog.Warn("failed to store notification id", "error", err)
+	}
 }

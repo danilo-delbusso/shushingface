@@ -2,6 +2,7 @@ package history
 
 import (
 	"database/sql"
+	"log/slog"
 	"time"
 )
 
@@ -48,7 +49,11 @@ func (r *Repository) GetHistory(limit, offset int) ([]Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Warn("failed to close history rows", "error", err)
+		}
+	}()
 
 	var records []Record
 	for rows.Next() {

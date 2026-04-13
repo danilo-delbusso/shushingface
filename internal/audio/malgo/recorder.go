@@ -1,6 +1,7 @@
 package malgo
 
 import (
+	"log/slog"
 	"sync"
 
 	"codeberg.org/dbus/shushingface/internal/audio"
@@ -49,14 +50,18 @@ func NewRecorder(sampleRate uint32) (audio.Recorder, error) {
 
 	device, err := malgo.InitDevice(mctx.Context, deviceConfig, malgo.DeviceCallbacks{Data: onRecvFrames})
 	if err != nil {
-		mctx.Uninit()
+		if uErr := mctx.Uninit(); uErr != nil {
+			slog.Warn("malgo context uninit during init failure", "error", uErr)
+		}
 		return nil, err
 	}
 	r.device = device
 
 	if err := r.device.Start(); err != nil {
 		r.device.Uninit()
-		r.mctx.Uninit()
+		if uErr := r.mctx.Uninit(); uErr != nil {
+			slog.Warn("malgo context uninit during start failure", "error", uErr)
+		}
 		return nil, err
 	}
 
@@ -86,6 +91,8 @@ func (r *recorder) Close() {
 		r.device.Uninit()
 	}
 	if r.mctx != nil {
-		r.mctx.Uninit()
+		if err := r.mctx.Uninit(); err != nil {
+			slog.Warn("malgo context uninit failed", "error", err)
+		}
 	}
 }

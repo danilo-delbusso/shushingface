@@ -53,7 +53,9 @@ func main() {
 	// Single instance: if already running, bring to front and exit
 	if ipc.IsRunning() {
 		slog.Info("already running, showing existing window")
-		ipc.SendShow()
+		if err := ipc.SendShow(); err != nil {
+			slog.Warn("failed to signal existing instance", "error", err)
+		}
 		return
 	}
 
@@ -68,7 +70,11 @@ func main() {
 		slog.Error("failed to open database", "error", err)
 		return
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			slog.Warn("failed to close database", "error", err)
+		}
+	}()
 
 	hist := history.NewRepository(database)
 	secretStore := secrets.New()
