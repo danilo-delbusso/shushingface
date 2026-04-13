@@ -10,15 +10,17 @@ source "${_dir}/../lib/version.sh"
 mode="${1:-build}"
 shift || true
 
+sync_wails_product_version
+
 case "${mode}" in
     dev)
-        exec wails dev -tags webkit2_41 -ldflags "${LDFLAGS}" "$@"
+        wails dev -tags webkit2_41 -ldflags "${LDFLAGS}" "$@"
         ;;
     build)
-        exec wails build -tags webkit2_41 -ldflags "${LDFLAGS}" "$@"
+        wails build -tags webkit2_41 -ldflags "${LDFLAGS}" "$@"
         ;;
     *)
         # Pass-through for any wails subcommand (generate, doctor, etc.).
-        exec wails "${mode}" -tags webkit2_41 -ldflags "${LDFLAGS}" "$@"
+        wails "${mode}" -tags webkit2_41 -ldflags "${LDFLAGS}" "$@"
         ;;
 esac
