@@ -106,5 +106,20 @@
   body {
     @apply bg-background text-foreground font-sans;
     overflow: hidden;
+    /* Native-app feel: no accidental Ctrl+A / drag-to-select on chrome.
+       Inputs and textareas opt back in below. Add `select-text` to
+       individual elements that genuinely need to be copyable. */
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+  input,
+  textarea,
+  [contenteditable="true"],
+  .select-text,
+  .select-text * {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: auto;
   }
 }

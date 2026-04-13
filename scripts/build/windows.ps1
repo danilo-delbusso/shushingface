@@ -29,15 +29,13 @@ $version = (& git describe --tags --always --dirty --exclude 'backup/*' 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $version) { $version = 'dev' }
 $ldflags = "-X codeberg.org/dbus/shushingface/internal/version.version=$version"
 
-# `wails dev` on windows/arm64 + Go 1.26 trips the nosplit-stack limit
-# because wails hardcodes -gcflags='all=-N -l'. `wails build -debug` does
-# the same thing. We fall back to an optimised build with `-devtools` only,
-# which keeps the WebView devtools (F12) available without inflating frame
-# sizes past the nosplit limit. Frontend changes require a rebuild.
+# Real dev mode: vite hot reload + debug build. Earlier wails / Go combos
+# tripped a nosplit-stack limit on windows/arm64 because of
+# -gcflags=all=-N -l, but as of wails v2.12 + Go 1.26.x this builds. If
+# you regress here, fall back to `wails build -ldflags` and re-launch the
+# binary manually.
 if ($mode -eq 'dev') {
-    & wails build -devtools -ldflags $ldflags
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    & ./build/bin/shushingface.exe
+    & wails dev -ldflags $ldflags
     exit $LASTEXITCODE
 }
 
