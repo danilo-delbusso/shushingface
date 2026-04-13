@@ -214,7 +214,9 @@ export function useRecording(configured: boolean, onResult: () => void) {
       EventsOn("hotkey-press", startRecording),
       EventsOn("hotkey-release", stopAndProcess),
     ];
-    return () => cleanups.forEach((c) => c());
+    return () => {
+      for (const c of cleanups) c();
+    };
   }, [toggle, startRecording, stopAndProcess]);
 
   return {

@@ -122,7 +122,7 @@ export function ShortcutRecorder({
     if (liveMods.alt) parts.push("Alt");
     if (liveMods.shift) parts.push("Shift");
     if (liveMods.super) parts.push("Super");
-    return parts.length ? parts.join("+") + "+…" : "Press a combination…";
+    return parts.length ? `${parts.join("+")}+…` : "Press a combination…";
   })();
 
   const display = recording ? liveDisplay : draft || "Not set";

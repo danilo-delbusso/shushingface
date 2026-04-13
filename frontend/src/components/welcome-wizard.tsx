@@ -26,7 +26,11 @@ import { ShortcutGuide } from "@/components/shortcut-guide";
 import { ShortcutRecorder } from "@/components/shortcut-recorder";
 import type { platform as platformNs } from "../../wailsjs/go/models";
 
-function WizardShortcut({ platformInfo }: { platformInfo: any }) {
+function WizardShortcut({
+  platformInfo,
+}: {
+  platformInfo: platformNs.Info | null;
+}) {
   const [caps, setCaps] = useState<platformNs.Capability | null>(null);
   const [draft, setDraft] = useState<string>("");
   const [bound, setBound] = useState<string>("");
