@@ -13,7 +13,11 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
+
+	"codeberg.org/dbus/shushingface/internal/platform"
 )
+
+func capability() platform.Capability { return platform.Supported() }
 
 const (
 	sniIface     = "org.kde.StatusNotifierItem"

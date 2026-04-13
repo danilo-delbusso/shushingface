@@ -3,6 +3,7 @@
 package paste
 
 import (
+	"fmt"
 	"log/slog"
 	"os/exec"
 	"time"
@@ -10,17 +11,15 @@ import (
 	"codeberg.org/dbus/shushingface/internal/platform"
 )
 
-// Available reports whether the required typing tool is installed.
-func Available() bool {
-	return platform.HasCommand(toolName())
-}
-
-// InstallHint returns the install command for the missing tool.
-func InstallHint() string {
-	if Available() {
-		return ""
+func capability() platform.Capability {
+	tool := toolName()
+	if platform.HasCommand(tool) {
+		return platform.Supported()
 	}
-	return platform.InstallCmd(toolName())
+	return platform.Unsupported(fmt.Sprintf(
+		"%q is required for auto-paste on %s. Install with: %s",
+		tool, platform.Detect().DisplayServer, platform.InstallCmd(tool),
+	))
 }
 
 func toolName() string {

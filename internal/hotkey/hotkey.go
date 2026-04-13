@@ -1,9 +1,14 @@
+// Package hotkey registers global (system-wide) keyboard shortcuts. Each OS
+// has its own implementation file; platforms without support expose a stub
+// that returns ErrUnsupported for every registration.
 package hotkey
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"codeberg.org/dbus/shushingface/internal/platform"
 )
 
 // ErrUnsupported is returned when the platform can't register global hotkeys.
@@ -14,6 +19,11 @@ var ErrConflict = errors.New("hotkey is already registered by another applicatio
 
 // ErrInvalidSpec is returned for malformed shortcut strings.
 var ErrInvalidSpec = errors.New("invalid shortcut")
+
+// Capability reports whether in-app global hotkey registration works on
+// this platform. Uses the shared platform.Capability type so settings UI
+// can reason about it the same way as paste / notify / indicator.
+func Capability() platform.Capability { return capability() }
 
 // Modifier is a bit flag describing which modifier keys are required.
 type Modifier uint32
@@ -29,13 +39,6 @@ const (
 type Spec struct {
 	Mods Modifier
 	Key  string // canonical key name, e.g. "B", "F5", "Space"
-}
-
-// Capabilities describes what the platform hotkey backend supports.
-type Capabilities struct {
-	Supported     bool   `json:"supported"`
-	ConflictCheck bool   `json:"conflictCheck"`
-	Reason        string `json:"reason,omitempty"`
 }
 
 // Mode describes how a hotkey delivers events.
