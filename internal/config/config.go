@@ -73,6 +73,13 @@ type Settings struct {
 	// Global hotkey (e.g. "Ctrl+Shift+B"). Only honoured on platforms that
 	// support in-app registration; otherwise users bind from their DE.
 	Shortcut string `json:"shortcut,omitempty"`
+
+	// "toggle" (default) or "push_to_talk".
+	RecordingMode string `json:"recordingMode,omitempty"`
+
+	// Floating recording overlay above the focused app.
+	OverlayEnabled bool    `json:"overlayEnabled"`
+	OverlayOpacity float64 `json:"overlayOpacity,omitempty"` // 0.05–1.0; default 0.4
 }
 
 func HydrateAPIKeys(conns []Connection, get func(key string) (string, error)) {
@@ -221,6 +228,9 @@ func DefaultSettings() *Settings {
 		EnableIndicator:    true,
 		EnableNotifications: false,
 		CheckForUpdates:     true,
+		RecordingMode:      "toggle",
+		OverlayEnabled:     true,
+		OverlayOpacity:     0.4,
 	}
 }
 
