@@ -55,7 +55,8 @@ export function SettingsShortcut({ platform }: SettingsShortcutProps) {
         <CardContent>
           <div className="flex items-center gap-3 rounded-md border border-amber-600/30 bg-amber-600/10 p-3 text-sm text-amber-500">
             <AlertTriangle className="size-4 shrink-0" />
-            {caps.reason || "This platform does not expose a global hotkey API."}
+            {caps.reason ||
+              "This platform does not expose a global hotkey API."}
           </div>
         </CardContent>
       </Card>

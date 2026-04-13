@@ -25,8 +25,7 @@ export const providerPresets: Record<string, ProviderPreset> = {
   },
   openai: {
     name: "OpenAI",
-    description:
-      "GPT models, Whisper, and DALL-E. Requires a paid API key.",
+    description: "GPT models, Whisper, and DALL-E. Requires a paid API key.",
     icon: openaiIcon,
     keyPlaceholder: "sk-...",
     keyUrl: "https://platform.openai.com/api-keys",

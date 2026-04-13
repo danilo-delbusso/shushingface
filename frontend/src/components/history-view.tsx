@@ -1,4 +1,10 @@
-import { History, Trash2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import {
+  History,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -60,7 +66,9 @@ function HistoryItem({ item }: { item: history.Record }) {
     >
       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          {isError && <AlertTriangle className="size-3 text-destructive shrink-0" />}
+          {isError && (
+            <AlertTriangle className="size-3 text-destructive shrink-0" />
+          )}
           {new Date(item.timestamp).toLocaleString()}
         </span>
         {item.activeApp && (

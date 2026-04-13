@@ -9,13 +9,7 @@ import {
   type ProfileFormData,
 } from "@/lib/schemas";
 import { FormField } from "@/components/ui/form-field";
-import {
-  Play,
-  Loader2,
-  Bot,
-  Plus,
-  RotateCcw,
-} from "lucide-react";
+import { Play, Loader2, Bot, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +33,11 @@ import { WarningBanner } from "@/components/ui/warning-banner";
 import { AdvancedToggle } from "@/components/ui/advanced-toggle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
-import { ConnectionSelect, ModelSelect, ProfileCard } from "@/components/profile-card";
+import {
+  ConnectionSelect,
+  ModelSelect,
+  ProfileCard,
+} from "@/components/profile-card";
 import { getProfileIcon } from "@/lib/icons";
 import { whisperLanguages } from "@/lib/languages";
 import { cn, textareaClass, textareaCompactClass } from "@/lib/utils";
@@ -138,7 +136,11 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
   const saveProfile = (id: string, data: ProfileFormData) => {
     const updated = draftProfiles.map((p) =>
       p.id === id
-        ? config.RefinementProfile.createFrom({ ...p, ...data, connectionId: data.connectionId || undefined })
+        ? config.RefinementProfile.createFrom({
+            ...p,
+            ...data,
+            connectionId: data.connectionId || undefined,
+          })
         : p,
     );
     setDraftProfiles(updated);
@@ -147,7 +149,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
 
   const deleteProfile = (id: string) => {
     const updated = draftProfiles.filter((p) => p.id !== id);
-    const newActive = activeId === id ? updated[0]?.id ?? "" : activeId;
+    const newActive = activeId === id ? (updated[0]?.id ?? "") : activeId;
     setDraftProfiles(updated);
     setActiveId(newActive);
     saveProfiles(updated, newActive);
@@ -193,7 +195,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     setDraftProfiles(updated);
     const newActive = defaultIds.has(activeId)
       ? activeId
-      : updated[0]?.id ?? "";
+      : (updated[0]?.id ?? "");
     setActiveId(newActive);
     saveProfiles(updated, newActive);
     toast.success("Default styles restored");
@@ -244,9 +246,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
         {!configured && (
-          <WarningBanner>
-            Set up an AI connection first.
-          </WarningBanner>
+          <WarningBanner>Set up an AI connection first.</WarningBanner>
         )}
 
         {/* Models */}
@@ -264,15 +264,36 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
             {/* Transcription */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Transcription</Label>
-              <FormField label={<span className="text-xs">Connection</span>} error={modelsForm.formState.errors.transcriptionConnectionId?.message}>
-                <Controller name="transcriptionConnectionId" control={modelsForm.control} render={({ field }) => (
-                  <ConnectionSelect value={field.value} onChange={field.onChange} connections={connections} />
-                )} />
+              <FormField
+                label={<span className="text-xs">Connection</span>}
+                error={
+                  modelsForm.formState.errors.transcriptionConnectionId?.message
+                }
+              >
+                <Controller
+                  name="transcriptionConnectionId"
+                  control={modelsForm.control}
+                  render={({ field }) => (
+                    <ConnectionSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      connections={connections}
+                    />
+                  )}
+                />
               </FormField>
               <FormField label={<span className="text-xs">Model</span>}>
-                <Controller name="transcriptionModel" control={modelsForm.control} render={({ field }) => (
-                  <ModelSelect value={field.value} onChange={field.onChange} models={transcriptionModels} />
-                )} />
+                <Controller
+                  name="transcriptionModel"
+                  control={modelsForm.control}
+                  render={({ field }) => (
+                    <ModelSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      models={transcriptionModels}
+                    />
+                  )}
+                />
               </FormField>
               <FormField
                 label={
@@ -282,39 +303,73 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
                   </span>
                 }
               >
-                <Controller name="transcriptionLanguage" control={modelsForm.control} render={({ field }) => (
-                  <Select value={field.value || "__auto__"} onValueChange={(v) => field.onChange(v === "__auto__" ? "" : v)}>
-                    <SelectTrigger className="text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__auto__" className="text-xs">
-                        Auto-detect
-                      </SelectItem>
-                      <SelectSeparator />
-                      {whisperLanguages.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code} className="text-xs">
-                          {lang.flag} {lang.name}
+                <Controller
+                  name="transcriptionLanguage"
+                  control={modelsForm.control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "__auto__"}
+                      onValueChange={(v) =>
+                        field.onChange(v === "__auto__" ? "" : v)
+                      }
+                    >
+                      <SelectTrigger className="text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__auto__" className="text-xs">
+                          Auto-detect
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )} />
+                        <SelectSeparator />
+                        {whisperLanguages.map((lang) => (
+                          <SelectItem
+                            key={lang.code}
+                            value={lang.code}
+                            className="text-xs"
+                          >
+                            {lang.flag} {lang.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </FormField>
             </div>
             <Separator />
             {/* Refinement */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Refinement</Label>
-              <FormField label={<span className="text-xs">Connection</span>} error={modelsForm.formState.errors.refinementConnectionId?.message}>
-                <Controller name="refinementConnectionId" control={modelsForm.control} render={({ field }) => (
-                  <ConnectionSelect value={field.value} onChange={field.onChange} connections={connections} />
-                )} />
+              <FormField
+                label={<span className="text-xs">Connection</span>}
+                error={
+                  modelsForm.formState.errors.refinementConnectionId?.message
+                }
+              >
+                <Controller
+                  name="refinementConnectionId"
+                  control={modelsForm.control}
+                  render={({ field }) => (
+                    <ConnectionSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      connections={connections}
+                    />
+                  )}
+                />
               </FormField>
               <FormField label={<span className="text-xs">Model</span>}>
-                <Controller name="refinementModel" control={modelsForm.control} render={({ field }) => (
-                  <ModelSelect value={field.value} onChange={field.onChange} models={refChatModels} />
-                )} />
+                <Controller
+                  name="refinementModel"
+                  control={modelsForm.control}
+                  render={({ field }) => (
+                    <ModelSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      models={refChatModels}
+                    />
+                  )}
+                />
               </FormField>
             </div>
             <Button
@@ -446,9 +501,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               onToggleExpand={() =>
                 setExpandedProfile(isExpanded ? null : profile.id)
               }
-              onToggleAdvanced={(v) =>
-                setAdvancedOpen(v ? profile.id : null)
-              }
+              onToggleAdvanced={(v) => setAdvancedOpen(v ? profile.id : null)}
               onActivate={() => setActive(profile.id)}
               onSave={(data) => saveProfile(profile.id, data)}
               onRestore={() => restoreProfile(profile.id)}
@@ -476,11 +529,7 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
               className={textareaClass}
               placeholder={placeholderText}
             />
-            <Button
-              onClick={handleTest}
-              disabled={testing}
-              className="w-full"
-            >
+            <Button onClick={handleTest} disabled={testing} className="w-full">
               {testing ? (
                 <>
                   <Loader2 className="size-4 animate-spin" /> Running...
@@ -505,4 +554,3 @@ export function AiView({ settings, configured, onSave }: AiViewProps) {
     </div>
   );
 }
-

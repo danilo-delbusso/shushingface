@@ -1,4 +1,13 @@
-import { Mic, AlertTriangle, Settings, Copy, ChevronDown, ChevronUp, Check, Globe } from "lucide-react";
+import {
+  Mic,
+  AlertTriangle,
+  Settings,
+  Copy,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Globe,
+} from "lucide-react";
 import { useState } from "react";
 import { Popover } from "radix-ui";
 import { toast } from "sonner";
@@ -57,7 +66,9 @@ export function RecordView({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Mic section */}
-      <div className={`flex flex-col items-center gap-3 py-6 shrink-0 ${hasResults ? "" : "flex-1 justify-center"}`}>
+      <div
+        className={`flex flex-col items-center gap-3 py-6 shrink-0 ${hasResults ? "" : "flex-1 justify-center"}`}
+      >
         <div className="flex items-center gap-2">
           {activeProfile && ProfileIcon && (
             <ProfileSwitcher
@@ -66,10 +77,7 @@ export function RecordView({
               onSwitch={onSwitchProfile}
             />
           )}
-          <LanguageSwitcher
-            language={language}
-            onSwitch={onSwitchLanguage}
-          />
+          <LanguageSwitcher language={language} onSwitch={onSwitchLanguage} />
         </div>
         <button
           type="button"
@@ -106,7 +114,10 @@ export function RecordView({
         <div className="flex-1 overflow-y-auto border-t">
           <div className="space-y-3 p-4 max-w-2xl mx-auto">
             {results.map((result) => (
-              <ResultCard key={`${result.refined}-${result.transcript}`} result={result} />
+              <ResultCard
+                key={`${result.refined}-${result.transcript}`}
+                result={result}
+              />
             ))}
           </div>
         </div>
@@ -206,9 +217,14 @@ function LanguageSwitcher({
         >
           <button
             type="button"
-            onClick={() => { onSwitch(""); setOpen(false); }}
+            onClick={() => {
+              onSwitch("");
+              setOpen(false);
+            }}
             className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
-              !language ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
+              !language
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent hover:text-accent-foreground"
             }`}
           >
             <Globe className="size-3.5 shrink-0" />
@@ -221,9 +237,14 @@ function LanguageSwitcher({
               <button
                 key={lang.code}
                 type="button"
-                onClick={() => { onSwitch(isActive ? "" : lang.code); setOpen(false); }}
+                onClick={() => {
+                  onSwitch(isActive ? "" : lang.code);
+                  setOpen(false);
+                }}
                 className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
-                  isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
                 <span className="shrink-0">{lang.flag}</span>
@@ -244,9 +265,7 @@ function ResultCard({ result }: { result: desktop.ProcessResult }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xs text-muted-foreground">
-          Refined
-        </CardTitle>
+        <CardTitle className="text-xs text-muted-foreground">Refined</CardTitle>
         <Button
           variant="ghost"
           size="sm"
@@ -269,7 +288,11 @@ function ResultCard({ result }: { result: desktop.ProcessResult }) {
           className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setShowTranscript(!showTranscript)}
         >
-          {showTranscript ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+          {showTranscript ? (
+            <ChevronUp className="size-3" />
+          ) : (
+            <ChevronDown className="size-3" />
+          )}
           transcript
         </button>
         {showTranscript && (

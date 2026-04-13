@@ -18,7 +18,10 @@ interface SettingsInputDeviceProps {
   onSave: (settings: config.Settings) => void;
 }
 
-export function SettingsInputDevice({ settings, onSave }: SettingsInputDeviceProps) {
+export function SettingsInputDevice({
+  settings,
+  onSave,
+}: SettingsInputDeviceProps) {
   const [devices, setDevices] = useState<audio.DeviceInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +51,9 @@ export function SettingsInputDevice({ settings, onSave }: SettingsInputDevicePro
           <InfoTip text="Pick which capture device records your voice. The default follows the system default." />
         </CardTitle>
         <CardDescription>
-          {loading ? "Detecting devices..." : `${devices.length} device${devices.length === 1 ? "" : "s"} available`}
+          {loading
+            ? "Detecting devices..."
+            : `${devices.length} device${devices.length === 1 ? "" : "s"} available`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">

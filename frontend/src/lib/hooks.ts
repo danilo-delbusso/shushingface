@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
-import type { config, history, desktop, platform, ai } from "../../wailsjs/go/models";
+import type {
+  config,
+  history,
+  desktop,
+  platform,
+  ai,
+} from "../../wailsjs/go/models";
 import { toast } from "sonner";
 
 export function useTheme(theme: string | undefined) {
@@ -59,18 +65,15 @@ export function useSettings() {
     AppBridge.GetSettings().then(setSettings);
   }, []);
 
-  const saveSettings = useCallback(
-    async (updated: config.Settings) => {
-      try {
-        await AppBridge.SaveSettings(updated);
-        setSettings(updated);
-        toast.success("Settings saved");
-      } catch (err) {
-        toast.error(`Failed to save: ${err}`);
-      }
-    },
-    [],
-  );
+  const saveSettings = useCallback(async (updated: config.Settings) => {
+    try {
+      await AppBridge.SaveSettings(updated);
+      setSettings(updated);
+      toast.success("Settings saved");
+    } catch (err) {
+      toast.error(`Failed to save: ${err}`);
+    }
+  }, []);
 
   return { settings, setSettings, saveSettings };
 }
@@ -144,10 +147,7 @@ export function useHistory() {
   return { historyList, refresh, clear };
 }
 
-export function useRecording(
-  configured: boolean,
-  onResult: () => void,
-) {
+export function useRecording(configured: boolean, onResult: () => void) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<desktop.ProcessResult[]>([]);
@@ -217,5 +217,11 @@ export function useRecording(
     return () => cleanups.forEach((c) => c());
   }, [toggle, startRecording, stopAndProcess]);
 
-  return { isRecording, isProcessing, results, clearResults: () => setResults([]), toggle };
+  return {
+    isRecording,
+    isProcessing,
+    results,
+    clearResults: () => setResults([]),
+    toggle,
+  };
 }

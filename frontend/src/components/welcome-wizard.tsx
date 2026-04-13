@@ -32,7 +32,9 @@ function WizardShortcut({ platformInfo }: { platformInfo: any }) {
   const [bound, setBound] = useState<string>("");
 
   useEffect(() => {
-    AppBridge.HotkeyCapabilities().then(setCaps).catch(() => setCaps({ supported: false } as platformNs.Capability));
+    AppBridge.HotkeyCapabilities()
+      .then(setCaps)
+      .catch(() => setCaps({ supported: false } as platformNs.Capability));
   }, []);
 
   if (!caps) return null;
@@ -257,11 +259,18 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
               {/* Base URL — shown for providers that need it */}
               {needsBaseUrl && (
                 <FormField
-                  label={<>Base URL <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." /></>}
+                  label={
+                    <>
+                      Base URL{" "}
+                      <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
+                    </>
+                  }
                   error={errors.baseUrl?.message}
                 >
                   <Input
-                    {...register("baseUrl", { onChange: () => setTestOk(false) })}
+                    {...register("baseUrl", {
+                      onChange: () => setTestOk(false),
+                    })}
                     placeholder="http://localhost:11434/v1"
                   />
                 </FormField>
@@ -278,7 +287,10 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                       </span>
                     )}
                     {preset?.keyUrl && (
-                      <ExternalLink href={preset.keyUrl} className="text-xs font-normal">
+                      <ExternalLink
+                        href={preset.keyUrl}
+                        className="text-xs font-normal"
+                      >
                         {preset.keyUrlLabel}
                       </ExternalLink>
                     )}

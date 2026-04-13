@@ -94,8 +94,9 @@
   --color-sidebar-border: var(--color-sidebar-border);
   --color-sidebar-ring: var(--color-sidebar-ring);
   --radius: 0.625rem;
-  --font-sans: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code",
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans:
+    "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", ui-monospace,
+    SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @layer base {

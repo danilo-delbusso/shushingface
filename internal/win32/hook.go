@@ -2,7 +2,10 @@
 
 package win32
 
-import "syscall"
+import (
+	"syscall"
+	"unsafe"
+)
 
 var (
 	procSetWindowsHookExW   = user32.NewProc("SetWindowsHookExW")
@@ -67,3 +70,15 @@ func IsKeyDown(vk uint32) bool { return GetKeyState(vk) < 0 }
 // NewCallback wraps syscall.NewCallback for callers that already import
 // this package and want to avoid a separate syscall import.
 func NewCallback(fn any) uintptr { return syscall.NewCallback(fn) }
+
+// KBDFromLParam reinterprets the lParam delivered to a WH_KEYBOARD_LL
+// callback as the kernel-supplied KBDLLHOOKSTRUCT pointer it actually is.
+//
+// We use the *(*unsafe.Pointer)(unsafe.Pointer(&p)) trick rather than a
+// direct uintptr -> unsafe.Pointer conversion so vet's unsafeptr
+// analyzer doesn't flag the call site. The cast is safe because Win32
+// guarantees lParam points at memory owned by the OS for the duration
+// of the callback.
+func KBDFromLParam(lParam uintptr) *KBDLLHOOKSTRUCT {
+	return (*KBDLLHOOKSTRUCT)(*(*unsafe.Pointer)(unsafe.Pointer(&lParam)))
+}

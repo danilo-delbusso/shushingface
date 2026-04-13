@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Select as SelectPrimitive } from "radix-ui"
-import { ChevronDown, Check } from "lucide-react"
+import * as React from "react";
+import { Select as SelectPrimitive } from "radix-ui";
+import { ChevronDown, Check } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-const Select = SelectPrimitive.Root
-const SelectGroup = SelectPrimitive.Group
-const SelectValue = SelectPrimitive.Value
+const Select = SelectPrimitive.Root;
+const SelectGroup = SelectPrimitive.Group;
+const SelectValue = SelectPrimitive.Value;
 
 function SelectTrigger({
   className,
@@ -29,7 +29,7 @@ function SelectTrigger({
         <ChevronDown className="size-4 opacity-50" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
-  )
+  );
 }
 
 function SelectContent({
@@ -53,14 +53,15 @@ function SelectContent({
         <SelectPrimitive.Viewport
           className={cn(
             "p-1",
-            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+            position === "popper" &&
+              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
           )}
         >
           {children}
         </SelectPrimitive.Viewport>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
-  )
+  );
 }
 
 function SelectItem({
@@ -84,7 +85,7 @@ function SelectItem({
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
-  )
+  );
 }
 
 function SelectLabel({
@@ -94,10 +95,13 @@ function SelectLabel({
   return (
     <SelectPrimitive.Label
       data-slot="select-label"
-      className={cn("py-1.5 pl-8 pr-2 text-xs font-medium text-muted-foreground", className)}
+      className={cn(
+        "py-1.5 pl-8 pr-2 text-xs font-medium text-muted-foreground",
+        className,
+      )}
       {...props}
     />
-  )
+  );
 }
 
 function SelectSeparator({
@@ -110,7 +114,7 @@ function SelectSeparator({
       className={cn("-mx-1 my-1 h-px bg-muted", className)}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -122,4 +126,4 @@ export {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-}
+};

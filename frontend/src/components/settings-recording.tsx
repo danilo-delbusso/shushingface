@@ -17,7 +17,10 @@ interface SettingsRecordingProps {
   onSave: (settings: config.Settings) => void;
 }
 
-export function SettingsRecording({ settings, onSave }: SettingsRecordingProps) {
+export function SettingsRecording({
+  settings,
+  onSave,
+}: SettingsRecordingProps) {
   const mode = settings.recordingMode || "toggle";
 
   const setMode = (m: "toggle" | "push_to_talk") =>
@@ -34,7 +37,8 @@ export function SettingsRecording({ settings, onSave }: SettingsRecordingProps) 
           <InfoTip text="Choose how the shortcut starts and stops recording, and whether the floating overlay appears above the focused window." />
         </CardTitle>
         <CardDescription>
-          Toggle starts on first press and stops on second. Push-to-talk records only while the shortcut is held.
+          Toggle starts on first press and stops on second. Push-to-talk records
+          only while the shortcut is held.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -74,7 +78,8 @@ export function SettingsRecording({ settings, onSave }: SettingsRecordingProps) 
               <Eye className="size-3.5" /> Floating overlay
             </Label>
             <p className="text-xs text-muted-foreground">
-              Show a small mic-level indicator above the focused window while recording
+              Show a small mic-level indicator above the focused window while
+              recording
             </p>
           </div>
           <Switch

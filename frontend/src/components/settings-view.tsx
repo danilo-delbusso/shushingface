@@ -6,12 +6,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -155,7 +150,9 @@ export function SettingsView({
               </div>
               <Switch
                 id="notify-toggle"
-                checked={settings.enableNotifications && notificationsCap.supported}
+                checked={
+                  settings.enableNotifications && notificationsCap.supported
+                }
                 disabled={!notificationsCap.supported}
                 onCheckedChange={(v) => toggle({ enableNotifications: v })}
               />
@@ -228,4 +225,3 @@ export function SettingsView({
     </div>
   );
 }
-

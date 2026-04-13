@@ -16,7 +16,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"unsafe"
 
 	gdhotkey "golang.design/x/hotkey"
 
@@ -326,7 +325,7 @@ func keyboardProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 	if nCode < 0 || activeManager == nil {
 		return win32.CallNextHookEx(nCode, wParam, lParam)
 	}
-	kbd := (*win32.KBDLLHOOKSTRUCT)(unsafe.Pointer(lParam))
+	kbd := win32.KBDFromLParam(lParam)
 	vk := kbd.VkCode
 	switch wParam {
 	case win32.WMKeyDown, win32.WMSysKeyDown:

@@ -15,7 +15,13 @@ const MOD_LABELS: Record<string, string> = {
 };
 
 function isModifierKey(key: string): boolean {
-  return key === "Control" || key === "Alt" || key === "Shift" || key === "Meta" || key === "OS";
+  return (
+    key === "Control" ||
+    key === "Alt" ||
+    key === "Shift" ||
+    key === "Meta" ||
+    key === "OS"
+  );
 }
 
 function canonicalKey(e: KeyboardEvent): string | null {
@@ -37,7 +43,12 @@ interface LiveMods {
   super: boolean;
 }
 
-const NO_MODS: LiveMods = { ctrl: false, alt: false, shift: false, super: false };
+const NO_MODS: LiveMods = {
+  ctrl: false,
+  alt: false,
+  shift: false,
+  super: false,
+};
 
 export function ShortcutRecorder({
   value,
@@ -119,9 +130,7 @@ export function ShortcutRecorder({
   return (
     <div
       className={`flex w-full items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm transition-colors ${
-        recording
-          ? "border-primary ring-1 ring-primary"
-          : "border-input"
+        recording ? "border-primary ring-1 ring-primary" : "border-input"
       } ${disabled ? "opacity-50" : ""}`}
     >
       <Keyboard className="size-3.5 shrink-0 text-muted-foreground" />

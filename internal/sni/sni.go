@@ -125,10 +125,10 @@ func (s *Item) SetRecording(recording bool) {
 		status = "NeedsAttention"
 	}
 	for sig, args := range map[string][]interface{}{
-		sniIface + ".NewStatus":         {status},
-		sniIface + ".NewToolTip":        nil,
-		sniIface + ".NewIcon":           nil,
-		sniIface + ".NewAttentionIcon":  nil,
+		sniIface + ".NewStatus":        {status},
+		sniIface + ".NewToolTip":       nil,
+		sniIface + ".NewIcon":          nil,
+		sniIface + ".NewAttentionIcon": nil,
 	} {
 		if err := s.conn.Emit(itemPath, sig, args...); err != nil {
 			slog.Warn("sni: emit failed", "signal", sig, "error", err)
@@ -218,8 +218,8 @@ func (s *Item) Activate(_, _ int32) *dbus.Error {
 	return nil
 }
 
-func (s *Item) SecondaryActivate(_, _ int32) *dbus.Error      { return nil }
-func (s *Item) Scroll(_ int32, _ string) *dbus.Error          { return nil }
+func (s *Item) SecondaryActivate(_, _ int32) *dbus.Error { return nil }
+func (s *Item) Scroll(_ int32, _ string) *dbus.Error     { return nil }
 
 // --- helpers ---------------------------------------------------------------
 

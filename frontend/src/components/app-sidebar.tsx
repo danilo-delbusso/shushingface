@@ -37,7 +37,14 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Quit } from "../../wailsjs/runtime/runtime";
 import { Collapsible } from "radix-ui";
 
-export type View = "home" | "history" | "connections" | "ai" | "appearance" | "general" | "about";
+export type View =
+  | "home"
+  | "history"
+  | "connections"
+  | "ai"
+  | "appearance"
+  | "general"
+  | "about";
 
 interface AppSidebarProps {
   view: View;
@@ -58,12 +65,21 @@ export function AppSidebar({
   version,
   updateAvailable,
 }: AppSidebarProps) {
-  const settingsOpen = view === "connections" || view === "ai" || view === "appearance" || view === "general" || view === "about";
+  const settingsOpen =
+    view === "connections" ||
+    view === "ai" ||
+    view === "appearance" ||
+    view === "general" ||
+    view === "about";
 
   return (
     <Sidebar collapsible="none" variant="sidebar">
       <SidebarHeader className="flex items-center justify-center gap-2 py-4">
-        <img src="/appicon.png" alt="shushingface" className="size-8 rounded-md" />
+        <img
+          src="/appicon.png"
+          alt="shushingface"
+          className="size-8 rounded-md"
+        />
         <span className="text-lg font-bold text-primary">shushing face</span>
       </SidebarHeader>
       <SidebarContent>

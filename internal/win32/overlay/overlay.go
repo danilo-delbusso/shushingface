@@ -44,11 +44,11 @@ const (
 
 	// Visual tuning.
 	numBars       = 7
-	barWidth      = 2
+	barWidth      = 4
 	barGap        = 3
-	barRadius     = 1
-	barMinHeight  = 2 // px — idle bars never collapse to 0
-	barMaxHeight  = 14
+	barRadius     = 2
+	barMinHeight  = 3 // px — idle bars never collapse to 0
+	barMaxHeight  = 16
 	levelGain     = 8    // amplification applied to RMS before mapping to bar height
 	smoothingStep = 0.25 // 0..1 — fraction of the gap closed each frame
 	idleAmplitude = 1.5  // px peak of the resting wave when the mic is silent
@@ -58,8 +58,8 @@ const (
 
 	// Loader (processing-mode) visuals.
 	loaderDots   = 3
-	loaderRadius = 2
-	loaderSpace  = 6
+	loaderRadius = 4
+	loaderSpace  = 8
 	loaderSpeed  = 0.16
 
 	wmOverlayWake = win32.WMApp
