@@ -7,6 +7,13 @@
 <p align="center">speak naturally, get polished text.</p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/status-in%20development-orange" alt="in development">
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0"></a>
+</p>
+
+> ⚠️ Early-stage project. Expect rough edges, breaking changes, and missing features. Not recommended for production use yet.
+
+<p align="center">
 shushing face helps you work more efficiently by leveraging the fact that speaking is generally faster than typing. It operates in the background, allowing you to speak freely, and with a simple press or shortcut, it transcribes and cleans up your spoken words into clear, professional text, making it ideal for emails, reports, and other workplace communication.
 </p>
 
