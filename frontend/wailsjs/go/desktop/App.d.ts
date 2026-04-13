@@ -4,8 +4,8 @@ import {config} from '../models';
 import {history} from '../models';
 import {desktop} from '../models';
 import {platform} from '../models';
-import {ai} from '../models';
 import {hotkey} from '../models';
+import {ai} from '../models';
 
 export function ClearHistory():Promise<void>;
 

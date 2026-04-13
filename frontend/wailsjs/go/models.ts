@@ -137,7 +137,7 @@ export namespace config {
 	    checkForUpdates: boolean;
 	    inputDeviceId?: string;
 	    shortcut?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
 	    }
@@ -270,16 +270,16 @@ export namespace history {
 }
 
 export namespace hotkey {
-
+	
 	export class Capabilities {
 	    supported: boolean;
 	    conflictCheck: boolean;
 	    reason?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Capabilities(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.supported = source["supported"];
