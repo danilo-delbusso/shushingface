@@ -1,6 +1,8 @@
 import {
   Plug,
   Bot,
+  ScrollText,
+  Wand2,
   Palette,
   SlidersHorizontal,
   Info,
@@ -10,7 +12,9 @@ import {
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { ConnectionsView } from "@/components/connections-view";
-import { AiView } from "@/components/ai-view";
+import { ModelsView } from "@/components/models-view";
+import { RulesView } from "@/components/rules-view";
+import { StylesView } from "@/components/styles-view";
 import { AppearanceView } from "@/components/appearance-view";
 import { SettingsView } from "@/components/settings-view";
 import { AboutView } from "@/components/about-view";
@@ -18,7 +22,9 @@ import type { config, desktop, platform } from "../../wailsjs/go/models";
 
 export type SettingsSection =
   | "connections"
-  | "ai"
+  | "models"
+  | "rules"
+  | "styles"
   | "appearance"
   | "general"
   | "about";
@@ -43,16 +49,23 @@ const NAV: {
   id: SettingsSection;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  group: "settings" | "info";
+  group: "general" | "ai" | "info";
 }[] = [
-  { id: "connections", label: "Connections", icon: Plug, group: "settings" },
-  { id: "ai", label: "AI", icon: Bot, group: "settings" },
-  { id: "appearance", label: "Appearance", icon: Palette, group: "settings" },
+  { id: "connections", label: "Connections", icon: Plug, group: "ai" },
+  { id: "models", label: "Models", icon: Bot, group: "ai" },
+  { id: "rules", label: "Rules", icon: ScrollText, group: "ai" },
+  { id: "styles", label: "Styles", icon: Wand2, group: "ai" },
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: Palette,
+    group: "general",
+  },
   {
     id: "general",
     label: "General",
     icon: SlidersHorizontal,
-    group: "settings",
+    group: "general",
   },
   { id: "about", label: "About", icon: Info, group: "info" },
 ];
@@ -105,12 +118,18 @@ export function SettingsDialog({
                 onSave={onSave}
               />
             )}
-            {section === "ai" && (
-              <AiView
+            {section === "models" && (
+              <ModelsView
                 settings={settings}
                 configured={configured}
                 onSave={onSave}
               />
+            )}
+            {section === "rules" && (
+              <RulesView settings={settings} onSave={onSave} />
+            )}
+            {section === "styles" && (
+              <StylesView settings={settings} onSave={onSave} />
             )}
             {section === "appearance" && (
               <AppearanceView settings={settings} onSave={onSave} />
@@ -148,38 +167,31 @@ function SettingsNav({
   hasWarnings: boolean;
   appVersion: string;
 }) {
-  const settingsItems = NAV.filter((n) => n.group === "settings");
+  const aiItems = NAV.filter((n) => n.group === "ai");
+  const generalItems = NAV.filter((n) => n.group === "general");
   const infoItems = NAV.filter((n) => n.group === "info");
+
+  const renderItem = (item: (typeof NAV)[number]) => {
+    const warn =
+      (item.id === "connections" && !configured) ||
+      (item.id === "models" && hasWarnings);
+    return (
+      <NavItem
+        key={item.id}
+        {...item}
+        active={section === item.id}
+        warn={warn}
+        onClick={() => onSelect(item.id)}
+      />
+    );
+  };
 
   return (
     <aside className="flex w-52 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="flex-1 space-y-4 overflow-y-auto p-3">
-        <NavGroup label="Settings">
-          {settingsItems.map((item) => {
-            const warn =
-              (item.id === "connections" && !configured) ||
-              (item.id === "ai" && hasWarnings);
-            return (
-              <NavItem
-                key={item.id}
-                {...item}
-                active={section === item.id}
-                warn={warn}
-                onClick={() => onSelect(item.id)}
-              />
-            );
-          })}
-        </NavGroup>
-        <NavGroup label="Info">
-          {infoItems.map((item) => (
-            <NavItem
-              key={item.id}
-              {...item}
-              active={section === item.id}
-              onClick={() => onSelect(item.id)}
-            />
-          ))}
-        </NavGroup>
+        <NavGroup label="AI">{aiItems.map(renderItem)}</NavGroup>
+        <NavGroup label="App">{generalItems.map(renderItem)}</NavGroup>
+        <NavGroup label="Info">{infoItems.map(renderItem)}</NavGroup>
       </div>
       {appVersion && (
         <div className="border-t px-4 py-2 text-[10px] text-muted-foreground">
@@ -252,7 +264,9 @@ function SettingsBody({
 }) {
   const titles: Record<SettingsSection, string> = {
     connections: "Connections",
-    ai: "AI",
+    models: "Models",
+    rules: "Rules",
+    styles: "Styles",
     appearance: "Appearance",
     general: "General",
     about: "About",

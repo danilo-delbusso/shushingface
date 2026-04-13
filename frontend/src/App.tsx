@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar, type View } from "@/components/app-sidebar";
 import { RecordView } from "@/components/record-view";
 import { HistoryView } from "@/components/history-view";
+import { PlaygroundView } from "@/components/playground-view";
 import {
   SettingsDialog,
   type SettingsSection,
@@ -85,6 +86,7 @@ function App() {
     }
     if (settings && !settings.enableHistory && view === "history")
       setView("home");
+
   }, [settings, view]);
 
   // Show wizard for first-time setup
@@ -147,6 +149,20 @@ function App() {
             )}
             {view === "history" && (
               <HistoryView items={historyList} onClear={clearHistory} />
+            )}
+            {view === "playground" && (
+              <PlaygroundView
+                settings={settings}
+                onSwitchProfile={(id) =>
+                  saveSettings(
+                    config.Settings.createFrom({
+                      ...settings,
+                      activeProfileId: id,
+                    }),
+                  )
+                }
+                onEditStyles={() => openSettings("styles")}
+              />
             )}
           </SidebarInset>
           <SettingsDialog

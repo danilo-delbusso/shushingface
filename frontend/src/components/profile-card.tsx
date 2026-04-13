@@ -267,13 +267,15 @@ export function ProfileCard({
           >
             <Icon className="size-4" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <CardTitle className="flex items-center gap-2 text-sm">
               {watchedName || "Untitled"}
             </CardTitle>
-            <CardDescription className="text-xs">
-              {displayConn} / {displayModel}
-            </CardDescription>
+            {isExpanded && (
+              <CardDescription className="text-xs truncate">
+                {displayConn} / {displayModel}
+              </CardDescription>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {!isActive && (

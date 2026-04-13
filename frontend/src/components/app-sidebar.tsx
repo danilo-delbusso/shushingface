@@ -1,6 +1,7 @@
 import {
   Mic,
   History,
+  FlaskConical,
   Settings,
   LogOut,
   ArrowUpCircle,
@@ -23,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Quit } from "../../wailsjs/runtime/runtime";
 
-export type View = "home" | "history";
+export type View = "home" | "history" | "playground";
 
 interface AppSidebarProps {
   view: View;
@@ -99,6 +100,17 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={view === "playground"}
+                  onClick={() => onNavigate("playground")}
+                  tooltip="Playground"
+                >
+                  <FlaskConical className="size-4" />
+                  <span>Playground</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
