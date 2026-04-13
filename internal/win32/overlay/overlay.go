@@ -1,3 +1,5 @@
+//go:build windows
+
 // Package winoverlay is the Win32 implementation of the floating recording
 // indicator. It owns the entire window lifecycle (window class, message
 // pump, GDI brushes), the bar/loader animation state, and monitor-aware

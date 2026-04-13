@@ -1,3 +1,5 @@
+//go:build windows
+
 // Package winhotkey is the Win32 implementation of global hotkey
 // registration. Toggle shortcuts are routed through golang.design/x/hotkey
 // (which owns its own HWND + message pump, debounced for OS auto-repeat);
