@@ -25,6 +25,17 @@ $version = (& git describe --tags --always --dirty 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $version) { $version = 'dev' }
 $ldflags = "-X codeberg.org/dbus/shushingface/internal/version.version=$version"
 
+# `wails dev` on windows/arm64 + Go 1.26 trips the nosplit-stack limit
+# because wails hardcodes -gcflags='all=-N -l'. Fall back to a plain
+# release build and launch the binary instead — frontend changes still
+# require a rebuild, but the app starts.
+if ($mode -eq 'dev') {
+    & wails build -ldflags $ldflags
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & ./build/bin/shushingface.exe
+    exit $LASTEXITCODE
+}
+
 $wailsArgs = @($mode)
 foreach ($a in $args[1..($args.Length - 1)]) { $wailsArgs += $a }
 $wailsArgs += '-ldflags'
