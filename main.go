@@ -101,6 +101,13 @@ func main() {
 	logPath, _ := config.GetLogPath()
 	appLogger := logger.NewFileLogger(logPath)
 
+	// Route slog output to the same file (wails NewFileLogger only catches
+	// wails-framework messages, not the rest of our slog calls). Without
+	// this nothing is captured when the binary is built with -H windowsgui.
+	if logFile, lfErr := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); lfErr == nil {
+		slog.SetDefault(slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	}
+
 	err = wails.Run(&options.App{
 		Title:  "shushing face",
 		Width:  800,

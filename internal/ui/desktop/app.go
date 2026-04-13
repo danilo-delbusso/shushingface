@@ -22,6 +22,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/ipc"
 	"codeberg.org/dbus/shushingface/internal/notify"
 	"codeberg.org/dbus/shushingface/internal/osutil"
+	"codeberg.org/dbus/shushingface/internal/overlay"
 	"codeberg.org/dbus/shushingface/internal/paste"
 	"codeberg.org/dbus/shushingface/internal/platform"
 	"codeberg.org/dbus/shushingface/internal/secrets"
@@ -39,6 +40,7 @@ type App struct {
 	history  history.Store
 	cleanIPC func()
 	hotkey   hotkey.Manager
+	overlay  overlay.Overlay
 }
 
 // Caller must hold at least a.mu.RLock.
@@ -57,6 +59,7 @@ func NewApp(engine core.Engine, recorder audio.Recorder, cfg *config.Settings, s
 
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	a.overlay = overlay.New()
 
 	a.mu.RLock()
 	enableIndicator := a.cfg.EnableIndicator
@@ -76,9 +79,17 @@ func (a *App) Startup(ctx context.Context) {
 	if hotkey.Detect().Supported {
 		a.hotkey = hotkey.New()
 		go func() {
-			for name := range a.hotkey.Events() {
-				if name == "toggle" {
+			for ev := range a.hotkey.Events() {
+				if ev.Name != "toggle" {
+					continue
+				}
+				switch ev.Type {
+				case hotkey.Trigger:
 					wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
+				case hotkey.Press:
+					wailsRuntime.EventsEmit(a.ctx, "hotkey-press")
+				case hotkey.Release:
+					wailsRuntime.EventsEmit(a.ctx, "hotkey-release")
 				}
 			}
 		}()
@@ -148,11 +159,16 @@ func (a *App) Shutdown(_ context.Context) {
 			slog.Warn("hotkey close failed", "error", err)
 		}
 	}
+	if a.overlay != nil {
+		if err := a.overlay.Close(); err != nil {
+			slog.Warn("overlay close failed", "error", err)
+		}
+	}
 	indicator.Stop()
 }
 
-// registerShortcut parses spec and registers the toggle hotkey.
-// Caller must not hold a.mu.
+// registerShortcut parses spec and registers the toggle hotkey using the
+// recording mode currently in cfg. Caller must not hold a.mu.
 func (a *App) registerShortcut(spec string) error {
 	if a.hotkey == nil {
 		return hotkey.ErrUnsupported
@@ -161,7 +177,17 @@ func (a *App) registerShortcut(spec string) error {
 	if err != nil {
 		return err
 	}
-	return a.hotkey.Register("toggle", parsed)
+	a.mu.RLock()
+	mode := a.cfg.RecordingMode
+	a.mu.RUnlock()
+	return a.hotkey.Register("toggle", parsed, parseMode(mode))
+}
+
+func parseMode(s string) hotkey.Mode {
+	if s == "push_to_talk" {
+		return hotkey.ModePushToTalk
+	}
+	return hotkey.ModeToggle
 }
 
 // GetShortcut returns the saved shortcut string (may be "").
@@ -173,23 +199,37 @@ func (a *App) GetShortcut() string {
 
 // SetShortcut validates, registers, and persists a new shortcut.
 func (a *App) SetShortcut(spec string) error {
+	slog.Info("SetShortcut called", "spec", spec)
 	parsed, err := hotkey.ParseSpec(spec)
 	if err != nil {
+		slog.Warn("SetShortcut parse failed", "spec", spec, "error", err)
 		return err
 	}
 	canonical := hotkey.FormatSpec(parsed)
 
+	a.mu.RLock()
+	mode := parseMode(a.cfg.RecordingMode)
+	a.mu.RUnlock()
+
 	if a.hotkey != nil {
-		if err := a.hotkey.Register("toggle", parsed); err != nil {
+		if err := a.hotkey.Register("toggle", parsed, mode); err != nil {
+			slog.Warn("SetShortcut register failed", "canonical", canonical, "error", err)
 			return err
 		}
+	} else {
+		slog.Warn("SetShortcut: a.hotkey is nil")
 	}
 
 	a.mu.Lock()
 	a.cfg.Shortcut = canonical
 	snapshot := a.snapshotConfig()
 	a.mu.Unlock()
-	return config.Save(&snapshot)
+	if err := config.Save(&snapshot); err != nil {
+		slog.Error("SetShortcut config.Save failed", "error", err)
+		return err
+	}
+	slog.Info("SetShortcut persisted", "canonical", canonical)
+	return nil
 }
 
 // ClearShortcut removes the registered shortcut.
@@ -216,11 +256,18 @@ func (a *App) StartRecording() error {
 	if err == nil {
 		a.mu.RLock()
 		doNotify := a.cfg.EnableNotifications
+		showOverlay := a.cfg.OverlayEnabled
+		opacity := a.cfg.OverlayOpacity
 		a.mu.RUnlock()
 		if doNotify {
 			notify.RecordingStarted()
 		}
 		indicator.SetRecording(true)
+		if showOverlay && a.overlay != nil {
+			if err := a.overlay.Show("Recording...", opacity); err != nil {
+				slog.Warn("overlay show failed", "error", err)
+			}
+		}
 	}
 	return err
 }
@@ -255,6 +302,11 @@ func (a *App) StopAndProcess() ProcessResult {
 		notify.RecordingDone()
 	}
 	indicator.SetRecording(false)
+	if a.overlay != nil {
+		if hErr := a.overlay.Hide(); hErr != nil {
+			slog.Warn("overlay hide failed", "error", hErr)
+		}
+	}
 	if err != nil {
 		slog.Error("StopAndProcess failed", "error", err)
 		if cfg.EnableNotifications {
@@ -316,6 +368,7 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	copy(oldConns, a.cfg.Connections)
 	oldIndicator := a.cfg.EnableIndicator
 	oldDeviceID := a.cfg.InputDeviceID
+	oldMode := a.cfg.RecordingMode
 	currentShortcut := a.cfg.Shortcut
 	a.mu.RUnlock()
 
@@ -326,6 +379,21 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	if newSettings.InputDeviceID != oldDeviceID {
 		if err := a.recorder.SetDevice(newSettings.InputDeviceID); err != nil {
 			return fmt.Errorf("switch input device: %w", err)
+		}
+	}
+
+	// If the recording mode changed and a shortcut is bound, re-register it
+	// in the new mode so the keyboard hook / RegisterHotKey reflects the choice.
+	if newSettings.RecordingMode != oldMode && currentShortcut != "" && a.hotkey != nil {
+		if err := a.hotkey.Unregister("toggle"); err != nil {
+			slog.Warn("hotkey unregister during mode change failed", "error", err)
+		}
+		// Apply the new mode before re-registering by writing cfg here too.
+		a.mu.Lock()
+		a.cfg.RecordingMode = newSettings.RecordingMode
+		a.mu.Unlock()
+		if err := a.registerShortcut(currentShortcut); err != nil {
+			slog.Warn("hotkey re-register after mode change failed", "error", err)
 		}
 	}
 

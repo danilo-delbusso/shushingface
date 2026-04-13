@@ -169,10 +169,42 @@ export function useRecording(
     }
   }, [configured, onResult]);
 
+  const startRecording = useCallback(async () => {
+    if (!configured) {
+      toast.error("Set up your API key in Settings first");
+      return;
+    }
+    if (isRecordingRef.current) return;
+    try {
+      await AppBridge.StartRecording();
+      setIsRecording(true);
+    } catch (err) {
+      toast.error(`Recording failed: ${err}`);
+    }
+  }, [configured]);
+
+  const stopAndProcess = useCallback(async () => {
+    if (!isRecordingRef.current) return;
+    setIsRecording(false);
+    setIsProcessing(true);
+    const res = await AppBridge.StopAndProcess();
+    setIsProcessing(false);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      setResults((prev) => [res, ...prev]);
+      onResult();
+    }
+  }, [onResult]);
+
   useEffect(() => {
-    const cleanup = EventsOn("hotkey-toggle", toggle);
-    return cleanup;
-  }, [toggle]);
+    const cleanups = [
+      EventsOn("hotkey-toggle", toggle),
+      EventsOn("hotkey-press", startRecording),
+      EventsOn("hotkey-release", stopAndProcess),
+    ];
+    return () => cleanups.forEach((c) => c());
+  }, [toggle, startRecording, stopAndProcess]);
 
   return { isRecording, isProcessing, results, clearResults: () => setResults([]), toggle };
 }

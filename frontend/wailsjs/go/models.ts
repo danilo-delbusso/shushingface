@@ -158,6 +158,9 @@ export namespace config {
 	    checkForUpdates: boolean;
 	    inputDeviceId?: string;
 	    shortcut?: string;
+	    recordingMode?: string;
+	    overlayEnabled: boolean;
+	    overlayOpacity?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -186,6 +189,9 @@ export namespace config {
 	        this.checkForUpdates = source["checkForUpdates"];
 	        this.inputDeviceId = source["inputDeviceId"];
 	        this.shortcut = source["shortcut"];
+	        this.recordingMode = source["recordingMode"];
+	        this.overlayEnabled = source["overlayEnabled"];
+	        this.overlayOpacity = source["overlayOpacity"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
