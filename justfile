@@ -9,6 +9,17 @@ prefix := env("PREFIX", env("HOME", env("USERPROFILE", "")) / ".local")
 default:
     @just --list
 
+# --- Dev environment ---
+
+# Report missing / outdated build and runtime dependencies
+[unix]
+doctor:
+    @bash scripts/doctor/linux.sh
+
+[windows]
+doctor:
+    @bash scripts/doctor/windows.sh
+
 # --- Frontend Tasks ---
 
 # Formats frontend code using Biome
