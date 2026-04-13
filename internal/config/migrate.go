@@ -6,8 +6,8 @@ import (
 )
 
 // currentConfigVersion is the version of the current config schema.
-// Bump this when adding a new migration.
-const currentConfigVersion = 4
+// Bump this and append to configMigrations when the schema changes.
+const currentConfigVersion = 1
 
 type configMigration struct {
 	version     int
@@ -15,41 +15,12 @@ type configMigration struct {
 	up          func(data map[string]any) error
 }
 
-// Config migrations. Add new entries when the schema changes.
-// Each migration operates on raw JSON (map[string]any) so it's
+// Config migrations. v1 is the collapsed baseline — every field the app
+// currently cares about is populated here. Add further entries (v2, v3…)
+// when the schema evolves; each one operates on raw JSON so it stays
 // decoupled from the current Settings struct.
 var configMigrations = []configMigration{
 	{version: 1, description: "initial schema", up: migrateInitial},
-	{version: 2, description: "add shortcut field", up: migrateAddShortcut},
-	{version: 3, description: "add recording mode and overlay", up: migrateAddOverlay},
-	{version: 4, description: "add debug logging toggle", up: migrateAddDebugLogging},
-}
-
-func migrateAddDebugLogging(data map[string]any) error {
-	if _, ok := data["debugLogging"]; !ok {
-		data["debugLogging"] = false
-	}
-	return nil
-}
-
-func migrateAddShortcut(data map[string]any) error {
-	if _, ok := data["shortcut"]; !ok {
-		data["shortcut"] = ""
-	}
-	return nil
-}
-
-func migrateAddOverlay(data map[string]any) error {
-	if _, ok := data["recordingMode"]; !ok {
-		data["recordingMode"] = "toggle"
-	}
-	if _, ok := data["overlayEnabled"]; !ok {
-		data["overlayEnabled"] = true
-	}
-	if _, ok := data["overlayOpacity"]; !ok {
-		data["overlayOpacity"] = 0.4
-	}
-	return nil
 }
 
 // migrateConfig runs all pending migrations on raw JSON data.
@@ -58,14 +29,14 @@ func migrateConfig(data map[string]any) (bool, error) {
 	current := int(v)
 
 	if current >= currentConfigVersion {
-		// Already at or beyond current version — nothing to do.
-		// During development, config versions may go backwards when
-		// migrations are collapsed. Accept it gracefully.
+		// Configs produced by a future version get accepted at face value
+		// but we still clamp the version number down so the running binary
+		// doesn't keep logging the mismatch.
 		if current > currentConfigVersion {
 			slog.Warn("config version is newer than expected, accepting as-is",
 				"config", current, "app", currentConfigVersion)
 			data["configVersion"] = float64(currentConfigVersion)
-			return true, nil // save to downgrade the version number
+			return true, nil
 		}
 		return false, nil
 	}
@@ -83,15 +54,15 @@ func migrateConfig(data map[string]any) (bool, error) {
 	return true, nil
 }
 
-// migrateInitial ensures a valid initial config structure.
-// Handles fresh configs and any legacy formats.
+// migrateInitial installs a full baseline schema. It fills any field that
+// DefaultSettings cares about and scrubs legacy fields from earlier
+// pre-baseline configs. Since this is the only migration today, every
+// upgrade path ends here.
 func migrateInitial(data map[string]any) error {
-	// Ensure connections exist
 	if _, ok := data["connections"]; !ok {
 		data["connections"] = []any{}
 	}
 
-	// Ensure default models
 	if v, _ := data["refinementModel"].(string); v == "" {
 		data["refinementModel"] = DefaultRefinementModel
 	}
@@ -99,7 +70,6 @@ func migrateInitial(data map[string]any) error {
 		data["transcriptionModel"] = DefaultTranscriptionModel
 	}
 
-	// Ensure profiles exist
 	profiles, _ := data["refinementProfiles"].([]any)
 	if len(profiles) == 0 {
 		defaults := DefaultProfiles()
@@ -125,7 +95,22 @@ func migrateInitial(data map[string]any) error {
 		data["activeProfileId"] = "professional"
 	}
 
-	// Clean up any legacy fields
+	if _, ok := data["shortcut"]; !ok {
+		data["shortcut"] = ""
+	}
+	if _, ok := data["recordingMode"]; !ok {
+		data["recordingMode"] = "toggle"
+	}
+	if _, ok := data["overlayEnabled"]; !ok {
+		data["overlayEnabled"] = true
+	}
+	if _, ok := data["overlayOpacity"]; !ok {
+		data["overlayOpacity"] = 0.4
+	}
+	if _, ok := data["debugLogging"]; !ok {
+		data["debugLogging"] = false
+	}
+
 	for _, key := range []string{
 		"providers", "providerId", "providerApiKey", "providerBaseUrl",
 		"transcriptionProviderId", "refinementProviderId", "systemPrompt",

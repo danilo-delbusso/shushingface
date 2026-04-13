@@ -20,12 +20,16 @@ func up00001(ctx context.Context, tx *sql.Tx) error {
 			refined_message TEXT,
 			active_app TEXT,
 			error TEXT DEFAULT ''
-		)
+		);
+		CREATE INDEX IF NOT EXISTS idx_transcriptions_timestamp ON transcriptions(timestamp DESC);
 	`)
 	return err
 }
 
 func down00001(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`DROP TABLE IF EXISTS transcriptions`)
+	_, err := tx.Exec(`
+		DROP INDEX IF EXISTS idx_transcriptions_timestamp;
+		DROP TABLE IF EXISTS transcriptions;
+	`)
 	return err
 }
