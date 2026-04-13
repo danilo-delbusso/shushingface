@@ -29,13 +29,16 @@ $version = (& git describe --tags --always --dirty --exclude 'backup/*' 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $version) { $version = 'dev' }
 $ldflags = "-X codeberg.org/dbus/shushingface/internal/version.version=$version"
 
-# Real dev mode: vite hot reload + debug build. Earlier wails / Go combos
-# tripped a nosplit-stack limit on windows/arm64 because of
-# -gcflags=all=-N -l, but as of wails v2.12 + Go 1.26.x this builds. If
-# you regress here, fall back to `wails build -ldflags` and re-launch the
-# binary manually.
+# `wails dev` and `wails build -debug` hardcode `-gcflags=all=-N -l`,
+# which on windows/arm64 + Go 1.26 trips `syscall.Syscall15: nosplit stack
+# over 792 byte limit`. Until that lands upstream, dev mode falls back to
+# an optimised build (no -devtools — we don't want the right-click menu
+# by default) and re-launches the binary. Frontend changes require a
+# rebuild; there's no hot reload on this target.
 if ($mode -eq 'dev') {
-    & wails dev -ldflags $ldflags
+    & wails build -ldflags $ldflags
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & ./build/bin/shushingface.exe
     exit $LASTEXITCODE
 }
 
