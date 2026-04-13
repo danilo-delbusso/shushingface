@@ -16,6 +16,7 @@ import (
 	"codeberg.org/dbus/shushingface/internal/config"
 	"codeberg.org/dbus/shushingface/internal/core"
 	"codeberg.org/dbus/shushingface/internal/history"
+	"codeberg.org/dbus/shushingface/internal/hotkey"
 	"codeberg.org/dbus/shushingface/internal/indicator"
 	"codeberg.org/dbus/shushingface/internal/ipc"
 	"codeberg.org/dbus/shushingface/internal/notify"
@@ -35,6 +36,7 @@ type App struct {
 	secrets  secrets.Store
 	history  history.Store
 	cleanIPC func()
+	hotkey   hotkey.Manager
 }
 
 // Caller must hold at least a.mu.RLock.
@@ -57,7 +59,24 @@ func (a *App) Startup(ctx context.Context) {
 	a.mu.RLock()
 	enableIndicator := a.cfg.EnableIndicator
 	checkForUpdates := a.cfg.CheckForUpdates
+	shortcutSpec := a.cfg.Shortcut
 	a.mu.RUnlock()
+
+	if hotkey.Detect().Supported {
+		a.hotkey = hotkey.New()
+		go func() {
+			for name := range a.hotkey.Events() {
+				if name == "toggle" {
+					wailsRuntime.EventsEmit(a.ctx, "hotkey-toggle")
+				}
+			}
+		}()
+		if shortcutSpec != "" {
+			if err := a.registerShortcut(shortcutSpec); err != nil {
+				slog.Warn("failed to register shortcut at startup", "spec", shortcutSpec, "error", err)
+			}
+		}
+	}
 
 	if enableIndicator {
 		indicator.Start(func() { wailsRuntime.WindowShow(a.ctx) })
@@ -113,7 +132,72 @@ func (a *App) Shutdown(_ context.Context) {
 	if a.cleanIPC != nil {
 		a.cleanIPC()
 	}
+	if a.hotkey != nil {
+		if err := a.hotkey.Close(); err != nil {
+			slog.Warn("hotkey close failed", "error", err)
+		}
+	}
 	indicator.Stop()
+}
+
+// registerShortcut parses spec and registers the toggle hotkey.
+// Caller must not hold a.mu.
+func (a *App) registerShortcut(spec string) error {
+	if a.hotkey == nil {
+		return hotkey.ErrUnsupported
+	}
+	parsed, err := hotkey.ParseSpec(spec)
+	if err != nil {
+		return err
+	}
+	return a.hotkey.Register("toggle", parsed)
+}
+
+// GetShortcut returns the saved shortcut string (may be "").
+func (a *App) GetShortcut() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.Shortcut
+}
+
+// SetShortcut validates, registers, and persists a new shortcut.
+func (a *App) SetShortcut(spec string) error {
+	parsed, err := hotkey.ParseSpec(spec)
+	if err != nil {
+		return err
+	}
+	canonical := hotkey.FormatSpec(parsed)
+
+	if a.hotkey != nil {
+		if err := a.hotkey.Register("toggle", parsed); err != nil {
+			return err
+		}
+	}
+
+	a.mu.Lock()
+	a.cfg.Shortcut = canonical
+	snapshot := a.snapshotConfig()
+	a.mu.Unlock()
+	return config.Save(&snapshot)
+}
+
+// ClearShortcut removes the registered shortcut.
+func (a *App) ClearShortcut() error {
+	if a.hotkey != nil {
+		if err := a.hotkey.Unregister("toggle"); err != nil {
+			slog.Warn("unregister failed", "error", err)
+		}
+	}
+	a.mu.Lock()
+	a.cfg.Shortcut = ""
+	snapshot := a.snapshotConfig()
+	a.mu.Unlock()
+	return config.Save(&snapshot)
+}
+
+// HotkeyCapabilities reports whether in-app shortcut binding is available.
+func (a *App) HotkeyCapabilities() hotkey.Capabilities {
+	return hotkey.Detect()
 }
 
 func (a *App) StartRecording() error {
