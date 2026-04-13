@@ -10,6 +10,10 @@
 shushing face records your voice, transcribes it with AI, rewrites it into clean text, and types it right where your cursor is.
 </p>
 
+<p align="center">
+  <img src="images/home.png" width="720" alt="main window">
+</p>
+
 ## Supported Platforms
 
 | OS | Version | Desktop | Status |
@@ -54,6 +58,33 @@ just install
 3. Bind `shushingface --toggle` to a keyboard shortcut
 4. Press the shortcut to start recording, press again to stop
 5. Refined text is typed where your cursor is
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="images/connections.png" alt="connect a provider"></td>
+    <td width="50%"><img src="images/style.png" alt="choose a style"></td>
+  </tr>
+  <tr>
+    <td><b>Connect a provider</b><br>Groq, OpenAI, or any OpenAI-compatible endpoint.</td>
+    <td><b>Pick a style</b><br>Casual, Professional, or Concise — switch anytime.</td>
+  </tr>
+  <tr>
+    <td><img src="images/shortcut.png" alt="bind a shortcut"></td>
+    <td><img src="images/transcription_example.png" alt="refined output"></td>
+  </tr>
+  <tr>
+    <td><b>Bind a shortcut</b><br>Trigger recording from anywhere with a keybind.</td>
+    <td><b>Speak, paste</b><br>Refined text appears wherever your cursor is.</td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="images/custom-styles.png" alt="customize a style"></td>
+  </tr>
+  <tr>
+    <td colspan="2"><b>Customize</b><br>Edit prompts, override the model, tune temperature per style.</td>
+  </tr>
+</table>
 
 ## License
 
