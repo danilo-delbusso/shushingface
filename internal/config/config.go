@@ -69,6 +69,10 @@ type Settings struct {
 
 	// Audio
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
+
+	// Global hotkey (e.g. "Ctrl+Shift+B"). Only honoured on platforms that
+	// support in-app registration; otherwise users bind from their DE.
+	Shortcut string `json:"shortcut,omitempty"`
 }
 
 func HydrateAPIKeys(conns []Connection, get func(key string) (string, error)) {

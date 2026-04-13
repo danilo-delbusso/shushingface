@@ -7,7 +7,7 @@ import (
 
 // currentConfigVersion is the version of the current config schema.
 // Bump this when adding a new migration.
-const currentConfigVersion = 1
+const currentConfigVersion = 2
 
 type configMigration struct {
 	version     int
@@ -20,6 +20,14 @@ type configMigration struct {
 // decoupled from the current Settings struct.
 var configMigrations = []configMigration{
 	{version: 1, description: "initial schema", up: migrateInitial},
+	{version: 2, description: "add shortcut field", up: migrateAddShortcut},
+}
+
+func migrateAddShortcut(data map[string]any) error {
+	if _, ok := data["shortcut"]; !ok {
+		data["shortcut"] = ""
+	}
+	return nil
 }
 
 // migrateConfig runs all pending migrations on raw JSON data.
