@@ -1,11 +1,20 @@
 package audio
 
+// DeviceInfo describes a capture device.
+type DeviceInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	IsDefault bool   `json:"isDefault"`
+}
+
 // Recorder defines the interface for an audio capture device.
 type Recorder interface {
-	// Start begins audio recording.
 	Start() error
-	// Stop ends audio recording and returns the captured samples.
 	Stop() ([]int16, error)
-	// Close uninitializes the audio device and context.
 	Close()
+	// ListDevices returns the available capture devices.
+	ListDevices() ([]DeviceInfo, error)
+	// SetDevice re-initialises the underlying device with the given ID.
+	// Empty string means the system default. Safe to call only while not recording.
+	SetDevice(id string) error
 }
