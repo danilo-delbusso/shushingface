@@ -316,7 +316,12 @@ func (a *App) SaveSettings(newSettings config.Settings) error {
 	copy(oldConns, a.cfg.Connections)
 	oldIndicator := a.cfg.EnableIndicator
 	oldDeviceID := a.cfg.InputDeviceID
+	currentShortcut := a.cfg.Shortcut
 	a.mu.RUnlock()
+
+	// Shortcut is owned by SetShortcut/ClearShortcut; ignore whatever the
+	// frontend sent so a stale settings snapshot can't clobber it.
+	newSettings.Shortcut = currentShortcut
 
 	if newSettings.InputDeviceID != oldDeviceID {
 		if err := a.recorder.SetDevice(newSettings.InputDeviceID); err != nil {
