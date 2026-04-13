@@ -221,8 +221,11 @@ export function ProfileCard({
     },
   });
 
-  const { fields: exampleFields, append: appendExample, remove: removeExample } =
-    useFieldArray({ control, name: "examples" });
+  const {
+    fields: exampleFields,
+    append: appendExample,
+    remove: removeExample,
+  } = useFieldArray({ control, name: "examples" });
 
   // Reset when profile changes externally (restore default, etc.)
   useEffect(() => {
@@ -248,7 +251,7 @@ export function ProfileCard({
     connections.find((c) => c.id === defaultRefConnId)?.name ?? "default";
   const displayModel = watchedModel || defaultRefModel || "default";
   const displayConn = watchedConnId
-    ? connections.find((c) => c.id === watchedConnId)?.name ?? "custom"
+    ? (connections.find((c) => c.id === watchedConnId)?.name ?? "custom")
     : "default";
 
   return (
@@ -303,31 +306,49 @@ export function ProfileCard({
           </FormField>
 
           <FormField
-            label={<>Connection override <InfoTip text="Use a different AI connection for this style. Leave on default to inherit." /></>}
+            label={
+              <>
+                Connection override{" "}
+                <InfoTip text="Use a different AI connection for this style. Leave on default to inherit." />
+              </>
+            }
           >
-            <Controller name="connectionId" control={control} render={({ field }) => (
-              <ConnectionSelect
-                value={field.value ?? ""}
-                onChange={field.onChange}
-                connections={connections}
-                allowDefault
-                defaultLabel={`Use default (${defaultConnName})`}
-              />
-            )} />
+            <Controller
+              name="connectionId"
+              control={control}
+              render={({ field }) => (
+                <ConnectionSelect
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  connections={connections}
+                  allowDefault
+                  defaultLabel={`Use default (${defaultConnName})`}
+                />
+              )}
+            />
           </FormField>
 
           <FormField
-            label={<>Model override <InfoTip text="Override the refinement model for this style." /></>}
+            label={
+              <>
+                Model override{" "}
+                <InfoTip text="Override the refinement model for this style." />
+              </>
+            }
           >
-            <Controller name="model" control={control} render={({ field }) => (
-              <ModelSelect
-                value={field.value}
-                onChange={field.onChange}
-                models={profileModels}
-                allowDefault
-                defaultLabel={`Use default (${defaultRefModel})`}
-              />
-            )} />
+            <Controller
+              name="model"
+              control={control}
+              render={({ field }) => (
+                <ModelSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  models={profileModels}
+                  allowDefault
+                  defaultLabel={`Use default (${defaultRefModel})`}
+                />
+              )}
+            />
           </FormField>
 
           <FormField label="Prompt" error={errors.prompt?.message}>
@@ -341,53 +362,105 @@ export function ProfileCard({
           <AdvancedToggle open={advancedOpen} onToggle={onToggleAdvanced}>
             <div className="space-y-4">
               {/* Temperature */}
-              <Controller name="temperature" control={control} render={({ field }) => (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs flex items-center gap-1">
-                      Temperature <InfoTip text="Lower = consistent, higher = creative." />
-                    </Label>
-                    <Input
-                      type="number" min={0} max={1} step={0.05}
-                      value={field.value ?? 0.3}
-                      onChange={(e) => { const v = parseFloat(e.target.value); if (!Number.isNaN(v) && v >= 0 && v <= 1) field.onChange(v); }}
-                      className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+              <Controller
+                name="temperature"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs flex items-center gap-1">
+                        Temperature{" "}
+                        <InfoTip text="Lower = consistent, higher = creative." />
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={field.value ?? 0.3}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!Number.isNaN(v) && v >= 0 && v <= 1)
+                            field.onChange(v);
+                        }}
+                        className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                      />
+                    </div>
+                    <Slider
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={[field.value ?? 0.3]}
+                      onValueChange={([v]) => field.onChange(v)}
                     />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Consistent</span>
+                      <span>Creative</span>
+                    </div>
                   </div>
-                  <Slider min={0} max={1} step={0.05} value={[field.value ?? 0.3]} onValueChange={([v]) => field.onChange(v)} />
-                  <div className="flex justify-between text-[10px] text-muted-foreground"><span>Consistent</span><span>Creative</span></div>
-                </div>
-              )} />
+                )}
+              />
 
               {/* Top P */}
-              <Controller name="topP" control={control} render={({ field }) => (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs flex items-center gap-1">
-                      Top P <InfoTip text="Nucleus sampling threshold." />
-                    </Label>
-                    <Input
-                      type="number" min={0.1} max={1} step={0.05}
-                      value={field.value ?? 0.9}
-                      onChange={(e) => { const v = parseFloat(e.target.value); if (!Number.isNaN(v) && v >= 0.1 && v <= 1) field.onChange(v); }}
-                      className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+              <Controller
+                name="topP"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs flex items-center gap-1">
+                        Top P <InfoTip text="Nucleus sampling threshold." />
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0.1}
+                        max={1}
+                        step={0.05}
+                        value={field.value ?? 0.9}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!Number.isNaN(v) && v >= 0.1 && v <= 1)
+                            field.onChange(v);
+                        }}
+                        className="h-6 w-16 text-xs tabular-nums px-1.5 text-right"
+                      />
+                    </div>
+                    <Slider
+                      min={0.1}
+                      max={1}
+                      step={0.05}
+                      value={[field.value ?? 0.9]}
+                      onValueChange={([v]) => field.onChange(v)}
                     />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Focused</span>
+                      <span>Diverse</span>
+                    </div>
                   </div>
-                  <Slider min={0.1} max={1} step={0.05} value={[field.value ?? 0.9]} onValueChange={([v]) => field.onChange(v)} />
-                  <div className="flex justify-between text-[10px] text-muted-foreground"><span>Focused</span><span>Diverse</span></div>
-                </div>
-              )} />
+                )}
+              />
 
               {/* Examples */}
               <div className="space-y-2">
                 <Label className="text-xs flex items-center gap-1">
-                  Examples <InfoTip text="Before/after pairs that anchor the model's style." />
+                  Examples{" "}
+                  <InfoTip text="Before/after pairs that anchor the model's style." />
                 </Label>
                 {exampleFields.map((field, i) => (
-                  <div key={field.id} className="space-y-1 rounded border border-border bg-background p-2">
+                  <div
+                    key={field.id}
+                    className="space-y-1 rounded border border-border bg-background p-2"
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium text-muted-foreground">Example {i + 1}</span>
-                      <Button variant="ghost" size="icon" className="size-5" onClick={() => removeExample(i)}>
+                      <span className="text-[10px] font-medium text-muted-foreground">
+                        Example {i + 1}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-5"
+                        onClick={() => removeExample(i)}
+                      >
                         <Trash2 className="size-2.5" />
                       </Button>
                     </div>
@@ -406,7 +479,9 @@ export function ProfileCard({
                   </div>
                 ))}
                 <Button
-                  variant="outline" size="sm" className="w-full text-xs"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
                   onClick={() => appendExample({ input: "", output: "" })}
                 >
                   <Plus className="size-3" /> Add Example
@@ -416,12 +491,23 @@ export function ProfileCard({
           </AdvancedToggle>
 
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={handleSubmit((data) => { onSave(data); reset(data); })} disabled={!isDirty}>
+            <Button
+              size="sm"
+              onClick={handleSubmit((data) => {
+                onSave(data);
+                reset(data);
+              })}
+              disabled={!isDirty}
+            >
               Save
             </Button>
             {isPreset && (
               <ConfirmDialog
-                trigger={<Button variant="outline" size="sm"><RotateCcw className="size-3.5" /> Restore Default</Button>}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <RotateCcw className="size-3.5" /> Restore Default
+                  </Button>
+                }
                 title={`Restore "${watchedName}" to default?`}
                 description="This will reset the prompt, examples, and sampling parameters."
                 confirmLabel="Restore"
@@ -430,7 +516,11 @@ export function ProfileCard({
             )}
             {!isPreset && (
               <ConfirmDialog
-                trigger={<Button variant="destructive" size="sm"><Trash2 className="size-3.5" /> Delete</Button>}
+                trigger={
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="size-3.5" /> Delete
+                  </Button>
+                }
                 title={`Delete "${watchedName}"?`}
                 description="This style will be permanently removed."
                 confirmLabel="Delete"

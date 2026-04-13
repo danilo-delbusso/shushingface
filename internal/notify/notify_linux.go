@@ -6,7 +6,11 @@ import (
 	"log/slog"
 
 	"github.com/godbus/dbus/v5"
+
+	"codeberg.org/dbus/shushingface/internal/platform"
 )
+
+func capability() platform.Capability { return platform.Supported() }
 
 const (
 	dest  = "org.freedesktop.Notifications"

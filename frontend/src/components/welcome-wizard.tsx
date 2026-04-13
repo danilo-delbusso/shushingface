@@ -23,6 +23,57 @@ import { providerPresets } from "@/lib/providers";
 import { ExternalLink } from "@/components/ui/external-link";
 import { InfoTip } from "@/components/info-tip";
 import { ShortcutGuide } from "@/components/shortcut-guide";
+import { ShortcutRecorder } from "@/components/shortcut-recorder";
+import type { platform as platformNs } from "../../wailsjs/go/models";
+
+function WizardShortcut({
+  platformInfo,
+}: {
+  platformInfo: platformNs.Info | null;
+}) {
+  const [caps, setCaps] = useState<platformNs.Capability | null>(null);
+  const [draft, setDraft] = useState<string>("");
+  const [bound, setBound] = useState<string>("");
+
+  useEffect(() => {
+    AppBridge.HotkeyCapabilities()
+      .then(setCaps)
+      .catch(() => setCaps({ supported: false } as platformNs.Capability));
+  }, []);
+
+  if (!caps) return null;
+
+  if (!caps.supported) {
+    return (
+      <div className="rounded-lg border bg-card p-4">
+        <ShortcutGuide platform={platformInfo} compact />
+      </div>
+    );
+  }
+
+  const save = async () => {
+    if (!draft) return;
+    try {
+      await AppBridge.SetShortcut(draft);
+      setBound(draft);
+    } catch (e) {
+      // toast handled at app level via thrown error if needed
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <ShortcutRecorder value={draft} onChange={setDraft} />
+      <Button size="sm" disabled={!draft || draft === bound} onClick={save}>
+        bind {draft || ""}
+      </Button>
+      {bound && (
+        <p className="text-xs text-muted-foreground">Bound to {bound}.</p>
+      )}
+    </div>
+  );
+}
 import { usePlatform } from "@/lib/hooks";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { config } from "../../wailsjs/go/models";
@@ -212,11 +263,18 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
               {/* Base URL — shown for providers that need it */}
               {needsBaseUrl && (
                 <FormField
-                  label={<>Base URL <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." /></>}
+                  label={
+                    <>
+                      Base URL{" "}
+                      <InfoTip text="The API endpoint, e.g. http://localhost:11434/v1 for Ollama or https://api.openai.com/v1 for OpenAI." />
+                    </>
+                  }
                   error={errors.baseUrl?.message}
                 >
                   <Input
-                    {...register("baseUrl", { onChange: () => setTestOk(false) })}
+                    {...register("baseUrl", {
+                      onChange: () => setTestOk(false),
+                    })}
                     placeholder="http://localhost:11434/v1"
                   />
                 </FormField>
@@ -233,7 +291,10 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
                       </span>
                     )}
                     {preset?.keyUrl && (
-                      <ExternalLink href={preset.keyUrl} className="text-xs font-normal">
+                      <ExternalLink
+                        href={preset.keyUrl}
+                        className="text-xs font-normal"
+                      >
                         {preset.keyUrlLabel}
                       </ExternalLink>
                     )}
@@ -354,7 +415,7 @@ export function WelcomeWizard({ settings, onComplete }: WelcomeWizardProps) {
             </div>
 
             <div className="rounded-lg border bg-card p-4">
-              <ShortcutGuide platform={platformInfo} compact />
+              <WizardShortcut platformInfo={platformInfo} />
             </div>
 
             <Button

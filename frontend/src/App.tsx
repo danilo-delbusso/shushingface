@@ -20,6 +20,7 @@ import {
   useTheme,
   usePlatform,
   usePasteStatus,
+  useCapabilities,
   isConfigured,
 } from "@/lib/hooks";
 import * as AppBridge from "../wailsjs/go/desktop/App";
@@ -35,6 +36,7 @@ function App() {
   } = useHistory();
   const platform = usePlatform();
   const pasteStatus = usePasteStatus();
+  const capabilities = useCapabilities();
   const [appVersion, setAppVersion] = useState("");
   const configured = isConfigured(settings);
   useTheme(settings?.theme);
@@ -91,82 +93,83 @@ function App() {
 
   return (
     <ErrorBoundary>
-    <TooltipProvider>
-      <SidebarProvider>
-        <AppSidebar
-          view={view}
-          onNavigate={setView}
-          configured={configured}
-          historyEnabled={settings.enableHistory}
-          version={appVersion}
-          updateAvailable={updateAvailable}
-        />
-        <SidebarInset className="flex flex-col h-screen overflow-hidden">
-          {view === "home" && (
-            <RecordView
-              configured={configured}
-              isRecording={isRecording}
-              isProcessing={isProcessing}
-              results={results}
-              profiles={settings.refinementProfiles ?? []}
-              activeProfile={activeProfile}
-              language={settings.transcriptionLanguage ?? ""}
-              onToggle={toggle}
-              onGoToSettings={() => setView("connections")}
-              onSwitchProfile={(id) =>
-                saveSettings(
-                  config.Settings.createFrom({
-                    ...settings,
-                    activeProfileId: id,
-                  }),
-                )
-              }
-              onSwitchLanguage={(code) =>
-                saveSettings(
-                  config.Settings.createFrom({
-                    ...settings,
-                    transcriptionLanguage: code || undefined,
-                  }),
-                )
-              }
-            />
-          )}
-          {view === "history" && (
-            <HistoryView items={historyList} onClear={clearHistory} />
-          )}
-          {view === "connections" && (
-            <ConnectionsView
-              settings={settings}
-              configured={configured}
-              onSave={saveSettings}
-            />
-          )}
-          {view === "ai" && (
-            <AiView
-              settings={settings}
-              configured={configured}
-              onSave={saveSettings}
-            />
-          )}
-          {view === "appearance" && (
-            <AppearanceView settings={settings} onSave={saveSettings} />
-          )}
-          {view === "general" && (
-            <SettingsView
-              settings={settings}
-              platform={platform}
-              pasteAvailable={pasteStatus?.available ?? true}
-              pasteInstallCmd={pasteStatus?.installCmd ?? ""}
-              onSave={saveSettings}
-            />
-          )}
-          {view === "about" && (
-            <AboutView version={appVersion} platform={platform} />
-          )}
-        </SidebarInset>
-      </SidebarProvider>
-      <Toaster position="bottom-right" richColors />
-    </TooltipProvider>
+      <TooltipProvider>
+        <SidebarProvider>
+          <AppSidebar
+            view={view}
+            onNavigate={setView}
+            configured={configured}
+            historyEnabled={settings.enableHistory}
+            version={appVersion}
+            updateAvailable={updateAvailable}
+          />
+          <SidebarInset className="flex flex-col h-screen overflow-hidden">
+            {view === "home" && (
+              <RecordView
+                configured={configured}
+                isRecording={isRecording}
+                isProcessing={isProcessing}
+                results={results}
+                profiles={settings.refinementProfiles ?? []}
+                activeProfile={activeProfile}
+                language={settings.transcriptionLanguage ?? ""}
+                onToggle={toggle}
+                onGoToSettings={() => setView("connections")}
+                onSwitchProfile={(id) =>
+                  saveSettings(
+                    config.Settings.createFrom({
+                      ...settings,
+                      activeProfileId: id,
+                    }),
+                  )
+                }
+                onSwitchLanguage={(code) =>
+                  saveSettings(
+                    config.Settings.createFrom({
+                      ...settings,
+                      transcriptionLanguage: code || undefined,
+                    }),
+                  )
+                }
+              />
+            )}
+            {view === "history" && (
+              <HistoryView items={historyList} onClear={clearHistory} />
+            )}
+            {view === "connections" && (
+              <ConnectionsView
+                settings={settings}
+                configured={configured}
+                onSave={saveSettings}
+              />
+            )}
+            {view === "ai" && (
+              <AiView
+                settings={settings}
+                configured={configured}
+                onSave={saveSettings}
+              />
+            )}
+            {view === "appearance" && (
+              <AppearanceView settings={settings} onSave={saveSettings} />
+            )}
+            {view === "general" && (
+              <SettingsView
+                settings={settings}
+                platform={platform}
+                pasteAvailable={pasteStatus?.available ?? true}
+                pasteInstallCmd={pasteStatus?.installCmd ?? ""}
+                capabilities={capabilities}
+                onSave={saveSettings}
+              />
+            )}
+            {view === "about" && (
+              <AboutView version={appVersion} platform={platform} />
+            )}
+          </SidebarInset>
+        </SidebarProvider>
+        <Toaster position="bottom-right" richColors />
+      </TooltipProvider>
     </ErrorBoundary>
   );
 }

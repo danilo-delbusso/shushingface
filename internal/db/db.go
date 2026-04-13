@@ -5,26 +5,27 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
+
+	"codeberg.org/dbus/shushingface/internal/paths"
 
 	// Register migrations via init() functions.
 	_ "codeberg.org/dbus/shushingface/internal/db/migrations"
 )
 
 func Open() (*sql.DB, error) {
-	configDir, err := os.UserConfigDir()
+	stateDir, err := paths.State()
 	if err != nil {
 		return nil, err
 	}
-	appDir := filepath.Join(configDir, "shushingface")
-	if err := os.MkdirAll(appDir, 0700); err != nil {
-		return nil, err
-	}
-	dbPath := filepath.Join(appDir, "shushingface.db")
+	dbPath := filepath.Join(stateDir, "shushingface.db")
+	// Migrate from the legacy location (config dir) on first run after
+	// the runtime-paths refactor. WAL/SHM siblings are recreated by
+	// SQLite as needed, so we only move the main file.
+	paths.MigrateFromConfig("shushingface.db", dbPath)
 
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {

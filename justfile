@@ -2,11 +2,30 @@
 # Dependencies: wtype (Wayland auto-paste) or xdotool (X11 auto-paste)
 
 set shell := ["bash", "-c"]
-
-prefix := env("PREFIX", env("HOME") / ".local")
+set windows-shell := ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
 
 default:
     @just --list
+
+# --- Dev environment ---
+
+# Report missing / outdated build and runtime dependencies
+[unix]
+doctor:
+    @bash scripts/doctor/linux.sh
+
+[windows]
+doctor:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/doctor/windows.ps1
+
+# Install missing dependencies (pass --yes to skip prompts)
+[unix]
+bootstrap *args:
+    @bash scripts/bootstrap/linux.sh {{args}}
+
+[windows]
+bootstrap *args:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap/windows.ps1 {{args}}
 
 # --- Frontend Tasks ---
 
@@ -52,116 +71,62 @@ check: lint test
 
 # --- Build & Run ---
 
-VERSION := `git describe --tags --always --dirty 2>/dev/null || echo "dev"`
-LDFLAGS := "-X codeberg.org/dbus/shushingface/internal/version.version=" + VERSION
-
 # Runs the Wails Desktop application in development mode
+[unix]
 dev:
-    #!/bin/bash
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        wails dev -tags webkit2_41 -ldflags '{{LDFLAGS}}'
-    else
-        wails dev -ldflags '{{LDFLAGS}}'
-    fi
+    @bash scripts/build/linux.sh dev
+
+[windows]
+dev:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build/windows.ps1 dev
 
 # Platform-aware build (auto-detects OS)
+[unix]
 build:
-    #!/bin/bash
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}'
-    else
-        wails build -ldflags '{{LDFLAGS}}'
-    fi
+    @bash scripts/build/linux.sh build
 
-# Build for Linux explicitly
-build-linux:
-    wails build -tags webkit2_41 -ldflags '{{LDFLAGS}}'
+[windows]
+build:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build/windows.ps1 build
 
-# Build for macOS explicitly
-build-darwin:
-    wails build -ldflags '{{LDFLAGS}}'
+# Produce a Windows NSIS installer in build/bin
+[windows]
+build-windows:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build/windows.ps1 build -nsis
 
-# --- Install & Uninstall (Linux) ---
-# macOS: `wails build` produces a .app bundle in build/bin/
-# Windows: `wails build -nsis` produces an installer
+# --- Install & Uninstall ---
+# Binary goes to $PREFIX/bin ($HOME/.local/bin by default on both OSes).
 
-# Install shushingface on Linux (binary + desktop entry + icon + shortcut)
+# Install shushingface for the current user (builds first)
+[unix]
 install: build
-    #!/bin/bash
-    set -e
-    install -Dm755 build/bin/shushingface "{{prefix}}/bin/shushingface"
-    install -Dm644 build/linux/shushingface.desktop "$HOME/.local/share/applications/shushingface.desktop"
-    install -Dm644 build/appicon.png "$HOME/.local/share/icons/hicolor/512x512/apps/shushingface.png"
-    gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor/" 2>/dev/null || true
-    update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
-    just _install-shortcut
-    echo "Installed shushingface to {{prefix}}/bin/shushingface"
+    @bash scripts/install/linux.sh
 
-# Register Super+Ctrl+B shortcut in the current desktop environment
-_install-shortcut:
-    #!/bin/bash
-    case "${XDG_CURRENT_DESKTOP:-}" in
-      COSMIC)
-        dir="$HOME/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1"
-        file="$dir/custom"
-        mkdir -p "$dir"
-        if [ -f "$file" ] && grep -q "shushingface" "$file"; then
-          echo "Shortcut already registered (COSMIC)"
-        else
-          if [ -f "$file" ] && grep -q "Spawn" "$file"; then
-            sed -i 's/}$/    (\n        modifiers: [\n            Super,\n            Ctrl,\n        ],\n        key: "b",\n        description: Some("shushingface: toggle recording"),\n    ): Spawn("shushingface --toggle"),\n}/' "$file"
-          else
-            cat > "$file" << 'RON'
-    {
-        (
-            modifiers: [
-                Super,
-                Ctrl,
-            ],
-            key: "b",
-            description: Some("shushingface: toggle recording"),
-        ): Spawn("shushingface --toggle"),
-    }
-    RON
-          fi
-          echo "Registered Super+Ctrl+B shortcut (COSMIC)"
-          echo "Log out and back in, or restart cosmic-comp, for the shortcut to take effect"
-        fi
-        ;;
-      GNOME*)
-        path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/shushingface/"
-        base="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$path"
-        gsettings set "$base" name "shushingface" 2>/dev/null &&
-        gsettings set "$base" command "shushingface --toggle" 2>/dev/null &&
-        gsettings set "$base" binding "<Super><Ctrl>b" 2>/dev/null &&
-        existing=$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || echo "[]")
-        if ! echo "$existing" | grep -q "shushingface"; then
-          new=$(echo "$existing" | sed "s/]/, '$path']/" | sed "s/\[, /[/")
-          gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$new"
-        fi &&
-        echo "Registered Super+Ctrl+B shortcut (GNOME)" ||
-        echo "Could not register GNOME shortcut (gsettings not available)"
-        ;;
-      *)
-        echo "Tip: bind 'shushingface --toggle' to Super+Ctrl+B in your desktop settings"
-        ;;
-    esac
+[windows]
+install: build
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install/windows.ps1
 
-# Remove shushingface
+# Uninstall shushingface
+[unix]
 uninstall:
-    #!/bin/bash
-    rm -f "{{prefix}}/bin/shushingface"
-    rm -f "$HOME/.local/share/applications/shushingface.desktop"
-    rm -f "$HOME/.local/share/icons/hicolor/512x512/apps/shushingface.png"
-    update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
-    # Remove COSMIC shortcut
-    file="$HOME/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1/custom"
-    if [ -f "$file" ] && grep -q "shushingface" "$file"; then
-      # If it's the only entry, write an empty map
-      echo "{}" > "$file"
-      echo "Removed COSMIC shortcut"
-    fi
-    echo "Uninstalled shushingface"
+    @bash scripts/uninstall/linux.sh
+
+[windows]
+uninstall:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall/windows.ps1
+
+# Muscle-memory aliases for the old per-OS recipes
+alias install-windows   := install
+alias uninstall-windows := uninstall
+
+# Produce installable artifact(s) for the current OS (tar.gz + .deb on Linux, NSIS on Windows)
+[unix]
+package:
+    @bash scripts/package/linux.sh
+
+[windows]
+package:
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package/windows.ps1
 
 # Re-generates TypeScript bindings from Go structs
 bindings:
@@ -169,8 +134,8 @@ bindings:
 
 # Generate THIRD_PARTY_LICENSES.md from Go + frontend deps + assets
 licenses:
-    ./scripts/check-licenses.sh --update
+    ./scripts/release/licenses.sh --update
 
 # Verify THIRD_PARTY_LICENSES.md is up to date (for CI)
 licenses-check:
-    ./scripts/check-licenses.sh
+    ./scripts/release/licenses.sh

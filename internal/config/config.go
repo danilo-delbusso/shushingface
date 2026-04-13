@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"codeberg.org/dbus/shushingface/internal/paths"
 )
 
 type Connection struct {
@@ -24,9 +26,9 @@ type FewShotExample struct {
 type RefinementProfile struct {
 	ID           string           `json:"id"`
 	Name         string           `json:"name"`
-	Icon         string           `json:"icon"`                    // lucide icon name
-	ConnectionID string           `json:"connectionId,omitempty"`  // override; empty = use global
-	Model        string           `json:"model"`                   // override; empty = use global RefinementModel
+	Icon         string           `json:"icon"`                   // lucide icon name
+	ConnectionID string           `json:"connectionId,omitempty"` // override; empty = use global
+	Model        string           `json:"model"`                  // override; empty = use global RefinementModel
 	Prompt       string           `json:"prompt"`
 	Examples     []FewShotExample `json:"examples,omitempty"`
 	Temperature  float32          `json:"temperature,omitempty"`
@@ -69,6 +71,20 @@ type Settings struct {
 
 	// Audio
 	InputDeviceID string `json:"inputDeviceId,omitempty"`
+
+	// Global hotkey (e.g. "Ctrl+Shift+B"). Only honoured on platforms that
+	// support in-app registration; otherwise users bind from their DE.
+	Shortcut string `json:"shortcut,omitempty"`
+
+	// "toggle" (default) or "push_to_talk".
+	RecordingMode string `json:"recordingMode,omitempty"`
+
+	// Floating recording overlay above the focused app.
+	OverlayEnabled bool    `json:"overlayEnabled"`
+	OverlayOpacity float64 `json:"overlayOpacity,omitempty"` // 0.05–1.0; default 0.4
+
+	// Debug logging — when true, slog level is Debug; otherwise Info.
+	DebugLogging bool `json:"debugLogging"`
 }
 
 func HydrateAPIKeys(conns []Connection, get func(key string) (string, error)) {
@@ -204,19 +220,22 @@ func DefaultProfiles() []RefinementProfile {
 
 func DefaultSettings() *Settings {
 	return &Settings{
-		ConfigVersion:      currentConfigVersion,
-		TranscriptionModel: DefaultTranscriptionModel,
-		RefinementModel:    DefaultRefinementModel,
-		RefinementProfiles: DefaultProfiles(),
-		ActiveProfileID:    "professional",
-		SetupComplete:      false,
-		Theme:              "dark",
-		AutoPaste:          true,
-		AutoCopy:           false,
-		EnableHistory:      true,
-		EnableIndicator:    true,
+		ConfigVersion:       currentConfigVersion,
+		TranscriptionModel:  DefaultTranscriptionModel,
+		RefinementModel:     DefaultRefinementModel,
+		RefinementProfiles:  DefaultProfiles(),
+		ActiveProfileID:     "professional",
+		SetupComplete:       false,
+		Theme:               "dark",
+		AutoPaste:           true,
+		AutoCopy:            false,
+		EnableHistory:       true,
+		EnableIndicator:     true,
 		EnableNotifications: false,
 		CheckForUpdates:     true,
+		RecordingMode:       "toggle",
+		OverlayEnabled:      true,
+		OverlayOpacity:      0.4,
 	}
 }
 
@@ -294,15 +313,16 @@ func Save(settings *Settings) error {
 	return os.WriteFile(configFile, data, 0600)
 }
 
+// GetLogPath returns the absolute path of the rolling app log file.
+// Logs live under the OS state directory (XDG_STATE_HOME on Linux,
+// %LOCALAPPDATA% on Windows) — separate from the config directory so
+// they do not roam and do not pollute the user's config backups.
 func GetLogPath() (string, error) {
-	configDir, err := os.UserConfigDir()
+	stateDir, err := paths.State()
 	if err != nil {
 		return "", err
 	}
-	appDir := filepath.Join(configDir, "shushingface")
-	if err := os.MkdirAll(appDir, 0700); err != nil {
-		return "", err
-	}
-	return filepath.Join(appDir, "app.log"), nil
+	logPath := filepath.Join(stateDir, "app.log")
+	paths.MigrateFromConfig("app.log", logPath)
+	return logPath, nil
 }
-

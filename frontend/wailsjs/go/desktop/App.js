@@ -6,8 +6,16 @@ export function ClearHistory() {
   return window['go']['desktop']['App']['ClearHistory']();
 }
 
+export function ClearShortcut() {
+  return window['go']['desktop']['App']['ClearShortcut']();
+}
+
 export function DeleteAllData() {
   return window['go']['desktop']['App']['DeleteAllData']();
+}
+
+export function GetCapabilities() {
+  return window['go']['desktop']['App']['GetCapabilities']();
 }
 
 export function GetDefaultBuiltInRules() {
@@ -42,12 +50,24 @@ export function GetSettings() {
   return window['go']['desktop']['App']['GetSettings']();
 }
 
+export function GetShortcut() {
+  return window['go']['desktop']['App']['GetShortcut']();
+}
+
 export function GetVersion() {
   return window['go']['desktop']['App']['GetVersion']();
 }
 
+export function HotkeyCapabilities() {
+  return window['go']['desktop']['App']['HotkeyCapabilities']();
+}
+
 export function IsSecretStorageSecure() {
   return window['go']['desktop']['App']['IsSecretStorageSecure']();
+}
+
+export function ListInputDevices() {
+  return window['go']['desktop']['App']['ListInputDevices']();
 }
 
 export function ListModelsForConnection(arg1) {
@@ -60,6 +80,10 @@ export function ListProviders() {
 
 export function SaveSettings(arg1) {
   return window['go']['desktop']['App']['SaveSettings'](arg1);
+}
+
+export function SetShortcut(arg1) {
+  return window['go']['desktop']['App']['SetShortcut'](arg1);
 }
 
 export function StartRecording() {

@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import * as AppBridge from "../../wailsjs/go/desktop/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
-import type { config, history, desktop, platform, ai } from "../../wailsjs/go/models";
+import type {
+  config,
+  history,
+  desktop,
+  platform,
+  ai,
+} from "../../wailsjs/go/models";
 import { toast } from "sonner";
 
 export function useTheme(theme: string | undefined) {
@@ -41,6 +47,17 @@ export function usePasteStatus() {
   return status;
 }
 
+// useCapabilities reports which platform-dependent features work here so
+// the settings UI can grey out toggles that would be no-ops. Returns null
+// while loading.
+export function useCapabilities() {
+  const [caps, setCaps] = useState<desktop.Capabilities | null>(null);
+  useEffect(() => {
+    AppBridge.GetCapabilities().then(setCaps);
+  }, []);
+  return caps;
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<config.Settings | null>(null);
 
@@ -48,18 +65,15 @@ export function useSettings() {
     AppBridge.GetSettings().then(setSettings);
   }, []);
 
-  const saveSettings = useCallback(
-    async (updated: config.Settings) => {
-      try {
-        await AppBridge.SaveSettings(updated);
-        setSettings(updated);
-        toast.success("Settings saved");
-      } catch (err) {
-        toast.error(`Failed to save: ${err}`);
-      }
-    },
-    [],
-  );
+  const saveSettings = useCallback(async (updated: config.Settings) => {
+    try {
+      await AppBridge.SaveSettings(updated);
+      setSettings(updated);
+      toast.success("Settings saved");
+    } catch (err) {
+      toast.error(`Failed to save: ${err}`);
+    }
+  }, []);
 
   return { settings, setSettings, saveSettings };
 }
@@ -133,10 +147,7 @@ export function useHistory() {
   return { historyList, refresh, clear };
 }
 
-export function useRecording(
-  configured: boolean,
-  onResult: () => void,
-) {
+export function useRecording(configured: boolean, onResult: () => void) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<desktop.ProcessResult[]>([]);
@@ -169,10 +180,50 @@ export function useRecording(
     }
   }, [configured, onResult]);
 
-  useEffect(() => {
-    const cleanup = EventsOn("hotkey-toggle", toggle);
-    return cleanup;
-  }, [toggle]);
+  const startRecording = useCallback(async () => {
+    if (!configured) {
+      toast.error("Set up your API key in Settings first");
+      return;
+    }
+    if (isRecordingRef.current) return;
+    try {
+      await AppBridge.StartRecording();
+      setIsRecording(true);
+    } catch (err) {
+      toast.error(`Recording failed: ${err}`);
+    }
+  }, [configured]);
 
-  return { isRecording, isProcessing, results, clearResults: () => setResults([]), toggle };
+  const stopAndProcess = useCallback(async () => {
+    if (!isRecordingRef.current) return;
+    setIsRecording(false);
+    setIsProcessing(true);
+    const res = await AppBridge.StopAndProcess();
+    setIsProcessing(false);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      setResults((prev) => [res, ...prev]);
+      onResult();
+    }
+  }, [onResult]);
+
+  useEffect(() => {
+    const cleanups = [
+      EventsOn("hotkey-toggle", toggle),
+      EventsOn("hotkey-press", startRecording),
+      EventsOn("hotkey-release", stopAndProcess),
+    ];
+    return () => {
+      for (const c of cleanups) c();
+    };
+  }, [toggle, startRecording, stopAndProcess]);
+
+  return {
+    isRecording,
+    isProcessing,
+    results,
+    clearResults: () => setResults([]),
+    toggle,
+  };
 }

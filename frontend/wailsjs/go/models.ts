@@ -33,6 +33,27 @@ export namespace ai {
 
 }
 
+export namespace audio {
+	
+	export class DeviceInfo {
+	    id: string;
+	    name: string;
+	    isDefault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeviceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.isDefault = source["isDefault"];
+	    }
+	}
+
+}
+
 export namespace config {
 	
 	export class Connection {
@@ -136,6 +157,11 @@ export namespace config {
 	    enableNotifications: boolean;
 	    checkForUpdates: boolean;
 	    inputDeviceId?: string;
+	    shortcut?: string;
+	    recordingMode?: string;
+	    overlayEnabled: boolean;
+	    overlayOpacity?: number;
+	    debugLogging: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -163,6 +189,11 @@ export namespace config {
 	        this.enableNotifications = source["enableNotifications"];
 	        this.checkForUpdates = source["checkForUpdates"];
 	        this.inputDeviceId = source["inputDeviceId"];
+	        this.shortcut = source["shortcut"];
+	        this.recordingMode = source["recordingMode"];
+	        this.overlayEnabled = source["overlayEnabled"];
+	        this.overlayOpacity = source["overlayOpacity"];
+	        this.debugLogging = source["debugLogging"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -188,6 +219,46 @@ export namespace config {
 
 export namespace desktop {
 	
+	export class Capabilities {
+	    hotkey: platform.Capability;
+	    paste: platform.Capability;
+	    notifications: platform.Capability;
+	    trayIndicator: platform.Capability;
+	    overlay: platform.Capability;
+	    activeWindowTag: platform.Capability;
+	
+	    static createFrom(source: any = {}) {
+	        return new Capabilities(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hotkey = this.convertValues(source["hotkey"], platform.Capability);
+	        this.paste = this.convertValues(source["paste"], platform.Capability);
+	        this.notifications = this.convertValues(source["notifications"], platform.Capability);
+	        this.trayIndicator = this.convertValues(source["trayIndicator"], platform.Capability);
+	        this.overlay = this.convertValues(source["overlay"], platform.Capability);
+	        this.activeWindowTag = this.convertValues(source["activeWindowTag"], platform.Capability);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PasteStatus {
 	    available: boolean;
 	    installCmd: string;
@@ -269,6 +340,20 @@ export namespace history {
 
 export namespace platform {
 	
+	export class Capability {
+	    supported: boolean;
+	    reason?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Capability(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.supported = source["supported"];
+	        this.reason = source["reason"];
+	    }
+	}
 	export class Info {
 	    os: string;
 	    displayServer: string;

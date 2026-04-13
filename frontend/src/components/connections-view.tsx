@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  connectionSchema,
-  type ConnectionFormData,
-} from "@/lib/schemas";
+import { connectionSchema, type ConnectionFormData } from "@/lib/schemas";
 import { FormField } from "@/components/ui/form-field";
 import {
   Plug,
@@ -214,9 +211,7 @@ function ConnectionCard({
   const watchedApiKey = watch("apiKey");
   const preset = providerPresets[watchedProviderId];
   const needsBaseUrl = preset?.requiresBaseUrl ?? false;
-  const [advOpen, setAdvOpen] = useState(
-    !!conn.baseUrl || needsBaseUrl,
-  );
+  const [advOpen, setAdvOpen] = useState(!!conn.baseUrl || needsBaseUrl);
 
   // Reset form when saved connection changes externally
   useEffect(() => {

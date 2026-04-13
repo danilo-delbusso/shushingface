@@ -1,0 +1,142 @@
+// Package hotkey registers global (system-wide) keyboard shortcuts. Each OS
+// has its own implementation file; platforms without support expose a stub
+// that returns ErrUnsupported for every registration.
+package hotkey
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"codeberg.org/dbus/shushingface/internal/platform"
+)
+
+// ErrUnsupported is returned when the platform can't register global hotkeys.
+var ErrUnsupported = errors.New("global hotkeys not supported on this platform")
+
+// ErrConflict is returned when another process already owns the hotkey.
+var ErrConflict = errors.New("hotkey is already registered by another application")
+
+// ErrInvalidSpec is returned for malformed shortcut strings.
+var ErrInvalidSpec = errors.New("invalid shortcut")
+
+// Capability reports whether in-app global hotkey registration works on
+// this platform. Uses the shared platform.Capability type so settings UI
+// can reason about it the same way as paste / notify / indicator.
+func Capability() platform.Capability { return capability() }
+
+// Modifier is a bit flag describing which modifier keys are required.
+type Modifier uint32
+
+const (
+	ModCtrl  Modifier = 1 << 0
+	ModShift Modifier = 1 << 1
+	ModAlt   Modifier = 1 << 2
+	ModSuper Modifier = 1 << 3 // Win / Cmd
+)
+
+// Spec identifies a normalized hotkey.
+type Spec struct {
+	Mods Modifier
+	Key  string // canonical key name, e.g. "B", "F5", "Space"
+}
+
+// Mode describes how a hotkey delivers events.
+type Mode int
+
+const (
+	ModeToggle     Mode = iota // single press → one Trigger event
+	ModePushToTalk             // delivers Press on keydown and Release on keyup
+)
+
+// EventType describes which kind of hotkey event was delivered.
+type EventType int
+
+const (
+	Trigger EventType = iota
+	Press
+	Release
+)
+
+// Event is one occurrence of a registered hotkey.
+type Event struct {
+	Name string
+	Type EventType
+}
+
+// Manager registers global hotkeys and forwards events.
+type Manager interface {
+	Register(id string, spec Spec, mode Mode) error
+	Unregister(id string) error
+	Events() <-chan Event
+	Close() error
+}
+
+// ParseSpec parses a "Ctrl+Shift+B"-style string into a Spec.
+func ParseSpec(s string) (Spec, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return Spec{}, ErrInvalidSpec
+	}
+	parts := strings.Split(s, "+")
+	var spec Spec
+	for i, raw := range parts {
+		p := strings.ToLower(strings.TrimSpace(raw))
+		isLast := i == len(parts)-1
+		switch p {
+		case "ctrl", "control":
+			spec.Mods |= ModCtrl
+		case "shift":
+			spec.Mods |= ModShift
+		case "alt", "option":
+			spec.Mods |= ModAlt
+		case "super", "win", "cmd", "meta":
+			spec.Mods |= ModSuper
+		default:
+			if !isLast {
+				return Spec{}, fmt.Errorf("%w: unknown modifier %q", ErrInvalidSpec, raw)
+			}
+			if strings.TrimSpace(raw) == "" {
+				return Spec{}, fmt.Errorf("%w: missing key", ErrInvalidSpec)
+			}
+			spec.Key = canonKey(raw)
+		}
+	}
+	if spec.Key == "" {
+		return Spec{}, fmt.Errorf("%w: missing key", ErrInvalidSpec)
+	}
+	if spec.Mods == 0 {
+		return Spec{}, fmt.Errorf("%w: at least one modifier required", ErrInvalidSpec)
+	}
+	return spec, nil
+}
+
+// FormatSpec renders a Spec back into a "Ctrl+Shift+B"-style string.
+func FormatSpec(spec Spec) string {
+	var parts []string
+	if spec.Mods&ModCtrl != 0 {
+		parts = append(parts, "Ctrl")
+	}
+	if spec.Mods&ModAlt != 0 {
+		parts = append(parts, "Alt")
+	}
+	if spec.Mods&ModShift != 0 {
+		parts = append(parts, "Shift")
+	}
+	if spec.Mods&ModSuper != 0 {
+		parts = append(parts, "Super")
+	}
+	if spec.Key != "" {
+		parts = append(parts, spec.Key)
+	}
+	return strings.Join(parts, "+")
+}
+
+func canonKey(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if len(raw) == 1 {
+		return strings.ToUpper(raw)
+	}
+	// Title-case multi-letter names (F5, Space, Enter, ArrowLeft...).
+	return strings.ToUpper(raw[:1]) + strings.ToLower(raw[1:])
+}
