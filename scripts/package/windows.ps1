@@ -9,6 +9,22 @@ $build = Join-Path $PSScriptRoot '..\build\windows.ps1'
 
 Write-Host "[info] packaging shushingface for windows" -ForegroundColor Blue
 
+# Wails shells out to `makensis` for the installer step. winget's NSIS
+# package installs to Program Files but does NOT add it to PATH, so add
+# it here for the duration of the build if we find it.
+if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+    foreach ($cand in @('C:\Program Files (x86)\NSIS', 'C:\Program Files\NSIS')) {
+        if (Test-Path (Join-Path $cand 'makensis.exe')) {
+            $env:PATH = "$cand;$env:PATH"
+            Write-Host "[info] using NSIS from $cand" -ForegroundColor Blue
+            break
+        }
+    }
+    if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+        Write-Host "[warn] makensis not found - installer step will be skipped (run 'just bootstrap')" -ForegroundColor Yellow
+    }
+}
+
 # Clean previous build
 $binDir = Join-Path $root 'build\bin'
 if (Test-Path $binDir) { Remove-Item -Recurse -Force $binDir }

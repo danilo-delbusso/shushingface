@@ -64,6 +64,15 @@ if (-not (Get-Command just -ErrorAction SilentlyContinue)) {
         "winget install --exact --id Casey.Just --accept-source-agreements --accept-package-agreements"
 }
 
+# NSIS provides makensis, used by `just package` to build the installer.
+$nsisInstalled = (Get-Command makensis -ErrorAction SilentlyContinue) `
+    -or (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') `
+    -or (Test-Path 'C:\Program Files\NSIS\makensis.exe')
+if (-not $nsisInstalled) {
+    Invoke-Install "NSIS (installer builder for 'just package')" `
+        "winget install --exact --id NSIS.NSIS --accept-source-agreements --accept-package-agreements"
+}
+
 # --- Go-installed tools ------------------------------------------------------
 
 if (-not (Get-Command wails -ErrorAction SilentlyContinue)) {

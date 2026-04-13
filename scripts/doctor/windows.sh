@@ -40,6 +40,17 @@ else
     row "winget" "missing" "" "recommended" "install App Installer from Microsoft Store"
 fi
 
+# makensis is needed by `just package` to generate the NSIS installer.
+# Wails ships with NSIS templates but shells out to makensis to build.
+if command -v makensis >/dev/null 2>&1; then
+    nsis_ver="$(makensis -VERSION 2>/dev/null | tr -d 'v')"
+    row "makensis" "ok" "${nsis_ver}" "recommended" ""
+elif [ -x "/c/Program Files (x86)/NSIS/makensis.exe" ] || [ -x "/c/Program Files/NSIS/makensis.exe" ]; then
+    row "makensis" "ok" "installed" "recommended" "add NSIS install dir to PATH"
+else
+    row "makensis" "missing" "" "recommended" "needed by 'just package' (winget install NSIS.NSIS)"
+fi
+
 check_golangci_lint
 
 doctor_print_table
