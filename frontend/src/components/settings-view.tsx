@@ -1,5 +1,5 @@
-import { Keyboard, SlidersHorizontal, AlertTriangle } from "lucide-react";
-import { ShortcutGuide } from "@/components/shortcut-guide";
+import { SlidersHorizontal, AlertTriangle } from "lucide-react";
+import { SettingsShortcut } from "@/components/settings-shortcut";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InfoTip } from "@/components/info-tip";
@@ -49,16 +49,7 @@ export function SettingsView({
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 p-6 max-w-2xl">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Keyboard className="size-4" /> Shortcuts{" "}
-              <InfoTip text="Configure a system keyboard shortcut to toggle recording from any app without opening the window." />
-            </CardTitle>
-            <ShortcutGuide platform={platform} />
-
-          </CardHeader>
-        </Card>
+        <SettingsShortcut platform={platform} />
 
         <Card>
           <CardHeader className="pb-3">

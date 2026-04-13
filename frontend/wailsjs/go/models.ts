@@ -136,7 +136,8 @@ export namespace config {
 	    enableNotifications: boolean;
 	    checkForUpdates: boolean;
 	    inputDeviceId?: string;
-	
+	    shortcut?: string;
+
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
 	    }
@@ -163,6 +164,7 @@ export namespace config {
 	        this.enableNotifications = source["enableNotifications"];
 	        this.checkForUpdates = source["checkForUpdates"];
 	        this.inputDeviceId = source["inputDeviceId"];
+	        this.shortcut = source["shortcut"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -263,6 +265,27 @@ export namespace history {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace hotkey {
+
+	export class Capabilities {
+	    supported: boolean;
+	    conflictCheck: boolean;
+	    reason?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Capabilities(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.supported = source["supported"];
+	        this.conflictCheck = source["conflictCheck"];
+	        this.reason = source["reason"];
+	    }
 	}
 
 }

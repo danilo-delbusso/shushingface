@@ -6,6 +6,10 @@ export function ClearHistory() {
   return window['go']['desktop']['App']['ClearHistory']();
 }
 
+export function ClearShortcut() {
+  return window['go']['desktop']['App']['ClearShortcut']();
+}
+
 export function DeleteAllData() {
   return window['go']['desktop']['App']['DeleteAllData']();
 }
@@ -42,8 +46,16 @@ export function GetSettings() {
   return window['go']['desktop']['App']['GetSettings']();
 }
 
+export function GetShortcut() {
+  return window['go']['desktop']['App']['GetShortcut']();
+}
+
 export function GetVersion() {
   return window['go']['desktop']['App']['GetVersion']();
+}
+
+export function HotkeyCapabilities() {
+  return window['go']['desktop']['App']['HotkeyCapabilities']();
 }
 
 export function IsSecretStorageSecure() {
@@ -60,6 +72,10 @@ export function ListProviders() {
 
 export function SaveSettings(arg1) {
   return window['go']['desktop']['App']['SaveSettings'](arg1);
+}
+
+export function SetShortcut(arg1) {
+  return window['go']['desktop']['App']['SetShortcut'](arg1);
 }
 
 export function StartRecording() {

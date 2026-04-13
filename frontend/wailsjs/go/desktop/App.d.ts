@@ -5,8 +5,11 @@ import {history} from '../models';
 import {desktop} from '../models';
 import {platform} from '../models';
 import {ai} from '../models';
+import {hotkey} from '../models';
 
 export function ClearHistory():Promise<void>;
+
+export function ClearShortcut():Promise<void>;
 
 export function DeleteAllData():Promise<void>;
 
@@ -26,7 +29,11 @@ export function GetRecentLogs(arg1:number):Promise<string>;
 
 export function GetSettings():Promise<config.Settings>;
 
+export function GetShortcut():Promise<string>;
+
 export function GetVersion():Promise<string>;
+
+export function HotkeyCapabilities():Promise<hotkey.Capabilities>;
 
 export function IsSecretStorageSecure():Promise<boolean>;
 
@@ -35,6 +42,8 @@ export function ListModelsForConnection(arg1:string):Promise<Array<ai.ModelInfo>
 export function ListProviders():Promise<Array<ai.ProviderInfo>>;
 
 export function SaveSettings(arg1:config.Settings):Promise<void>;
+
+export function SetShortcut(arg1:string):Promise<void>;
 
 export function StartRecording():Promise<void>;
 
