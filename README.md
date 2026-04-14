@@ -82,32 +82,41 @@ Runtime files also live in OS-standard locations:
 
 ## Screenshots
 
-**Onboarding** — connect a provider and pick a refinement style.
+<details>
+<summary><strong>Onboarding</strong> — connect a provider and pick a refinement style</summary>
 
-<table>
-  <tr>
-    <td width="50%"><img src="images/wizard-provider.png" alt="connect an AI provider"></td>
-    <td width="50%"><img src="images/wizard-style.png" alt="choose a style"></td>
-  </tr>
-</table>
+<br>
 
-**Main views** — record, browse history, test prompts in the playground.
+![connect an AI provider](images/wizard-provider.png)
 
-<table>
-  <tr>
-    <td width="33%"><img src="images/home.png" alt="home — record"></td>
-    <td width="33%"><img src="images/history.png" alt="history"></td>
-    <td width="33%"><img src="images/playground.png" alt="playground"></td>
-  </tr>
-</table>
+![choose a style](images/wizard-style.png)
 
-**Settings** — connections, models, rules, and general preferences.
+</details>
 
-<table>
-  <tr>
-    <td width="25%"><img src="images/settings-connections.png" alt="connections"></td>
-    <td width="25%"><img src="images/settings-models.png" alt="models"></td>
-    <td width="25%"><img src="images/settings-rules.png" alt="rules"></td>
-    <td width="25%"><img src="images/settings-general.png" alt="general"></td>
-  </tr>
-</table>
+<details>
+<summary><strong>Main views</strong> — record, browse history, test prompts in the playground</summary>
+
+<br>
+
+![home — record](images/home.png)
+
+![history](images/history.png)
+
+![playground](images/playground.png)
+
+</details>
+
+<details>
+<summary><strong>Settings</strong> — connections, models, rules, and general preferences</summary>
+
+<br>
+
+![connections](images/settings-connections.png)
+
+![models](images/settings-models.png)
+
+![rules](images/settings-rules.png)
+
+![general](images/settings-general.png)
+
+</details>
