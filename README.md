@@ -18,7 +18,7 @@ shushing face helps you work more efficiently by leveraging the fact that speaki
 </p>
 
 <p align="center">
-  <img src="images/home.png" width="720" alt="main window">
+  <img src="images/home.png" width="900" alt="main window">
 </p>
 
 ## Supported Platforms
@@ -76,37 +76,38 @@ Runtime files also live in OS-standard locations:
 
 1. Launch shushing face
 2. Set up an AI provider (Groq is free and fast)
-3. Set your global shortcut in **Settings → Shortcut** (on Linux, `just install` also registers a system-wide Super+Ctrl+B binding)
+3. Set your global shortcut in **Settings → General → Recording** (on Linux, `just install` also registers a system-wide Super+Ctrl+B binding)
 4. Press the shortcut to start recording, press again to stop
 5. Refined text is typed where your cursor is
 
 ## Screenshots
 
-**Onboarding** — connect a provider, pick a style, bind a shortcut.
+**Onboarding** — connect a provider and pick a refinement style.
 
 <table>
   <tr>
-    <td width="33%"><img src="images/chooseapiprovider.png" alt="connect a provider"></td>
-    <td width="33%"><img src="images/choosestyle.png" alt="choose a style"></td>
-    <td width="33%"><img src="images/shortcut.png" alt="bind a shortcut"></td>
+    <td width="50%"><img src="images/wizard-provider.png" alt="connect an AI provider"></td>
+    <td width="50%"><img src="images/wizard-style.png" alt="choose a style"></td>
   </tr>
 </table>
 
-**Configure** — pick default models for transcription and refinement, then tweak prompts per style.
+**Main views** — record, browse history, test prompts in the playground.
 
 <table>
   <tr>
-    <td width="50%"><img src="images/choosemodels.png" alt="default models"></td>
-    <td width="50%"><img src="images/editstylesandprompts.png" alt="edit styles and prompts"></td>
+    <td width="33%"><img src="images/home.png" alt="home — record"></td>
+    <td width="33%"><img src="images/history.png" alt="history"></td>
+    <td width="33%"><img src="images/playground.png" alt="playground"></td>
   </tr>
 </table>
 
-**Use** — speak, get polished text wherever your cursor is.
+**Settings** — connections, models, rules, and general preferences.
 
-<p align="center">
-  <img src="images/exampletranscription.png" width="720" alt="example transcription">
-</p>
-
-## License
-
-[AGPL-3.0](LICENSE.md)
+<table>
+  <tr>
+    <td width="25%"><img src="images/settings-connections.png" alt="connections"></td>
+    <td width="25%"><img src="images/settings-models.png" alt="models"></td>
+    <td width="25%"><img src="images/settings-rules.png" alt="rules"></td>
+    <td width="25%"><img src="images/settings-general.png" alt="general"></td>
+  </tr>
+</table>
